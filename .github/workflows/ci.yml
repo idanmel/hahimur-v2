@@ -18,3 +18,9 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npm run build
+      - name: Deploy to Vercel
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_I3UXJkTvJoFEuYoGLTjtzIed
+          VERCEL_PROJECT_ID: prj_PGz0hI2855tVFPKGFOiqgf3Hwnh5
