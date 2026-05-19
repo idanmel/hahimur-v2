@@ -1,20 +1,18 @@
-import type { Match, Prediction, Standing } from '../types'
+import type { Match, MatchScores, Standing } from '../types'
 
 function emptyStanding(team: string): Standing {
-  return { team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 }
+  return { team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 }
 }
 
-export function calculateStandings(matches: Match[], predictions: Prediction[]): Standing[] {
+export function calculateStandings(matches: Match[], predictions: Record<string, MatchScores>): Standing[] {
   const byTeam = new Map<string, Standing>()
   for (const m of matches) {
     if (!byTeam.has(m.homeTeam)) byTeam.set(m.homeTeam, emptyStanding(m.homeTeam))
     if (!byTeam.has(m.awayTeam)) byTeam.set(m.awayTeam, emptyStanding(m.awayTeam))
   }
 
-  const predictionByMatchId = new Map(predictions.map(p => [p.matchId, p]))
-
   for (const match of matches) {
-    const pred = predictionByMatchId.get(match.id)
+    const pred = predictions[match.id]
     if (!pred || pred.home === null || pred.away === null) continue
 
     const home = byTeam.get(match.homeTeam)!
@@ -23,8 +21,6 @@ export function calculateStandings(matches: Match[], predictions: Prediction[]):
     home.played++; away.played++
     home.goalsFor += pred.home;    away.goalsFor += pred.away
     home.goalsAgainst += pred.away; away.goalsAgainst += pred.home
-    home.goalDifference = home.goalsFor - home.goalsAgainst
-    away.goalDifference = away.goalsFor - away.goalsAgainst
 
     if (pred.home > pred.away) {
       home.won++; home.points += 3; away.lost++
@@ -35,7 +31,9 @@ export function calculateStandings(matches: Match[], predictions: Prediction[]):
     }
   }
 
-  return [...byTeam.values()].sort((a, b) =>
-    b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team)
-  )
+  return [...byTeam.values()].sort((a, b) => {
+    const gdA = a.goalsFor - a.goalsAgainst
+    const gdB = b.goalsFor - b.goalsAgainst
+    return b.points - a.points || gdB - gdA || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team)
+  })
 }

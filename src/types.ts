@@ -11,12 +11,6 @@ export interface MatchScores {
   away: Score
 }
 
-export interface Prediction {
-  matchId: string
-  home: Score
-  away: Score
-}
-
 export interface Standing {
   team: string
   played: number
@@ -25,6 +19,5 @@ export interface Standing {
   lost: number
   goalsFor: number
   goalsAgainst: number
-  goalDifference: number
   points: number
 }

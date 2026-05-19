@@ -35,7 +35,7 @@ and the app is deployed and reachable
 **Build:** scaffold Next.js project, configure Vitest, add GitHub Actions workflow that runs tests on every push, deploy to Vercel.  
 **Done when:** a push triggers CI, tests go green, and the page is live. Every subsequent slice has automated feedback from this point.
 
-### Slice 2 — One match, fillable
+### Slice 2 — One match, fillable ✅
 **Failing test:**
 ```
 given the predictions page is open
@@ -78,7 +78,7 @@ then the Mexico score remains empty
 **Build:** hardcode that one match, two number inputs with `onChange` handler that rejects anything that is not a non-negative integer.  
 **Deploy + show someone.** Does the concept make sense? Is the input clear?
 
-### Slice 3a — `calculateStandings` pure function
+### Slice 3a — `calculateStandings` pure function ✅
 The group standings table mirrors the Wikipedia format with columns: Pos, Team, Pld, W, D, L, GF, GA, GD, Pts.
 
 **Failing tests** (no UI, no rendering):
@@ -117,7 +117,7 @@ then all teams have Pld=0, W=0, D=0, L=0, GF=0, GA=0, GD=0, Pts=0
 ```
 **Build:** implement `calculateStandings(matches: Match[], predictions: Prediction[]): Standing[]` as a pure TypeScript function.
 
-### Slice 3b — Group table rendered in UI
+### Slice 3b — Group table rendered in UI ✅
 **Failing tests:**
 ```
 given the predictions page is open

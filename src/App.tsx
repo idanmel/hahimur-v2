@@ -16,10 +16,7 @@ const initialPredictions: PredictionsState = Object.fromEntries(
 export default function App() {
   const [predictions, setPredictions] = useState<PredictionsState>(initialPredictions)
 
-  const standings = useMemo(() => {
-    const preds = GROUP_A_MATCHES.map(m => ({ matchId: m.id, ...predictions[m.id] }))
-    return calculateStandings(GROUP_A_MATCHES, preds)
-  }, [predictions])
+  const standings = useMemo(() => calculateStandings(GROUP_A_MATCHES, predictions), [predictions])
 
   function updateScores(matchId: string, scores: MatchScores) {
     setPredictions(prev => ({ ...prev, [matchId]: scores }))
