@@ -5,8 +5,6 @@ import { calculateStandings } from './lib/standings'
 import MatchRow from './components/MatchRow'
 import StandingsTable from './components/StandingsTable'
 
-const OPENING_MATCH = GROUP_A_MATCHES[0]
-
 type PredictionsState = Record<string, MatchScores>
 
 const initialPredictions: PredictionsState = Object.fromEntries(
@@ -25,11 +23,14 @@ export default function App() {
   return (
     <main>
       <h1>2026 World Cup Predictions</h1>
-      <MatchRow
-        match={OPENING_MATCH}
-        scores={predictions[OPENING_MATCH.id]}
-        onChange={(scores) => updateScores(OPENING_MATCH.id, scores)}
-      />
+      {GROUP_A_MATCHES.map(match => (
+        <MatchRow
+          key={match.id}
+          match={match}
+          scores={predictions[match.id]}
+          onChange={(scores) => updateScores(match.id, scores)}
+        />
+      ))}
       <StandingsTable standings={standings} />
     </main>
   )

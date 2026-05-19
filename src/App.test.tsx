@@ -5,8 +5,9 @@ import App from './App'
 function setup() {
   const user = userEvent.setup()
   render(<App />)
-  const mexicoInput = screen.getByLabelText('Mexico score')
-  const southAfricaInput = screen.getByLabelText('South Africa score')
+  // Mexico and South Africa each appear in multiple matches; grab match A1 (first occurrence)
+  const mexicoInput = screen.getAllByLabelText('Mexico score')[0]
+  const southAfricaInput = screen.getAllByLabelText('South Africa score')[0]
   return { user, mexicoInput, southAfricaInput }
 }
 
@@ -70,6 +71,24 @@ describe('Slice 2 — one match, fillable', () => {
     const { user, mexicoInput } = setup()
     await user.type(mexicoInput, '0123')
     expect(mexicoInput).toHaveValue('123')
+  })
+})
+
+describe('Slice 4 — Group A (6 matches)', () => {
+  test('all 6 Group A matches are visible', () => {
+    render(<App />)
+    expect(screen.getAllByRole('textbox')).toHaveLength(12)
+  })
+
+  test('standings update when a non-opening match score is entered', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    // Match A2: South Korea (home) vs Czech Republic. South Korea appears as home first in A2.
+    const southKoreaInputs = screen.getAllByLabelText('South Korea score')
+    const czechInputs = screen.getAllByLabelText('Czech Republic score')
+    await user.type(southKoreaInputs[0], '2')
+    await user.type(czechInputs[0], '1')
+    expect(within(screen.getByRole('row', { name: /South Korea/ })).getByText('3')).toBeInTheDocument()
   })
 })
 
