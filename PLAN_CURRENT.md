@@ -20,7 +20,7 @@ Chosen for this phase only — simple, no server needed, excellent testing suppo
 
 ## Slices
 
-### Slice 1 — CI green
+### Slice 1 — CI green ✅
 **Failing tests:**
 ```
 given the predictions page loads
