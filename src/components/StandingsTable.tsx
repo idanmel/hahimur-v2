@@ -1,5 +1,5 @@
 import type { Standing } from '../types'
-import { TEAM_NAMES_HE, TEAM_ISO } from '../lib/groups'
+import { TEAMS } from '../lib/groups'
 import { goalDifference } from '../lib/standings'
 
 interface Props {
@@ -33,7 +33,7 @@ export default function StandingsTable({ standings }: Props) {
             return (
               <tr
                 key={s.team}
-                aria-label={TEAM_NAMES_HE[s.team]}
+                aria-label={TEAMS[s.team].he}
                 className={[
                   qualifies ? 'row-qualifies' : 'row-out',
                   isCutoff ? 'row-cutoff' : '',
@@ -43,8 +43,8 @@ export default function StandingsTable({ standings }: Props) {
                   <span className={`rank-badge${qualifies ? ' rank-badge--qualify' : ''}`}>{i + 1}</span>
                 </td>
                 <td className="col-team">
-                  <span className={`fi fi-${TEAM_ISO[s.team]}`} />
-                  <span>{TEAM_NAMES_HE[s.team]}</span>
+                  <span className={`fi fi-${TEAMS[s.team].iso}`} />
+                  <span>{TEAMS[s.team].he}</span>
                 </td>
                 <td className="col-pts">{s.points}</td>
                 <td>{s.played}</td>

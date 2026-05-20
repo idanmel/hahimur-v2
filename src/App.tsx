@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import './App.css'
 import type { Match, MatchScores } from './types'
-import { GROUP_A_MATCHES, GROUP_B_MATCHES } from './lib/groups'
+import { GROUP_MATCHES } from './lib/groups'
 import { calculateStandings } from './lib/standings'
 import MatchRow from './components/MatchRow'
 import StandingsTable from './components/StandingsTable'
@@ -12,11 +12,6 @@ const STORAGE_KEY = 'predictions'
 
 const ALL_GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'] as const
 type GroupLetter = typeof ALL_GROUP_LETTERS[number]
-
-const GROUP_MATCHES: Partial<Record<GroupLetter, Match[]>> = {
-  A: GROUP_A_MATCHES,
-  B: GROUP_B_MATCHES,
-}
 
 const ALL_MATCHES = Object.values(GROUP_MATCHES).flat() as Match[]
 

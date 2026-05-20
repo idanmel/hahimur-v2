@@ -2,6 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 
+beforeEach(() => localStorage.clear())
+
 function setup() {
   const user = userEvent.setup()
   render(<App />)
@@ -106,8 +108,6 @@ describe('Slice 4 — Group A (6 matches)', () => {
 })
 
 describe('Slice 8 — localStorage persistence', () => {
-  beforeEach(() => localStorage.clear())
-
   test('predictions survive a remount (simulated refresh)', async () => {
     const user = userEvent.setup()
     const { unmount } = render(<App />)
@@ -119,6 +119,24 @@ describe('Slice 8 — localStorage persistence', () => {
     render(<App />)
 
     expect(screen.getAllByLabelText('מקסיקו')[0]).toHaveValue('3')
+  })
+})
+
+describe('Slice 10 — groups C–L', () => {
+  const remaining = ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
+
+  test.each(remaining)('group %s button is enabled', (letter) => {
+    render(<App />)
+    expect(screen.getByRole('button', { name: letter })).not.toBeDisabled()
+  })
+
+  test.each(remaining)('group %s shows 6 matches (12 inputs) when selected', async (letter) => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: letter }))
+    // Group A's Mexico must be gone — confirming we really switched groups
+    expect(screen.queryAllByLabelText('מקסיקו')).toHaveLength(0)
+    expect(screen.getAllByRole('textbox')).toHaveLength(12)
   })
 })
 

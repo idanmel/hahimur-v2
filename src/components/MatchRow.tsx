@@ -1,5 +1,5 @@
 import type { Match, MatchScores, Score } from '../types'
-import { TEAM_NAMES_HE, TEAM_ISO } from '../lib/groups'
+import { TEAMS } from '../lib/groups'
 import ScoreInput from './ScoreInput'
 
 interface Props {
@@ -20,25 +20,25 @@ export default function MatchRow({ match, scores, onChange }: Props) {
         </div>
       )}
       <div className="match-team match-team--home">
-        <span className={`fi fi-${TEAM_ISO[match.homeTeam]} match-team-flag`} />
-        <span className="match-team-name">{TEAM_NAMES_HE[match.homeTeam]}</span>
+        <span className={`fi fi-${TEAMS[match.homeTeam].iso} match-team-flag`} />
+        <span className="match-team-name">{TEAMS[match.homeTeam].he}</span>
       </div>
       <div className="match-score-zone">
         <ScoreInput
-          label={TEAM_NAMES_HE[match.homeTeam]}
+          label={TEAMS[match.homeTeam].he}
           value={scores.home}
           onChange={(v) => set(v, scores.away)}
         />
         <span className="match-score-sep">:</span>
         <ScoreInput
-          label={TEAM_NAMES_HE[match.awayTeam]}
+          label={TEAMS[match.awayTeam].he}
           value={scores.away}
           onChange={(v) => set(scores.home, v)}
         />
       </div>
       <div className="match-team match-team--away">
-        <span className="match-team-name">{TEAM_NAMES_HE[match.awayTeam]}</span>
-        <span className={`fi fi-${TEAM_ISO[match.awayTeam]} match-team-flag`} />
+        <span className="match-team-name">{TEAMS[match.awayTeam].he}</span>
+        <span className={`fi fi-${TEAMS[match.awayTeam].iso} match-team-flag`} />
       </div>
     </div>
   )

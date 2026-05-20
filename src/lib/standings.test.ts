@@ -9,6 +9,10 @@ function find(standings: ReturnType<typeof calculateStandings>, team: string) {
   return s
 }
 
+function pos(standings: ReturnType<typeof calculateStandings>, team: string) {
+  return standings.findIndex(s => s.team === team)
+}
+
 // Custom group used for N-team h2h tests.
 // Cycle structure: Alpha beats Beta, Beta beats Gamma, Gamma beats Alpha.
 // All three beat Delta. Varying scorelines let us control h2h GD vs overall GD.
@@ -35,9 +39,8 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
       GD: { home: 1, away: 0 },  // Gamma beats Delta 1-0
     }
     const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
-    const pos = (t: string) => standings.findIndex(s => s.team === t)
-    expect(pos('Alpha')).toBeLessThan(pos('Gamma'))
-    expect(pos('Gamma')).toBeLessThan(pos('Beta'))
+    expect(pos(standings, 'Alpha')).toBeLessThan(pos(standings, 'Gamma'))
+    expect(pos(standings, 'Gamma')).toBeLessThan(pos(standings, 'Beta'))
   })
 
   test('3-team equal h2h and equal overall GD: separated by goals scored (criterion e)', () => {
@@ -55,9 +58,8 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
       GD: { home: 1, away: 1 },
     }
     const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
-    const pos = (t: string) => standings.findIndex(s => s.team === t)
-    expect(pos('Alpha')).toBeLessThan(pos('Beta'))
-    expect(pos('Beta')).toBeLessThan(pos('Gamma'))
+    expect(pos(standings, 'Alpha')).toBeLessThan(pos(standings, 'Beta'))
+    expect(pos(standings, 'Beta')).toBeLessThan(pos(standings, 'Gamma'))
   })
 
   test('3-team equal h2h (symmetric cycle) falls through to overall GD', () => {
@@ -73,9 +75,8 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
       GD: { home: 1, away: 0 },
     }
     const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
-    const pos = (t: string) => standings.findIndex(s => s.team === t)
-    expect(pos('Alpha')).toBeLessThan(pos('Beta'))
-    expect(pos('Beta')).toBeLessThan(pos('Gamma'))
+    expect(pos(standings, 'Alpha')).toBeLessThan(pos(standings, 'Beta'))
+    expect(pos(standings, 'Beta')).toBeLessThan(pos(standings, 'Gamma'))
   })
 })
 
@@ -93,9 +94,7 @@ describe('Tiebreaker criterion e — most goals scored in all group matches', ()
       A6: { home: 2, away: 1 },  // South Africa 2-1 South Korea (SK: 0pts, -1 GD)
     }
     const standings = calculateStandings(GROUP_A_MATCHES, predictions)
-    const mexicoPos = standings.findIndex(s => s.team === 'Mexico')
-    const skPos = standings.findIndex(s => s.team === 'South Korea')
-    expect(mexicoPos).toBeLessThan(skPos)
+    expect(pos(standings, 'Mexico')).toBeLessThan(pos(standings, 'South Korea'))
   })
 })
 
@@ -113,9 +112,7 @@ describe('Slice 4b-i — 2-team h2h tiebreaker', () => {
       A6: { home: 0, away: 0 },  // South Africa 0-0 South Korea
     }
     const standings = calculateStandings(GROUP_A_MATCHES, predictions)
-    const skPos = standings.findIndex(s => s.team === 'South Korea')
-    const mexicoPos = standings.findIndex(s => s.team === 'Mexico')
-    expect(skPos).toBeLessThan(mexicoPos)
+    expect(pos(standings, 'South Korea')).toBeLessThan(pos(standings, 'Mexico'))
   })
 })
 
