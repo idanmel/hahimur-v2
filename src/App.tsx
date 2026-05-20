@@ -25,7 +25,7 @@ export default function App() {
       <header className="poster-header">
         <div className="poster-bar poster-bar--top" />
         <div className="poster-center">
-          <p className="poster-overline">FIFA World Cup</p>
+          <p className="poster-overline">גביע העולם FIFA</p>
           <div className="poster-mundial">MUNDIAL <span className="poster-year">2026</span></div>
           <h1 className="poster-subtitle">ההימור 2026</h1>
         </div>
@@ -34,7 +34,7 @@ export default function App() {
 
       <main>
         <section className="content-section">
-          <h2 className="section-tag">Group A · קבוצה א׳</h2>
+          <h2 className="section-tag">קבוצה א׳</h2>
           {GROUP_A_MATCHES.map(match => (
             <MatchRow
               key={match.id}
@@ -46,7 +46,7 @@ export default function App() {
         </section>
 
         <section className="content-section">
-          <h2 className="section-tag">Standings · טבלת דירוג</h2>
+          <h2 className="section-tag">טבלת דירוג</h2>
           <StandingsTable standings={standings} />
         </section>
       </main>
