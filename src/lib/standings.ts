@@ -8,7 +8,7 @@ function emptyStanding(team: string): Standing {
   return { team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 }
 }
 
-function byOverallGD(a: Standing, b: Standing): number {
+export function byOverallGD(a: Standing, b: Standing): number {
   return goalDifference(b) - goalDifference(a)
     || b.goalsFor - a.goalsFor
     || a.team.localeCompare(b.team)

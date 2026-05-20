@@ -23,3 +23,11 @@ export interface Standing {
   goalsAgainst: number
   points: number
 }
+
+export interface ThirdPlaceStanding extends Standing {
+  group: string
+}
+
+export type ThirdPlaceQualification =
+  | { resolved: true;  qualifiers: ThirdPlaceStanding[] }
+  | { resolved: false; all: ThirdPlaceStanding[]; tied: ThirdPlaceStanding[] }
