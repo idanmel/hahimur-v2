@@ -2,6 +2,14 @@ import type { Match, MatchScores, Score } from '../types'
 import { TEAMS } from '../lib/groups'
 import ScoreInput from './ScoreInput'
 
+const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+function dayOfWeek(matchDate: string): string {
+  const day = parseInt(matchDate)
+  const d = new Date(2026, 5, day) // June 2026
+  return `יום ${HE_DAYS[d.getDay()]}`
+}
+
 interface Props {
   match: Match
   scores: MatchScores
@@ -14,7 +22,7 @@ export default function MatchRow({ match, scores, onChange }: Props) {
     <div className="match-card">
       {(match.matchDate || match.kickoffIST) && (
         <div className="match-meta">
-          {match.matchDate && <span>{match.matchDate}</span>}
+          {match.matchDate && <span>{dayOfWeek(match.matchDate)}, {match.matchDate}</span>}
           {match.matchDate && match.kickoffIST && <span className="match-meta-sep">|</span>}
           {match.kickoffIST && <span>{match.kickoffIST}</span>}
         </div>

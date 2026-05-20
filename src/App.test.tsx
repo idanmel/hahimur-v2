@@ -111,17 +111,20 @@ describe('Slice 8 — localStorage persistence', () => {
 })
 
 describe('Slice 9/10 — group navigation (B–L)', () => {
-  const remaining = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
+  const remaining: [string, string][] = [
+    ['B', 'ב'], ['C', 'ג'], ['D', 'ד'], ['E', 'ה'], ['F', 'ו'],
+    ['G', 'ז'], ['H', 'ח'], ['I', 'ט'], ['J', 'י'], ['K', 'י"א'], ['L', 'י"ב'],
+  ]
 
-  test.each(remaining)('group %s button is enabled', (letter) => {
+  test.each(remaining)('group %s button is enabled', (_letter, hebrew) => {
     render(<App />)
-    expect(screen.getByRole('button', { name: letter })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: hebrew })).not.toBeDisabled()
   })
 
-  test.each(remaining)('group %s shows 6 matches (12 inputs) when selected', async (letter) => {
+  test.each(remaining)('group %s shows 6 matches (12 inputs) when selected', async (_letter, hebrew) => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: letter }))
+    await user.click(screen.getByRole('button', { name: hebrew }))
     // Group A's Mexico must be gone — confirming we really switched groups
     expect(screen.queryAllByLabelText('מקסיקו')).toHaveLength(0)
     expect(screen.getAllByRole('textbox')).toHaveLength(12)
