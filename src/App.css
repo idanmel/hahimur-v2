@@ -129,13 +129,6 @@ main {
   color: var(--gold);
 }
 
-.group-cell__check {
-  font-size: 11px;
-  line-height: 1;
-  margin-top: 2px;
-  color: var(--green);
-}
-
 .tie-warning {
   background: rgba(192, 57, 43, 0.08);
   border: 1px solid rgba(192, 57, 43, 0.4);

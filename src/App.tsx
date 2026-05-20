@@ -95,13 +95,12 @@ export default function App() {
         <div className="group-grid">
           {ALL_GROUP_LETTERS.map(letter => {
             const hasData = letter in GROUP_MATCHES
-            const isComplete = completedGroups.has(letter)
             const cls = [
               'group-cell',
               activeGroup === letter && 'group-cell--active',
               !hasData && 'group-cell--empty',
               groupsWithTies.has(letter) && 'group-cell--error',
-              isComplete && 'group-cell--complete',
+              completedGroups.has(letter) && 'group-cell--complete',
             ].filter(Boolean).join(' ')
             return (
               <button
@@ -111,7 +110,6 @@ export default function App() {
                 disabled={!hasData}
               >
                 {GROUP_HEBREW[letter]}
-                {isComplete && <span className="group-cell__check" aria-hidden="true">✓</span>}
               </button>
             )
           })}
