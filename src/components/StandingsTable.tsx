@@ -1,5 +1,6 @@
 import type { Standing } from '../types'
 import { TEAM_NAMES_HE } from '../lib/groups'
+import { goalDifference } from '../lib/standings'
 
 interface Props {
   standings: Standing[]
@@ -17,7 +18,7 @@ export default function StandingsTable({ standings }: Props) {
       </thead>
       <tbody>
         {standings.map((s, i) => {
-          const gd = s.goalsFor - s.goalsAgainst
+          const gd = goalDifference(s)
           return (
             <tr key={s.team} aria-label={TEAM_NAMES_HE[s.team]}>
               <td>{i + 1}</td>

@@ -1,11 +1,15 @@
 import type { Match, MatchScores, Standing } from '../types'
 
+export function goalDifference(s: Standing): number {
+  return s.goalsFor - s.goalsAgainst
+}
+
 function emptyStanding(team: string): Standing {
   return { team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 }
 }
 
 function byOverallGD(a: Standing, b: Standing): number {
-  return (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst)
+  return goalDifference(b) - goalDifference(a)
     || b.goalsFor - a.goalsFor
     || a.team.localeCompare(b.team)
 }
@@ -65,7 +69,7 @@ function sortTiedGroup(group: Standing[], matches: Match[], predictions: Record<
   }
 }
 
-export function calculateStandings(matches: Match[], predictions: Record<string, MatchScores>): Standing[] {
+function accumulateStats(matches: Match[], predictions: Record<string, MatchScores>): Map<string, Standing> {
   const byTeam = new Map<string, Standing>()
   for (const m of matches) {
     if (!byTeam.has(m.homeTeam)) byTeam.set(m.homeTeam, emptyStanding(m.homeTeam))
@@ -92,7 +96,12 @@ export function calculateStandings(matches: Match[], predictions: Record<string,
     }
   }
 
-  const teams = [...byTeam.values()]
+  return byTeam
+}
+
+export function calculateStandings(matches: Match[], predictions: Record<string, MatchScores>): Standing[] {
+  const teams = [...accumulateStats(matches, predictions).values()]
+
   const byPoints = new Map<number, Standing[]>()
   for (const s of teams) {
     const group = byPoints.get(s.points) ?? []
