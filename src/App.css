@@ -110,6 +110,22 @@ main {
   cursor: default;
 }
 
+.group-cell--error {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.tie-warning {
+  background: rgba(192, 57, 43, 0.08);
+  border: 1px solid rgba(192, 57, 43, 0.4);
+  border-radius: 6px;
+  color: #c0392b;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
 /* ── Match Card ────────────────────────────────────────────── */
 
 .match-card {

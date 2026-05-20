@@ -73,8 +73,8 @@ describe('getThirdPlaceTeams', () => {
 describe('getThirdPlaceTeams — result sensitivity', () => {
   test('reflects a team moving from 3rd to 2nd when their result improves', () => {
     // Gamma wins T2: Gamma moves from 4th (0pts) to 3rd (3pts), Delta drops to 4th
-    const standingsBefore = calculateStandings(TEST_MATCHES, PREDS_DELTA_THIRD)
-    const standingsAfter  = calculateStandings(TEST_MATCHES, PREDS_GAMMA_THIRD)
+    const { standings: standingsBefore } = calculateStandings(TEST_MATCHES, PREDS_DELTA_THIRD)
+    const { standings: standingsAfter }  = calculateStandings(TEST_MATCHES, PREDS_GAMMA_THIRD)
 
     const before = getThirdPlaceTeams([{ group: 'X', standings: standingsBefore }])
     const after  = getThirdPlaceTeams([{ group: 'X', standings: standingsAfter }])
@@ -85,8 +85,8 @@ describe('getThirdPlaceTeams — result sensitivity', () => {
 
   test('reflects a team dropping from 3rd to 4th when their result worsens', () => {
     // Reversing: with PREDS_GAMMA_THIRD, Delta is 4th; flip back to PREDS_DELTA_THIRD, Delta is 3rd
-    const standingsWithDeltaOut  = calculateStandings(TEST_MATCHES, PREDS_GAMMA_THIRD)
-    const standingsWithDeltaBack = calculateStandings(TEST_MATCHES, PREDS_DELTA_THIRD)
+    const { standings: standingsWithDeltaOut }  = calculateStandings(TEST_MATCHES, PREDS_GAMMA_THIRD)
+    const { standings: standingsWithDeltaBack } = calculateStandings(TEST_MATCHES, PREDS_DELTA_THIRD)
 
     const withDeltaOut  = getThirdPlaceTeams([{ group: 'X', standings: standingsWithDeltaOut }])
     const withDeltaBack = getThirdPlaceTeams([{ group: 'X', standings: standingsWithDeltaBack }])

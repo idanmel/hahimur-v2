@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import './App.css'
 import type { Match, MatchScores } from './types'
-import { GROUP_MATCHES, GROUP_HEBREW } from './lib/groups'
+import { GROUP_MATCHES, GROUP_HEBREW, TEAMS } from './lib/groups'
 import { calculateStandings } from './lib/standings'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './lib/thirdPlace'
 import MatchRow from './components/MatchRow'
@@ -35,19 +35,22 @@ export default function App() {
   const [predictions, setPredictions] = useState<PredictionsState>(loadPredictions)
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
   const activeMatches = GROUP_MATCHES[activeGroup] ?? []
-  const activeStandings = useMemo(
+  const { standings: activeStandings, tiedTeams: activeTiedTeams } = useMemo(
     () => calculateStandings(activeMatches, predictions),
     [activeGroup, predictions]
   )
 
-  const thirdPlaceQual = useMemo(() => {
-    const allGroupStandings = ALL_GROUP_LETTERS
+  const { thirdPlaceQual, groupsWithTies } = useMemo(() => {
+    const allGroupData = ALL_GROUP_LETTERS
       .filter(l => l in GROUP_MATCHES)
-      .map(l => ({
-        group: l as string,
-        standings: calculateStandings(GROUP_MATCHES[l] ?? [], predictions),
-      }))
-    return qualifyBestThirdPlace(getThirdPlaceTeams(allGroupStandings))
+      .map(l => {
+        const { standings, tiedTeams } = calculateStandings(GROUP_MATCHES[l] ?? [], predictions)
+        return { group: l as string, standings, tiedTeams }
+      })
+    return {
+      thirdPlaceQual: qualifyBestThirdPlace(getThirdPlaceTeams(allGroupData)),
+      groupsWithTies: new Set(allGroupData.filter(d => d.tiedTeams.size > 0).map(d => d.group)),
+    }
   }, [predictions])
 
   function updateScores(matchId: string, scores: MatchScores) {
@@ -77,7 +80,7 @@ export default function App() {
             return (
               <button
                 key={letter}
-                className={`group-cell${activeGroup === letter ? ' group-cell--active' : ''}${!hasData ? ' group-cell--empty' : ''}`}
+                className={`group-cell${activeGroup === letter ? ' group-cell--active' : ''}${!hasData ? ' group-cell--empty' : ''}${groupsWithTies.has(letter) ? ' group-cell--error' : ''}`}
                 onClick={() => hasData && setActiveGroup(letter)}
                 disabled={!hasData}
               >
@@ -88,6 +91,11 @@ export default function App() {
         </div>
 
         <section className="content-section">
+          {activeTiedTeams.size > 0 && (
+            <div role="alert" className="tie-warning">
+              {[...activeTiedTeams].map(t => TEAMS[t].he).join(' · ')} — שוות בכל הקריטריונים
+            </div>
+          )}
           {activeMatches.map(match => (
             <MatchRow
               key={match.id}

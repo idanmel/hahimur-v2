@@ -11,7 +11,6 @@ function emptyStanding(team: string): Standing {
 export function byOverallGD(a: Standing, b: Standing): number {
   return goalDifference(b) - goalDifference(a)
     || b.goalsFor - a.goalsFor
-    || a.team.localeCompare(b.team)
 }
 
 interface H2HRecord { pts: number; gd: number; goals: number }
@@ -32,7 +31,7 @@ function computeH2HRecords(group: Standing[], h2hMatches: Match[], predictions: 
   return records
 }
 
-function sortTiedGroup(group: Standing[], matches: Match[], predictions: Record<string, MatchScores>): void {
+function sortTiedGroup(group: Standing[], matches: Match[], predictions: Record<string, MatchScores>, tiedTeams: Set<string>): void {
   if (group.length <= 1) return
 
   const teamSet = new Set(group.map(s => s.team))
@@ -59,9 +58,15 @@ function sortTiedGroup(group: Standing[], matches: Match[], predictions: Record<
     if (j - i > 1) {
       const subset = group.slice(i, j)
       if (subset.length < group.length) {
-        sortTiedGroup(subset, matches, predictions)   // progress: re-apply h2h to subset
+        sortTiedGroup(subset, matches, predictions, tiedTeams)   // progress: re-apply h2h to subset
       } else {
-        subset.sort(byOverallGD)                      // no progress: fall through to criteria d+
+        subset.sort(byOverallGD)                                  // no progress: fall through to criteria d+
+        for (let k = 0; k < subset.length - 1; k++) {
+          if (byOverallGD(subset[k], subset[k + 1]) === 0 && subset[k].played > 0) {
+            tiedTeams.add(subset[k].team)
+            tiedTeams.add(subset[k + 1].team)
+          }
+        }
       }
       group.splice(i, j - i, ...subset)
     }
@@ -99,8 +104,9 @@ function accumulateStats(matches: Match[], predictions: Record<string, MatchScor
   return byTeam
 }
 
-export function calculateStandings(matches: Match[], predictions: Record<string, MatchScores>): Standing[] {
+export function calculateStandings(matches: Match[], predictions: Record<string, MatchScores>): { standings: Standing[], tiedTeams: Set<string> } {
   const teams = [...accumulateStats(matches, predictions).values()]
+  const tiedTeams = new Set<string>()
 
   const byPoints = new Map<number, Standing[]>()
   for (const s of teams) {
@@ -110,10 +116,12 @@ export function calculateStandings(matches: Match[], predictions: Record<string,
   }
 
   for (const group of byPoints.values()) {
-    sortTiedGroup(group, matches, predictions)
+    sortTiedGroup(group, matches, predictions, tiedTeams)
   }
 
-  return [...byPoints.entries()]
+  const standings = [...byPoints.entries()]
     .sort(([a], [b]) => b - a)
     .flatMap(([, group]) => group)
+
+  return { standings, tiedTeams }
 }

@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'vitest'
-import type { Match, MatchScores } from '../types'
+import type { Match, MatchScores, Standing } from '../types'
 import { GROUP_A_MATCHES } from './groups'
 import { calculateStandings } from './standings'
 
-function find(standings: ReturnType<typeof calculateStandings>, team: string) {
+function find(standings: Standing[], team: string) {
   const s = standings.find(s => s.team === team)
   if (!s) throw new Error(`Team not found: ${team}`)
   return s
 }
 
-function pos(standings: ReturnType<typeof calculateStandings>, team: string) {
+function pos(standings: Standing[], team: string) {
   return standings.findIndex(s => s.team === team)
 }
 
@@ -38,7 +38,7 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
       BD: { home: 5, away: 0 },  // Beta beats Delta 5-0 (inflates Beta overall GD)
       GD: { home: 1, away: 0 },  // Gamma beats Delta 1-0
     }
-    const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    const { standings } = calculateStandings(FOUR_TEAM_MATCHES, predictions)
     expect(pos(standings, 'Alpha')).toBeLessThan(pos(standings, 'Gamma'))
     expect(pos(standings, 'Gamma')).toBeLessThan(pos(standings, 'Beta'))
   })
@@ -57,7 +57,7 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
       BD: { home: 2, away: 2 },
       GD: { home: 1, away: 1 },
     }
-    const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    const { standings } = calculateStandings(FOUR_TEAM_MATCHES, predictions)
     expect(pos(standings, 'Alpha')).toBeLessThan(pos(standings, 'Beta'))
     expect(pos(standings, 'Beta')).toBeLessThan(pos(standings, 'Gamma'))
   })
@@ -74,7 +74,7 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
       BD: { home: 2, away: 0 },
       GD: { home: 1, away: 0 },
     }
-    const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    const { standings } = calculateStandings(FOUR_TEAM_MATCHES, predictions)
     expect(pos(standings, 'Alpha')).toBeLessThan(pos(standings, 'Beta'))
     expect(pos(standings, 'Beta')).toBeLessThan(pos(standings, 'Gamma'))
   })
@@ -93,7 +93,7 @@ describe('Tiebreaker criterion e — most goals scored in all group matches', ()
       A5: { home: 2, away: 1 },  // Czech Republic 2-1 Mexico (Mexico: 0pts, -1 GD)
       A6: { home: 2, away: 1 },  // South Africa 2-1 South Korea (SK: 0pts, -1 GD)
     }
-    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const { standings } = calculateStandings(GROUP_A_MATCHES, predictions)
     expect(pos(standings, 'Mexico')).toBeLessThan(pos(standings, 'South Korea'))
   })
 })
@@ -111,15 +111,49 @@ describe('Slice 4b-i — 2-team h2h tiebreaker', () => {
       A5: { home: 0, away: 0 },  // Czech Republic 0-0 Mexico
       A6: { home: 0, away: 0 },  // South Africa 0-0 South Korea
     }
-    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const { standings } = calculateStandings(GROUP_A_MATCHES, predictions)
     expect(pos(standings, 'South Korea')).toBeLessThan(pos(standings, 'Mexico'))
+  })
+})
+
+describe('tiedTeams — unresolvable ties', () => {
+  test('returns empty set when all ties are resolvable', () => {
+    const predictions: Record<string, MatchScores> = {
+      AB: { home: 1, away: 0 },
+      BC: { home: 1, away: 0 },
+      GA: { home: 1, away: 0 },
+      AD: { home: 3, away: 0 },
+      BD: { home: 2, away: 0 },
+      GD: { home: 1, away: 0 },
+    }
+    const { tiedTeams } = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    expect(tiedTeams.size).toBe(0)
+  })
+
+  test('returns tied teams when all 5 criteria are exhausted', () => {
+    // Symmetric cycle: each beats the next 1-0, all draw 1-1 vs Delta
+    // Points: 4 each; overall GD: 0 each; overall goals: 3 each
+    // H2H: 3pts, 0 GD, 1 goal each → no resolution possible
+    const predictions: Record<string, MatchScores> = {
+      AB: { home: 1, away: 0 },
+      BC: { home: 1, away: 0 },
+      GA: { home: 1, away: 0 },
+      AD: { home: 1, away: 1 },
+      BD: { home: 1, away: 1 },
+      GD: { home: 1, away: 1 },
+    }
+    const { tiedTeams } = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    expect(tiedTeams).toContain('Alpha')
+    expect(tiedTeams).toContain('Beta')
+    expect(tiedTeams).toContain('Gamma')
+    expect(tiedTeams).not.toContain('Delta')
   })
 })
 
 describe('calculateStandings', () => {
   test('home win: Mexico 2-1 South Africa', () => {
     const predictions: Record<string, MatchScores> = { A1: { home: 2, away: 1 } }
-    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const { standings } = calculateStandings(GROUP_A_MATCHES, predictions)
 
     expect(find(standings, 'Mexico')).toMatchObject(
       { played: 1, won: 1, drawn: 0, lost: 0, goalsFor: 2, goalsAgainst: 1, points: 3 }
@@ -131,7 +165,7 @@ describe('calculateStandings', () => {
 
   test('away win: South Africa 2-0 Mexico', () => {
     const predictions: Record<string, MatchScores> = { A1: { home: 0, away: 2 } }
-    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const { standings } = calculateStandings(GROUP_A_MATCHES, predictions)
 
     expect(find(standings, 'South Africa')).toMatchObject(
       { played: 1, won: 1, drawn: 0, lost: 0, goalsFor: 2, goalsAgainst: 0, points: 3 }
@@ -143,7 +177,7 @@ describe('calculateStandings', () => {
 
   test('draw: Mexico 1-1 South Africa', () => {
     const predictions: Record<string, MatchScores> = { A1: { home: 1, away: 1 } }
-    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const { standings } = calculateStandings(GROUP_A_MATCHES, predictions)
 
     expect(find(standings, 'Mexico')).toMatchObject(
       { played: 1, won: 0, drawn: 1, lost: 0, goalsFor: 1, goalsAgainst: 1, points: 1 }
@@ -154,18 +188,18 @@ describe('calculateStandings', () => {
   })
 
   test('no predictions: all teams show Pld=0', () => {
-    const standings = calculateStandings(GROUP_A_MATCHES, {})
+    const { standings } = calculateStandings(GROUP_A_MATCHES, {})
     expect(standings.every(s => s.played === 0)).toBe(true)
   })
 
   test('partial prediction (only home score entered): match does not count', () => {
     const predictions: Record<string, MatchScores> = { A1: { home: 2, away: null } }
-    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const { standings } = calculateStandings(GROUP_A_MATCHES, predictions)
     expect(standings.every(s => s.played === 0)).toBe(true)
   })
 
   test('no predictions: all 4 Group A teams present with zeroed stats', () => {
-    const standings = calculateStandings(GROUP_A_MATCHES, {})
+    const { standings } = calculateStandings(GROUP_A_MATCHES, {})
     expect(standings).toHaveLength(4)
     const zero = { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 }
     expect(standings.every(s => expect(s).toMatchObject(zero))).toBeTruthy()
