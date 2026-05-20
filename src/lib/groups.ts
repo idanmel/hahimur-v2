@@ -1,10 +1,10 @@
 import type { Match } from '../types'
 
-export const TEAM_FLAGS: Record<string, string> = {
-  'Mexico':         '🇲🇽',
-  'South Africa':   '🇿🇦',
-  'South Korea':    '🇰🇷',
-  'Czech Republic': '🇨🇿',
+export const TEAM_ISO: Record<string, string> = {
+  'Mexico':         'mx',
+  'South Africa':   'za',
+  'South Korea':    'kr',
+  'Czech Republic': 'cz',
 }
 
 export const TEAM_NAMES_HE: Record<string, string> = {

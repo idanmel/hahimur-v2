@@ -1,5 +1,5 @@
 import type { Standing } from '../types'
-import { TEAM_NAMES_HE, TEAM_FLAGS } from '../lib/groups'
+import { TEAM_NAMES_HE, TEAM_ISO } from '../lib/groups'
 import { goalDifference } from '../lib/standings'
 
 interface Props {
@@ -22,7 +22,7 @@ export default function StandingsTable({ standings }: Props) {
           return (
             <tr key={s.team} aria-label={TEAM_NAMES_HE[s.team]}>
               <td>{i + 1}</td>
-              <td>{TEAM_FLAGS[s.team]} <span>{TEAM_NAMES_HE[s.team]}</span></td>
+              <td><span className={`fi fi-${TEAM_ISO[s.team]}`} /> <span>{TEAM_NAMES_HE[s.team]}</span></td>
               <td>{s.played}</td>
               <td>{s.won}</td>
               <td>{s.drawn}</td>

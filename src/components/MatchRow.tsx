@@ -1,5 +1,5 @@
 import type { Match, MatchScores, Score } from '../types'
-import { TEAM_NAMES_HE, TEAM_FLAGS } from '../lib/groups'
+import { TEAM_NAMES_HE, TEAM_ISO } from '../lib/groups'
 import ScoreInput from './ScoreInput'
 
 interface Props {
@@ -13,7 +13,7 @@ export default function MatchRow({ match, scores, onChange }: Props) {
   return (
     <div className="match-card">
       <div className="match-team match-team--home">
-        <span className="match-team-flag">{TEAM_FLAGS[match.homeTeam]}</span>
+        <span className={`fi fi-${TEAM_ISO[match.homeTeam]} match-team-flag`} />
         <span className="match-team-name">{TEAM_NAMES_HE[match.homeTeam]}</span>
       </div>
       <div className="match-score-zone">
@@ -31,7 +31,7 @@ export default function MatchRow({ match, scores, onChange }: Props) {
       </div>
       <div className="match-team match-team--away">
         <span className="match-team-name">{TEAM_NAMES_HE[match.awayTeam]}</span>
-        <span className="match-team-flag">{TEAM_FLAGS[match.awayTeam]}</span>
+        <span className={`fi fi-${TEAM_ISO[match.awayTeam]} match-team-flag`} />
       </div>
     </div>
   )
