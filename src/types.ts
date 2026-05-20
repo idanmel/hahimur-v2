@@ -4,6 +4,8 @@ export interface Match {
   id: string
   homeTeam: string
   awayTeam: string
+  matchDate?: string
+  kickoffIST?: string
 }
 
 export interface MatchScores {

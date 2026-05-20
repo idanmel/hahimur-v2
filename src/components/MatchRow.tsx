@@ -12,6 +12,13 @@ export default function MatchRow({ match, scores, onChange }: Props) {
   const set = (home: Score, away: Score) => onChange({ home, away })
   return (
     <div className="match-card">
+      {(match.matchDate || match.kickoffIST) && (
+        <div className="match-meta">
+          {match.matchDate && <span>{match.matchDate}</span>}
+          {match.matchDate && match.kickoffIST && <span className="match-meta-sep">|</span>}
+          {match.kickoffIST && <span>{match.kickoffIST}</span>}
+        </div>
+      )}
       <div className="match-team match-team--home">
         <span className={`fi fi-${TEAM_ISO[match.homeTeam]} match-team-flag`} />
         <span className="match-team-name">{TEAM_NAMES_HE[match.homeTeam]}</span>

@@ -93,6 +93,27 @@ main {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
 }
 
+/* ── Match Meta (date / time) ───────────────────────────────── */
+
+.match-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(200, 184, 122, 0.4);
+  margin-bottom: 2px;
+}
+
+.match-meta-sep {
+  opacity: 0.35;
+}
+
 .match-team {
   display: flex;
   align-items: center;
