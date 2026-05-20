@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
+import { GROUPS } from './lib/groups'
 
 beforeEach(() => localStorage.clear())
 
@@ -111,10 +112,9 @@ describe('Slice 8 — localStorage persistence', () => {
 })
 
 describe('Slice 9/10 — group navigation (B–L)', () => {
-  const remaining: [string, string][] = [
-    ['B', 'ב'], ['C', 'ג'], ['D', 'ד'], ['E', 'ה'], ['F', 'ו'],
-    ['G', 'ז'], ['H', 'ח'], ['I', 'ט'], ['J', 'י'], ['K', 'י"א'], ['L', 'י"ב'],
-  ]
+  const remaining = Object.entries(GROUPS)
+    .filter(([k]) => k !== 'A')
+    .map(([k, v]) => [k, v.he] as [string, string])
 
   test.each(remaining)('group %s button is enabled', (_letter, hebrew) => {
     render(<App />)
