@@ -131,20 +131,20 @@ describe('Slice 9/10 — group navigation (B–L)', () => {
   })
 })
 
-describe('Tie detection', () => {
-  // Symmetric 3-way cycle among Mexico, South Korea, Czech Republic
-  // SK beats Mexico (A4), CZ beats SK (A2), Mexico beats CZ (A5) — each 1-0
-  // All three draw vs South Africa 1-1 (A1, A3, A6)
-  // Result: Mexico/SK/CZ all on 4pts, GD 0, 2 goals — unresolvable
-  const tiedPredictions = {
-    A1: { home: 1, away: 1 },
-    A2: { home: 0, away: 1 },
-    A3: { home: 1, away: 1 },
-    A4: { home: 0, away: 1 },
-    A5: { home: 0, away: 1 },
-    A6: { home: 1, away: 1 },
-  }
+// Symmetric 3-way cycle among Mexico, South Korea, Czech Republic
+// SK beats Mexico (A4), CZ beats SK (A2), Mexico beats CZ (A5) — each 1-0
+// All three draw vs South Africa 1-1 (A1, A3, A6)
+// Result: Mexico/SK/CZ all on 4pts, GD 0, 2 goals — unresolvable
+const tiedPredictions = {
+  A1: { home: 1, away: 1 },
+  A2: { home: 0, away: 1 },
+  A3: { home: 1, away: 1 },
+  A4: { home: 0, away: 1 },
+  A5: { home: 0, away: 1 },
+  A6: { home: 1, away: 1 },
+}
 
+describe('Tie detection', () => {
   test('group button gets group-cell--error class when teams are unresolvably tied', () => {
     localStorage.setItem('predictions', JSON.stringify(tiedPredictions))
     render(<App />)
@@ -169,6 +169,42 @@ describe('Tie detection', () => {
   test('no warning banner when there is no tie', () => {
     render(<App />)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+describe('Group completion indicator', () => {
+  const completePredictionsA = {
+    A1: { home: 2, away: 1 },
+    A2: { home: 1, away: 0 },
+    A3: { home: 3, away: 0 },
+    A4: { home: 1, away: 2 },
+    A5: { home: 0, away: 0 },
+    A6: { home: 2, away: 2 },
+  }
+
+  test('group button gets group-cell--complete when all 6 predictions are filled with no ties', () => {
+    localStorage.setItem('predictions', JSON.stringify(completePredictionsA))
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'א' })).toHaveClass('group-cell--complete')
+  })
+
+  test('group button has no complete class when predictions are partially filled', () => {
+    localStorage.setItem('predictions', JSON.stringify({ A1: { home: 2, away: 1 } }))
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'א' })).not.toHaveClass('group-cell--complete')
+  })
+
+  test('group button has no complete class with no predictions', () => {
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'א' })).not.toHaveClass('group-cell--complete')
+  })
+
+  test('group with all predictions filled but a tie is NOT complete', () => {
+    localStorage.setItem('predictions', JSON.stringify(tiedPredictions))
+    render(<App />)
+    const button = screen.getByRole('button', { name: 'א' })
+    expect(button).toHaveClass('group-cell--error')
+    expect(button).not.toHaveClass('group-cell--complete')
   })
 })
 

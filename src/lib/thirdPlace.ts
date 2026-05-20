@@ -9,6 +9,8 @@ export function getThirdPlaceTeams(
     .map(g => ({ ...g.standings[2], group: g.group }))
 }
 
+const QUALIFY_COUNT = 8
+
 export function qualifyBestThirdPlace(
   teams: ThirdPlaceStanding[]
 ): ThirdPlaceQualification {
@@ -19,10 +21,10 @@ export function qualifyBestThirdPlace(
     goalDifference(x) === goalDifference(y) &&
     x.goalsFor === y.goalsFor
 
-  const tied = sorted.filter((t, i, arr) =>
-    (arr[i - 1] && eq(t, arr[i - 1])) || (arr[i + 1] && eq(t, arr[i + 1]))
-  )
+  if (sorted.length > QUALIFY_COUNT && eq(sorted[QUALIFY_COUNT - 1], sorted[QUALIFY_COUNT])) {
+    const tied = sorted.filter(t => eq(t, sorted[QUALIFY_COUNT - 1]))
+    return { resolved: false, all: sorted, tied }
+  }
 
-  if (tied.length > 0) return { resolved: false, all: sorted, tied }
-  return { resolved: true, all: sorted, qualifiers: sorted.slice(0, 8) }
+  return { resolved: true, all: sorted, qualifiers: sorted.slice(0, QUALIFY_COUNT) }
 }

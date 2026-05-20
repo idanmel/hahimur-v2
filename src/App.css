@@ -87,6 +87,10 @@ main {
 }
 
 .group-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
   background: transparent;
   border: 1.5px solid var(--navy);
   border-radius: 4px;
@@ -113,6 +117,23 @@ main {
 .group-cell--error {
   border-color: #c0392b;
   color: #c0392b;
+}
+
+.group-cell--complete {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.group-cell--complete.group-cell--active {
+  border-color: var(--navy);
+  color: var(--gold);
+}
+
+.group-cell__check {
+  font-size: 11px;
+  line-height: 1;
+  margin-top: 2px;
+  color: var(--green);
 }
 
 .tie-warning {

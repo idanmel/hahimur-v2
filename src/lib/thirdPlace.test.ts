@@ -176,7 +176,7 @@ describe('qualifyBestThirdPlace', () => {
   })
 
   describe('given any two teams share identical pts + GD + goals scored', () => {
-    test('reports the qualification as unresolved', () => {
+    test('reports the qualification as unresolved when tie straddles the cutoff', () => {
       const teams = makeDistinct12()
       // Make team at index 7 (TeamH) identical to team at index 8 (TeamI)
       teams[8] = { ...teams[7], team: 'TeamI', group: 'I' }
@@ -192,6 +192,14 @@ describe('qualifyBestThirdPlace', () => {
       const tiedNames = result.tied.map(t => t.team).sort()
       expect(tiedNames).toContain('TeamH')
       expect(tiedNames).toContain('TeamI')
+    })
+
+    test('resolves when the tie does not straddle the cutoff', () => {
+      const teams = makeDistinct12()
+      // Make indices 5 and 6 identical — both safely inside the top 8
+      teams[6] = { ...teams[5], team: 'TeamG', group: 'G' }
+      const result = qualifyBestThirdPlace(teams)
+      expect(result.resolved).toBe(true)
     })
   })
 

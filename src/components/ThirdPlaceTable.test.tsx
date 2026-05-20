@@ -30,34 +30,44 @@ const RESOLVED_QUAL: ThirdPlaceQualification = {
 }
 
 test('renders all 12 teams', () => {
-  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} />)
+  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} allGroupsFilled={true} />)
   expect(screen.getByText('דרום קוריאה')).toBeInTheDocument()
   expect(screen.getByText('גאנה')).toBeInTheDocument()
 })
 
 test('marks exactly 8 rows as qualifying', () => {
-  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} />)
+  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} allGroupsFilled={true} />)
   const qualifyingRows = document.querySelectorAll('tr.row-qualifies')
   expect(qualifyingRows).toHaveLength(8)
 })
 
 test('8th-place row has cutoff class', () => {
-  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} />)
+  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} allGroupsFilled={true} />)
   const cutoffRows = document.querySelectorAll('tr.row-cutoff')
   expect(cutoffRows).toHaveLength(1)
 })
 
 test('shows group letter for each team', () => {
-  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} />)
+  render(<ThirdPlaceTable qualification={RESOLVED_QUAL} allGroupsFilled={true} />)
   expect(screen.getAllByText('א').length).toBeGreaterThan(0)
 })
 
-test('shows tie warning when unresolved', () => {
+test('shows tie warning when unresolved and all groups filled', () => {
   const tiedQual: ThirdPlaceQualification = {
     resolved: false,
     all: ALL_TWELVE,
     tied: [ALL_TWELVE[7], ALL_TWELVE[8]],
   }
-  render(<ThirdPlaceTable qualification={tiedQual} />)
+  render(<ThirdPlaceTable qualification={tiedQual} allGroupsFilled={true} />)
   expect(screen.getByText(/שוויון/)).toBeInTheDocument()
+})
+
+test('does not show tie warning when groups are not all filled', () => {
+  const tiedQual: ThirdPlaceQualification = {
+    resolved: false,
+    all: ALL_TWELVE,
+    tied: [ALL_TWELVE[7], ALL_TWELVE[8]],
+  }
+  render(<ThirdPlaceTable qualification={tiedQual} allGroupsFilled={false} />)
+  expect(screen.queryByText(/שוויון/)).not.toBeInTheDocument()
 })

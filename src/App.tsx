@@ -39,17 +39,35 @@ export default function App() {
     () => calculateStandings(activeMatches, predictions),
     [activeGroup, predictions]
   )
+  const activeAllFilled = activeMatches.length > 0 && activeMatches.every(m => {
+    const pred = predictions[m.id]
+    return pred && pred.home !== null && pred.away !== null
+  })
 
-  const { thirdPlaceQual, groupsWithTies } = useMemo(() => {
+  const { thirdPlaceQual, groupsWithTies, completedGroups, allGroupsFilled } = useMemo(() => {
     const allGroupData = ALL_GROUP_LETTERS
       .filter(l => l in GROUP_MATCHES)
       .map(l => {
-        const { standings, tiedTeams } = calculateStandings(GROUP_MATCHES[l] ?? [], predictions)
-        return { group: l as string, standings, tiedTeams }
+        const matches = GROUP_MATCHES[l] ?? []
+        const { standings, tiedTeams } = calculateStandings(matches, predictions)
+        const allFilled = matches.length > 0 && matches.every(m => {
+          const pred = predictions[m.id]
+          return pred && pred.home !== null && pred.away !== null
+        })
+        const isComplete = allFilled && tiedTeams.size === 0
+        return { group: l as string, standings, tiedTeams, allFilled, isComplete }
       })
+    const groupsWithTies = new Set<string>()
+    const completedGroups = new Set<string>()
+    for (const d of allGroupData) {
+      if (d.allFilled && d.tiedTeams.size > 0) groupsWithTies.add(d.group)
+      if (d.isComplete) completedGroups.add(d.group)
+    }
     return {
       thirdPlaceQual: qualifyBestThirdPlace(getThirdPlaceTeams(allGroupData)),
-      groupsWithTies: new Set(allGroupData.filter(d => d.tiedTeams.size > 0).map(d => d.group)),
+      groupsWithTies,
+      completedGroups,
+      allGroupsFilled: allGroupData.every(d => d.allFilled),
     }
   }, [predictions])
 
@@ -77,21 +95,30 @@ export default function App() {
         <div className="group-grid">
           {ALL_GROUP_LETTERS.map(letter => {
             const hasData = letter in GROUP_MATCHES
+            const isComplete = completedGroups.has(letter)
+            const cls = [
+              'group-cell',
+              activeGroup === letter && 'group-cell--active',
+              !hasData && 'group-cell--empty',
+              groupsWithTies.has(letter) && 'group-cell--error',
+              isComplete && 'group-cell--complete',
+            ].filter(Boolean).join(' ')
             return (
               <button
                 key={letter}
-                className={`group-cell${activeGroup === letter ? ' group-cell--active' : ''}${!hasData ? ' group-cell--empty' : ''}${groupsWithTies.has(letter) ? ' group-cell--error' : ''}`}
+                className={cls}
                 onClick={() => hasData && setActiveGroup(letter)}
                 disabled={!hasData}
               >
                 {GROUP_HEBREW[letter]}
+                {isComplete && <span className="group-cell__check" aria-hidden="true">✓</span>}
               </button>
             )
           })}
         </div>
 
         <section className="content-section">
-          {activeTiedTeams.size > 0 && (
+          {activeAllFilled && activeTiedTeams.size > 0 && (
             <div role="alert" className="tie-warning">
               {[...activeTiedTeams].map(t => TEAMS[t].he).join(' · ')} — שוות בכל הקריטריונים
             </div>
@@ -109,7 +136,7 @@ export default function App() {
 
         <section className="content-section">
           <div className="section-tag">שלישי מקום — 8 הטובות</div>
-          <ThirdPlaceTable qualification={thirdPlaceQual} />
+          <ThirdPlaceTable qualification={thirdPlaceQual} allGroupsFilled={allGroupsFilled} />
         </section>
       </main>
     </>

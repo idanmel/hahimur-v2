@@ -4,11 +4,12 @@ import { goalDifference } from '../lib/standings'
 
 interface Props {
   qualification: ThirdPlaceQualification
+  allGroupsFilled: boolean
 }
 
 const QUALIFY_COUNT = 8
 
-export default function ThirdPlaceTable({ qualification }: Props) {
+export default function ThirdPlaceTable({ qualification, allGroupsFilled }: Props) {
   const { all } = qualification
 
   return (
@@ -62,7 +63,7 @@ export default function ThirdPlaceTable({ qualification }: Props) {
           })}
         </tbody>
       </table>
-      {!qualification.resolved && (
+      {allGroupsFilled && !qualification.resolved && (
         <div className="third-place-tie-warning">
           שוויון בין {qualification.tied.map(t => TEAMS[t.team].he).join(', ')} — הכשירות לא מוכרעת
         </div>
