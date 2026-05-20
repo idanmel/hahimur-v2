@@ -51,7 +51,7 @@ export default function StandingsTable({ standings }: Props) {
                 <td>{s.won}</td>
                 <td>{s.drawn}</td>
                 <td>{s.lost}</td>
-                <td className="col-goals">{s.goalsFor}:{s.goalsAgainst}</td>
+                <td className="col-goals">{s.goalsFor}–{s.goalsAgainst}</td>
                 <td className={gd > 0 ? 'gd-pos' : gd < 0 ? 'gd-neg' : ''}>{Math.abs(gd)}</td>
               </tr>
             )

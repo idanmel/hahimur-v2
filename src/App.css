@@ -248,6 +248,7 @@ main {
 /* Qualifying rows: top 2 advance */
 .row-qualifies {
   background: rgba(212, 160, 22, 0.07);
+  border-right: 3px solid var(--gold);
 }
 
 /* Dashed cutoff line after last qualifying row */
