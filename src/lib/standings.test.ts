@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import type { MatchScores } from '../types'
+import type { Match, MatchScores } from '../types'
 import { GROUP_A_MATCHES } from './groups'
 import { calculateStandings } from './standings'
 
@@ -8,6 +8,95 @@ function find(standings: ReturnType<typeof calculateStandings>, team: string) {
   if (!s) throw new Error(`Team not found: ${team}`)
   return s
 }
+
+// Custom group used for N-team h2h tests.
+// Cycle structure: Alpha beats Beta, Beta beats Gamma, Gamma beats Alpha.
+// All three beat Delta. Varying scorelines let us control h2h GD vs overall GD.
+const FOUR_TEAM_MATCHES: Match[] = [
+  { id: 'AB', homeTeam: 'Alpha', awayTeam: 'Beta' },
+  { id: 'BC', homeTeam: 'Beta',  awayTeam: 'Gamma' },
+  { id: 'GA', homeTeam: 'Gamma', awayTeam: 'Alpha' },
+  { id: 'AD', homeTeam: 'Alpha', awayTeam: 'Delta' },
+  { id: 'BD', homeTeam: 'Beta',  awayTeam: 'Delta' },
+  { id: 'GD', homeTeam: 'Gamma', awayTeam: 'Delta' },
+]
+
+describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
+  test('3-team h2h GD separates when h2h points are tied (unequal cycle scores)', () => {
+    // Alpha beats Beta 3-0, Beta beats Gamma 1-0, Gamma beats Alpha 1-0
+    // H2H pts all equal (3). H2H GD: Alpha +2, Gamma 0, Beta -2 → Alpha > Gamma > Beta
+    // Beta has best overall GD (+3, from 5-0 vs Delta) — wrong order without h2h
+    const predictions: Record<string, MatchScores> = {
+      AB: { home: 3, away: 0 },  // Alpha beats Beta 3-0
+      BC: { home: 1, away: 0 },  // Beta beats Gamma 1-0
+      GA: { home: 1, away: 0 },  // Gamma beats Alpha 1-0
+      AD: { home: 1, away: 0 },  // Alpha beats Delta 1-0
+      BD: { home: 5, away: 0 },  // Beta beats Delta 5-0 (inflates Beta overall GD)
+      GD: { home: 1, away: 0 },  // Gamma beats Delta 1-0
+    }
+    const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    const pos = (t: string) => standings.findIndex(s => s.team === t)
+    expect(pos('Alpha')).toBeLessThan(pos('Gamma'))
+    expect(pos('Gamma')).toBeLessThan(pos('Beta'))
+  })
+
+  test('3-team equal h2h (symmetric cycle) falls through to overall GD', () => {
+    // Alpha beats Beta 1-0, Beta beats Gamma 1-0, Gamma beats Alpha 1-0
+    // H2H all equal (3pts, GD 0, 1 goal each) → fall through to overall GD
+    // Alpha beats Delta 3-0, Beta 2-0, Gamma 1-0 → overall GD: Alpha +3, Beta +2, Gamma +1
+    const predictions: Record<string, MatchScores> = {
+      AB: { home: 1, away: 0 },
+      BC: { home: 1, away: 0 },
+      GA: { home: 1, away: 0 },
+      AD: { home: 3, away: 0 },
+      BD: { home: 2, away: 0 },
+      GD: { home: 1, away: 0 },
+    }
+    const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    const pos = (t: string) => standings.findIndex(s => s.team === t)
+    expect(pos('Alpha')).toBeLessThan(pos('Beta'))
+    expect(pos('Beta')).toBeLessThan(pos('Gamma'))
+  })
+})
+
+describe('Tiebreaker criterion e — most goals scored in all group matches', () => {
+  test('team with more goals ranks above team with equal points and equal GD', () => {
+    // Mexico and South Korea draw their h2h (A4: 1-1) so h2h cannot separate them.
+    // Both end on 4pts, GD 0. Mexico scored 4 goals overall, South Korea 3.
+    const predictions: Record<string, MatchScores> = {
+      A1: { home: 3, away: 1 },  // Mexico 3-1 South Africa  (Mexico: +2 GD, 3pts)
+      A2: { home: 2, away: 0 },  // South Korea 2-0 Czech Republic (SK: +2 GD, 3pts)
+      A3: { home: 1, away: 1 },  // Czech Republic 1-1 South Africa
+      A4: { home: 1, away: 1 },  // Mexico 1-1 South Korea  ← h2h draw
+      A5: { home: 2, away: 0 },  // Czech Republic 2-0 Mexico (Mexico: -2 GD, 0pts)
+      A6: { home: 2, away: 0 },  // South Africa 2-0 South Korea (SK: -2 GD, 0pts)
+    }
+    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const mexicoPos = standings.findIndex(s => s.team === 'Mexico')
+    const skPos = standings.findIndex(s => s.team === 'South Korea')
+    expect(mexicoPos).toBeLessThan(skPos)
+  })
+})
+
+describe('Slice 4b-i — 2-team h2h tiebreaker', () => {
+  test('h2h win ranks above better overall GD when points are tied', () => {
+    // Mexico: 4pts, GD +1 (wins A1, draws A5, loses A4)
+    // South Korea: 4pts, GD -1 (wins A4 h2h, draws A6, loses A2)
+    // South Korea won the h2h (A4), so SK must rank above Mexico despite worse overall GD
+    const predictions: Record<string, MatchScores> = {
+      A1: { home: 2, away: 0 },  // Mexico 2-0 South Africa
+      A2: { home: 1, away: 3 },  // South Korea 1-3 Czech Republic
+      A3: { home: 2, away: 0 },  // Czech Republic 2-0 South Africa
+      A4: { home: 0, away: 1 },  // Mexico 0-1 South Korea  ← h2h
+      A5: { home: 0, away: 0 },  // Czech Republic 0-0 Mexico
+      A6: { home: 0, away: 0 },  // South Africa 0-0 South Korea
+    }
+    const standings = calculateStandings(GROUP_A_MATCHES, predictions)
+    const skPos = standings.findIndex(s => s.team === 'South Korea')
+    const mexicoPos = standings.findIndex(s => s.team === 'Mexico')
+    expect(skPos).toBeLessThan(mexicoPos)
+  })
+})
 
 describe('calculateStandings', () => {
   test('home win: Mexico 2-1 South Africa', () => {
