@@ -10,9 +10,6 @@ const QUALIFY_COUNT = 8
 
 export default function ThirdPlaceTable({ qualification }: Props) {
   const { all } = qualification
-  const qualifierSet = new Set(
-    qualification.resolved ? qualification.qualifiers.map(t => t.team) : []
-  )
 
   return (
     <div className="standings-wrapper">
