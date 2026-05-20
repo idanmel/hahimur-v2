@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import './App.css'
-import type { MatchScores } from './types'
-import { GROUP_A_MATCHES } from './lib/groups'
+import type { Match, MatchScores } from './types'
+import { GROUP_A_MATCHES, GROUP_B_MATCHES } from './lib/groups'
 import { calculateStandings } from './lib/standings'
 import MatchRow from './components/MatchRow'
 import StandingsTable from './components/StandingsTable'
@@ -10,8 +10,18 @@ type PredictionsState = Record<string, MatchScores>
 
 const STORAGE_KEY = 'predictions'
 
+const ALL_GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'] as const
+type GroupLetter = typeof ALL_GROUP_LETTERS[number]
+
+const GROUP_MATCHES: Partial<Record<GroupLetter, Match[]>> = {
+  A: GROUP_A_MATCHES,
+  B: GROUP_B_MATCHES,
+}
+
+const ALL_MATCHES = Object.values(GROUP_MATCHES).flat() as Match[]
+
 const initialPredictions: PredictionsState = Object.fromEntries(
-  GROUP_A_MATCHES.map(m => [m.id, { home: null, away: null }])
+  ALL_MATCHES.map(m => [m.id, { home: null, away: null }])
 )
 
 function loadPredictions(): PredictionsState {
@@ -26,7 +36,12 @@ function loadPredictions(): PredictionsState {
 
 export default function App() {
   const [predictions, setPredictions] = useState<PredictionsState>(loadPredictions)
-  const standings = useMemo(() => calculateStandings(GROUP_A_MATCHES, predictions), [predictions])
+  const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
+  const activeMatches = GROUP_MATCHES[activeGroup] ?? []
+  const activeStandings = useMemo(
+    () => calculateStandings(activeMatches, predictions),
+    [activeGroup, predictions]
+  )
 
   function updateScores(matchId: string, scores: MatchScores) {
     setPredictions(prev => {
@@ -49,9 +64,24 @@ export default function App() {
       </header>
 
       <main>
+        <div className="group-grid">
+          {ALL_GROUP_LETTERS.map(letter => {
+            const hasData = letter in GROUP_MATCHES
+            return (
+              <button
+                key={letter}
+                className={`group-cell${activeGroup === letter ? ' group-cell--active' : ''}${!hasData ? ' group-cell--empty' : ''}`}
+                onClick={() => hasData && setActiveGroup(letter)}
+                disabled={!hasData}
+              >
+                {letter}
+              </button>
+            )
+          })}
+        </div>
+
         <section className="content-section">
-          <h2 className="section-tag">קבוצה א׳</h2>
-          {GROUP_A_MATCHES.map(match => (
+          {activeMatches.map(match => (
             <MatchRow
               key={match.id}
               match={match}
@@ -59,11 +89,7 @@ export default function App() {
               onChange={(scores) => updateScores(match.id, scores)}
             />
           ))}
-        </section>
-
-        <section className="content-section">
-          <h2 className="section-tag">טבלת דירוג</h2>
-          <StandingsTable standings={standings} />
+          <StandingsTable standings={activeStandings} />
         </section>
       </main>
     </>

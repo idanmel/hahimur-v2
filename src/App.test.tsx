@@ -74,8 +74,21 @@ describe('Slice 2 — one match, fillable', () => {
   })
 })
 
+describe('Slice 9 — Group B (6 matches)', () => {
+  test('all 6 Group B matches are visible after switching to group B', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'B' }))
+    expect(screen.getAllByRole('textbox')).toHaveLength(12)
+    expect(screen.getAllByLabelText('קנדה').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('בוסניה והרצגובינה').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('קטר').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('שווייץ').length).toBeGreaterThan(0)
+  })
+})
+
 describe('Slice 4 — Group A (6 matches)', () => {
-  test('all 6 Group A matches are visible', () => {
+  test('all 6 Group A matches are visible by default', () => {
     render(<App />)
     expect(screen.getAllByRole('textbox')).toHaveLength(12)
   })
@@ -112,7 +125,7 @@ describe('Slice 8 — localStorage persistence', () => {
 describe('Slice 3b — group standings table', () => {
   test('standings table shows all 4 Group A teams', () => {
     render(<App />)
-    const table = screen.getByRole('table')
+    const table = screen.getAllByRole('table')[0]
     expect(within(table).getByText('מקסיקו')).toBeInTheDocument()
     expect(within(table).getByText('דרום אפריקה')).toBeInTheDocument()
     expect(within(table).getByText('דרום קוריאה')).toBeInTheDocument()

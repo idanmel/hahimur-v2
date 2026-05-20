@@ -77,6 +77,39 @@ main {
   line-height: normal;
 }
 
+/* ── Group Grid ────────────────────────────────────────────── */
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 20px 0 16px;
+}
+
+.group-cell {
+  background: transparent;
+  border: 1.5px solid var(--navy);
+  border-radius: 4px;
+  padding: 10px 0;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.05em;
+  color: var(--navy);
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+
+.group-cell--active {
+  background: var(--navy);
+  color: var(--gold);
+}
+
+.group-cell--empty {
+  border-color: rgba(11, 34, 68, 0.2);
+  color: rgba(11, 34, 68, 0.2);
+  cursor: default;
+}
+
 /* ── Match Card ────────────────────────────────────────────── */
 
 .match-card {
