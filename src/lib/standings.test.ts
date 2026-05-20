@@ -40,6 +40,26 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
     expect(pos('Gamma')).toBeLessThan(pos('Beta'))
   })
 
+  test('3-team equal h2h and equal overall GD: separated by goals scored (criterion e)', () => {
+    // Symmetric cycle: Alpha beats Beta 1-0, Beta beats Gamma 1-0, Gamma beats Alpha 1-0
+    // Equal h2h (3pts, GD 0, 1 goal each) and equal overall GD (0) for all three.
+    // Delta draws vary in scoreline: Alpha 3-3, Beta 2-2, Gamma 1-1
+    // Same pts (1) and GD (0) from each draw, but different goals added.
+    // Expected: Alpha (4 goals) > Beta (3 goals) > Gamma (2 goals)
+    const predictions: Record<string, MatchScores> = {
+      AB: { home: 1, away: 0 },
+      BC: { home: 1, away: 0 },
+      GA: { home: 1, away: 0 },
+      AD: { home: 3, away: 3 },
+      BD: { home: 2, away: 2 },
+      GD: { home: 1, away: 1 },
+    }
+    const standings = calculateStandings(FOUR_TEAM_MATCHES, predictions)
+    const pos = (t: string) => standings.findIndex(s => s.team === t)
+    expect(pos('Alpha')).toBeLessThan(pos('Beta'))
+    expect(pos('Beta')).toBeLessThan(pos('Gamma'))
+  })
+
   test('3-team equal h2h (symmetric cycle) falls through to overall GD', () => {
     // Alpha beats Beta 1-0, Beta beats Gamma 1-0, Gamma beats Alpha 1-0
     // H2H all equal (3pts, GD 0, 1 goal each) → fall through to overall GD
@@ -61,15 +81,16 @@ describe('Slice 4b-ii — N-team h2h tiebreaker', () => {
 
 describe('Tiebreaker criterion e — most goals scored in all group matches', () => {
   test('team with more goals ranks above team with equal points and equal GD', () => {
-    // Mexico and South Korea draw their h2h (A4: 1-1) so h2h cannot separate them.
-    // Both end on 4pts, GD 0. Mexico scored 4 goals overall, South Korea 3.
+    // Mexico and South Korea draw their h2h (A4: 1-1) — h2h cannot separate them.
+    // Czech Republic (6pts) and South Africa (3pts) are NOT in the tie.
+    // Both Mexico and SK end on 4pts, GD 0. Mexico scored 4 goals overall, South Korea 3.
     const predictions: Record<string, MatchScores> = {
-      A1: { home: 3, away: 1 },  // Mexico 3-1 South Africa  (Mexico: +2 GD, 3pts)
-      A2: { home: 2, away: 0 },  // South Korea 2-0 Czech Republic (SK: +2 GD, 3pts)
-      A3: { home: 1, away: 1 },  // Czech Republic 1-1 South Africa
+      A1: { home: 2, away: 1 },  // Mexico 2-1 South Africa  (Mexico: 3pts, +1 GD)
+      A2: { home: 1, away: 0 },  // South Korea 1-0 Czech Republic (SK: 3pts, +1 GD)
+      A3: { home: 1, away: 0 },  // Czech Republic 1-0 South Africa (Czech: 3pts)
       A4: { home: 1, away: 1 },  // Mexico 1-1 South Korea  ← h2h draw
-      A5: { home: 2, away: 0 },  // Czech Republic 2-0 Mexico (Mexico: -2 GD, 0pts)
-      A6: { home: 2, away: 0 },  // South Africa 2-0 South Korea (SK: -2 GD, 0pts)
+      A5: { home: 2, away: 1 },  // Czech Republic 2-1 Mexico (Mexico: 0pts, -1 GD)
+      A6: { home: 2, away: 1 },  // South Africa 2-1 South Korea (SK: 0pts, -1 GD)
     }
     const standings = calculateStandings(GROUP_A_MATCHES, predictions)
     const mexicoPos = standings.findIndex(s => s.team === 'Mexico')
