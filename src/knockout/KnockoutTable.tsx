@@ -16,21 +16,23 @@ export default function KnockoutTable({ matches, predictions, onChange }: Props)
         return (
           <div key={m.matchNum} className={`r32-card${m.resolved ? ' r32-card--resolved' : ''}`}>
             <span className="r32-matchnum">{m.matchNum}</span>
-            <TeamSlot name={m.home} />
-            <div className="r32-score-zone">
+            <div className="r32-team-row">
+              <TeamSlot name={m.home} />
               <ScoreInput
                 label={m.home}
                 value={pred.home}
                 onChange={v => onChange(m.matchId, { home: v, away: pred.away })}
               />
-              <span className="r32-divider-word">:</span>
+            </div>
+            <div className="r32-row-divider" />
+            <div className="r32-team-row">
+              <TeamSlot name={m.away} />
               <ScoreInput
                 label={m.away}
                 value={pred.away}
                 onChange={v => onChange(m.matchId, { home: pred.home, away: v })}
               />
             </div>
-            <TeamSlot name={m.away} />
           </div>
         )
       })}
