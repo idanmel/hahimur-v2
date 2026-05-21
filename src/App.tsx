@@ -29,6 +29,14 @@ const initialPredictions: PredictionsState = Object.fromEntries([
 ])
 
 function loadPredictions(): PredictionsState {
+  if (new URLSearchParams(window.location.search).get('fill') === 'random') {
+    const r = () => Math.floor(Math.random() * 4)
+    const filled = Object.fromEntries(
+      Object.keys(initialPredictions).map(id => [id, { home: r(), away: r() }])
+    )
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filled))
+    return filled
+  }
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) return { ...initialPredictions, ...JSON.parse(stored) }
