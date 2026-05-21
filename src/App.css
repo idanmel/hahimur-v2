@@ -424,65 +424,108 @@ main {
   flex-shrink: 0;
 }
 
-/* Round of 32 table */
-.r32-table {
-  width: 100%;
-  border-collapse: collapse;
+/* ── Round of 32 — Fixture Cards ──────────────────────────── */
+
+.r32-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
   direction: rtl;
 }
 
-.r32-table th {
-  font-size: 11px;
+.r32-card {
+  position: relative;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-right: 4px solid rgba(200, 184, 122, 0.5);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 11px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: border-right-color 0.2s;
+}
+
+.r32-card--resolved {
+  border-right-color: var(--gold);
+}
+
+.r32-matchnum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
   color: var(--muted);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 6px 8px;
-  border-bottom: 1px solid #333;
-  text-align: right;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 2px;
 }
 
-.r32-table td {
-  padding: 7px 8px;
-  border-bottom: 1px solid #222;
-  vertical-align: middle;
-}
-
-.r32-num {
-  color: var(--muted);
-  font-size: 12px;
-  width: 32px;
-  text-align: center;
-}
-
-.r32-vs {
-  color: var(--muted);
-  font-size: 11px;
-  text-align: center;
-  width: 40px;
-}
-
-.r32-team-col { width: 45%; }
-.r32-home { text-align: right; }
-.r32-away { text-align: right; }
-
-.r32-team {
-  display: inline-flex;
+.r32-slot {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  min-width: 0;
 }
 
-.r32-team--pending {
+.r32-slot--resolved {
+  color: var(--ink);
+}
+
+.r32-slot--pending {
   color: var(--muted);
-  font-style: italic;
 }
 
-.r32-flag {
+.r32-slot-flag {
   width: 20px;
   height: 15px;
   border-radius: 2px;
   flex-shrink: 0;
 }
 
-.r32-row--pending td {
-  background: transparent;
+.r32-slot-flag-ph {
+  width: 20px;
+  height: 15px;
+  border-radius: 2px;
+  background: rgba(122, 104, 69, 0.12);
+  border: 1px dashed rgba(122, 104, 69, 0.35);
+  flex-shrink: 0;
+}
+
+.r32-slot-name {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.r32-slot--pending .r32-slot-name {
+  font-size: 10.5px;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.r32-divider {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 1px 0;
+}
+
+.r32-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(200, 184, 122, 0.45);
+}
+
+.r32-divider-word {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  opacity: 0.7;
+  text-transform: uppercase;
+  flex-shrink: 0;
 }
