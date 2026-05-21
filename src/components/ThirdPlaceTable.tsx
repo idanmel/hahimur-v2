@@ -18,8 +18,8 @@ export default function ThirdPlaceTable({ qualification, allGroupsFilled }: Prop
         <thead>
           <tr>
             <th className="col-rank">#</th>
-            <th className="col-group" title="קבוצה">בת</th>
-            <th className="col-team">קבוצה</th>
+            <th className="col-group" title="בית">בית</th>
+            <th className="col-team" title="קבוצה">קבוצה</th>
             <th className="col-pts" title="נקודות">נק׳</th>
             <th title="משחקים שוחקו">מש׳</th>
             <th title="ניצחונות">נ</th>

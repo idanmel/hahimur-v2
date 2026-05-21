@@ -133,7 +133,7 @@ export default function App() {
         </section>
 
         <section className="content-section">
-          <div className="section-tag">שלישי מקום — 8 הטובות</div>
+          <div className="section-tag">דירוג נבחרות במקום השלישי</div>
           <ThirdPlaceTable qualification={thirdPlaceQual} allGroupsFilled={allGroupsFilled} />
         </section>
       </main>
