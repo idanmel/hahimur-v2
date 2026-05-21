@@ -38,3 +38,11 @@ export interface R32Match {
   away: string
   resolved: boolean
 }
+
+export interface KnockoutMatch {
+  matchNum: number
+  matchId: string
+  home: string
+  away: string
+  resolved: boolean
+}

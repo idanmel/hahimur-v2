@@ -81,7 +81,8 @@ describe('Slice 2 — one match, fillable', () => {
 describe('Slice 4 — Group A (6 matches)', () => {
   test('all 6 Group A matches are visible by default', () => {
     render(<App />)
-    expect(screen.getAllByRole('textbox')).toHaveLength(12)
+    const groupSection = document.querySelector('section.content-section')!
+    expect(within(groupSection).getAllByRole('textbox')).toHaveLength(12)
   })
 
   test('standings update when a non-opening match score is entered', async () => {
@@ -127,7 +128,8 @@ describe('Slice 9/10 — group navigation (B–L)', () => {
     await user.click(screen.getByRole('button', { name: hebrew }))
     // Group A's Mexico must be gone — confirming we really switched groups
     expect(screen.queryAllByLabelText('מקסיקו')).toHaveLength(0)
-    expect(screen.getAllByRole('textbox')).toHaveLength(12)
+    const groupSection = document.querySelector('section.content-section')!
+    expect(within(groupSection).getAllByRole('textbox')).toHaveLength(12)
   })
 })
 
@@ -242,5 +244,16 @@ describe('Slice 3b — group standings table', () => {
 
     const southAfricaRow = screen.getByRole('row', { name: /דרום אפריקה/ })
     expect(within(southAfricaRow).getByText('3')).toBeInTheDocument()
+  })
+})
+
+describe('Knockout stages', () => {
+  test('R16, QF, SF, 3P, and Final section headings are visible', () => {
+    render(<App />)
+    expect(screen.getByText('שמינית גמר')).toBeInTheDocument()
+    expect(screen.getByText('רבע גמר')).toBeInTheDocument()
+    expect(screen.getByText('חצי גמר')).toBeInTheDocument()
+    expect(screen.getByText('מקום שלישי')).toBeInTheDocument()
+    expect(screen.getByText('גמר')).toBeInTheDocument()
   })
 })

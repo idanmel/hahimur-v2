@@ -5,10 +5,12 @@ import { GROUP_MATCHES, GROUP_HEBREW, TEAMS } from './lib/groups'
 import { calculateStandings } from './lib/standings'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './lib/thirdPlace'
 import { resolveRound32 } from './lib/round32'
+import { resolveKnockout } from './lib/knockout'
 import MatchRow from './components/MatchRow'
 import StandingsTable from './components/StandingsTable'
 import ThirdPlaceTable from './components/ThirdPlaceTable'
 import Round32Table from './components/Round32Table'
+import KnockoutTable from './components/KnockoutTable'
 
 type PredictionsState = Record<string, MatchScores>
 
@@ -19,9 +21,12 @@ type GroupLetter = typeof ALL_GROUP_LETTERS[number]
 
 const ALL_MATCHES = Object.values(GROUP_MATCHES).flat() as Match[]
 
-const initialPredictions: PredictionsState = Object.fromEntries(
-  ALL_MATCHES.map(m => [m.id, { home: null, away: null }])
-)
+const KNOCKOUT_IDS = Array.from({ length: 32 }, (_, i) => String(73 + i))
+
+const initialPredictions: PredictionsState = Object.fromEntries([
+  ...ALL_MATCHES.map(m => [m.id, { home: null, away: null }]),
+  ...KNOCKOUT_IDS.map(id => [id, { home: null, away: null }]),
+])
 
 function loadPredictions(): PredictionsState {
   try {
@@ -46,7 +51,7 @@ export default function App() {
     return pred && pred.home !== null && pred.away !== null
   })
 
-  const { thirdPlaceQual, groupsWithTies, completedGroups, allGroupsFilled, round32Matches } = useMemo(() => {
+  const { thirdPlaceQual, groupsWithTies, completedGroups, allGroupsFilled, round32Matches, knockout } = useMemo(() => {
     const allGroupData = ALL_GROUP_LETTERS
       .filter(l => l in GROUP_MATCHES)
       .map(l => {
@@ -66,12 +71,14 @@ export default function App() {
       if (d.isComplete) completedGroups.add(d.group)
     }
     const thirdPlaceQual = qualifyBestThirdPlace(getThirdPlaceTeams(allGroupData))
+    const round32Matches = resolveRound32(allGroupData, thirdPlaceQual)
     return {
       thirdPlaceQual,
       groupsWithTies,
       completedGroups,
       allGroupsFilled: allGroupData.every(d => d.allFilled),
-      round32Matches: resolveRound32(allGroupData, thirdPlaceQual),
+      round32Matches,
+      knockout: resolveKnockout(round32Matches, predictions),
     }
   }, [predictions])
 
@@ -143,7 +150,32 @@ export default function App() {
 
         <section className="content-section">
           <div className="section-tag">שלב ה-32</div>
-          <Round32Table matches={round32Matches} />
+          <Round32Table matches={round32Matches} predictions={predictions} onChange={updateScores} />
+        </section>
+
+        <section className="content-section">
+          <div className="section-tag">שמינית גמר</div>
+          <KnockoutTable matches={knockout.r16} predictions={predictions} onChange={updateScores} />
+        </section>
+
+        <section className="content-section">
+          <div className="section-tag">רבע גמר</div>
+          <KnockoutTable matches={knockout.qf} predictions={predictions} onChange={updateScores} />
+        </section>
+
+        <section className="content-section">
+          <div className="section-tag">חצי גמר</div>
+          <KnockoutTable matches={knockout.sf} predictions={predictions} onChange={updateScores} />
+        </section>
+
+        <section className="content-section">
+          <div className="section-tag">מקום שלישי</div>
+          <KnockoutTable matches={[knockout.thirdPlace]} predictions={predictions} onChange={updateScores} />
+        </section>
+
+        <section className="content-section">
+          <div className="section-tag">גמר</div>
+          <KnockoutTable matches={[knockout.final]} predictions={predictions} onChange={updateScores} />
         </section>
       </main>
     </>
