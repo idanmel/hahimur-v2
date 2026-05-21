@@ -32,16 +32,8 @@ export type ThirdPlaceQualification =
   | { resolved: true;  all: ThirdPlaceStanding[]; qualifiers: ThirdPlaceStanding[] }
   | { resolved: false; all: ThirdPlaceStanding[]; tied: ThirdPlaceStanding[] }
 
-export interface R32Match {
-  matchNum: number
-  home: string
-  away: string
-  resolved: boolean
-}
-
 export interface KnockoutMatch {
   matchNum: number
-  matchId: string
   home: string
   away: string
   resolved: boolean

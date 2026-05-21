@@ -1,4 +1,4 @@
-import type { R32Match, KnockoutMatch, MatchScores } from '../shared/types'
+import type { KnockoutMatch, MatchScores } from '../shared/types'
 
 type PredictionsState = Record<string, MatchScores>
 
@@ -16,7 +16,7 @@ function placeholder(matchNum: number, prefix: string): Slot {
   return { team: `${prefix} ${matchNum}`, resolved: false }
 }
 
-function outcomeOf(m: R32Match | KnockoutMatch, predictions: PredictionsState, pick: 'winner' | 'loser'): Slot {
+function outcomeOf(m: KnockoutMatch, predictions: PredictionsState, pick: 'winner' | 'loser'): Slot {
   const prefix = pick === 'winner' ? 'מנצח' : 'מפסיד'
   if (!m.resolved) return placeholder(m.matchNum, prefix)
   const pred = predictions[String(m.matchNum)]
@@ -27,20 +27,14 @@ function outcomeOf(m: R32Match | KnockoutMatch, predictions: PredictionsState, p
 }
 
 function mk(matchNum: number, home: Slot, away: Slot): KnockoutMatch {
-  return {
-    matchNum,
-    matchId: String(matchNum),
-    home: home.team,
-    away: away.team,
-    resolved: home.resolved && away.resolved,
-  }
+  return { matchNum, home: home.team, away: away.team, resolved: home.resolved && away.resolved }
 }
 
-export function resolveKnockout(round32: R32Match[], predictions: PredictionsState): KnockoutStages {
-  const byNum: Record<number, R32Match | KnockoutMatch> = {}
+export function resolveKnockout(round32: KnockoutMatch[], predictions: PredictionsState): KnockoutStages {
+  const byNum: Record<number, KnockoutMatch> = {}
   for (const m of round32) byNum[m.matchNum] = m
 
-  const fallback = (n: number): R32Match => ({ matchNum: n, home: '', away: '', resolved: false })
+  const fallback = (n: number): KnockoutMatch => ({ matchNum: n, home: '', away: '', resolved: false })
   const w = (n: number): Slot => outcomeOf(byNum[n] ?? fallback(n), predictions, 'winner')
   const l = (n: number): Slot => outcomeOf(byNum[n] ?? fallback(n), predictions, 'loser')
 

@@ -1,4 +1,4 @@
-import type { Standing, ThirdPlaceQualification, R32Match } from '../shared/types'
+import type { Standing, ThirdPlaceQualification, KnockoutMatch } from '../shared/types'
 import { ALLOCATION_MATRIX } from './allocationMatrix'
 import { GROUP_HEBREW } from '../shared/groups'
 
@@ -17,14 +17,14 @@ const winner   = (d: GroupData | undefined, g: string) => slotAt(d, g, 0)
 const runnerUp = (d: GroupData | undefined, g: string) => slotAt(d, g, 1)
 const thirdOf  = (d: GroupData | undefined, g: string) => slotAt(d, g, 2)
 
-function mk(matchNum: number, home: Slot, away: Slot): R32Match {
+function mk(matchNum: number, home: Slot, away: Slot): KnockoutMatch {
   return { matchNum, home: home.team, away: away.team, resolved: home.resolved && away.resolved }
 }
 
 export function resolveRound32(
   allGroupData: GroupData[],
   thirdPlaceQual: ThirdPlaceQualification,
-): R32Match[] {
+): KnockoutMatch[] {
   const byGroup = Object.fromEntries(allGroupData.map(d => [d.group, d]))
 
   let allocAssignment: Record<string, string> | undefined

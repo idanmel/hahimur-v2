@@ -9,7 +9,6 @@ import { resolveKnockout } from './knockout/knockout'
 import MatchRow from './groupStage/MatchRow'
 import StandingsTable from './groupStage/StandingsTable'
 import ThirdPlaceTable from './thirdPlace/ThirdPlaceTable'
-import Round32Table from './round32/Round32Table'
 import KnockoutTable from './knockout/KnockoutTable'
 
 type PredictionsState = Record<string, MatchScores>
@@ -158,32 +157,32 @@ export default function App() {
 
         <section className="content-section">
           <div className="section-tag">שלב ה-32</div>
-          <Round32Table matches={round32Matches} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={round32Matches} predictions={predictions} onChange={updateScores} />
         </section>
 
         <section className="content-section">
           <div className="section-tag">שמינית גמר</div>
-          <KnockoutTable matches={knockout.r16} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={knockout.r16} predictions={predictions} onChange={updateScores} alwaysShowScores />
         </section>
 
         <section className="content-section">
           <div className="section-tag">רבע גמר</div>
-          <KnockoutTable matches={knockout.qf} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={knockout.qf} predictions={predictions} onChange={updateScores} alwaysShowScores />
         </section>
 
         <section className="content-section">
           <div className="section-tag">חצי גמר</div>
-          <KnockoutTable matches={knockout.sf} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={knockout.sf} predictions={predictions} onChange={updateScores} alwaysShowScores />
         </section>
 
         <section className="content-section">
           <div className="section-tag">מקום שלישי</div>
-          <KnockoutTable matches={[knockout.thirdPlace]} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={[knockout.thirdPlace]} predictions={predictions} onChange={updateScores} alwaysShowScores />
         </section>
 
         <section className="content-section">
           <div className="section-tag">גמר</div>
-          <KnockoutTable matches={[knockout.final]} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={[knockout.final]} predictions={predictions} onChange={updateScores} alwaysShowScores />
         </section>
       </main>
     </>
