@@ -19,8 +19,8 @@ export default function KnockoutTable({ matches, predictions, onChange }: Props)
           <div key={m.matchNum} className={`ko-card${m.resolved ? ' ko-card--resolved' : ''}`}>
             <div className="ko-matchnum-row">
               <span className="ko-matchnum">{m.matchNum}</span>
-              {isDraw && (
-                <span className={`ko-draw-badge${pred.drawWinner ? ' ko-draw-badge--done' : ''}`}>
+              {isDraw && !pred.drawWinner && (
+                <span className="ko-draw-badge">
                   בחר מנצחת
                 </span>
               )}

@@ -146,6 +146,12 @@ describe('KnockoutTable — draw winner selection state', () => {
     expect(areas[0].classList.contains('ko-team-click--selected')).toBe(false)
     expect(areas[1].classList.contains('ko-team-click--selected')).toBe(false)
   })
+
+  test('badge disappears when drawWinner is set', () => {
+    const predictions: Record<string, MatchScores> = { '89': { home: 1, away: 1, drawWinner: 'home' } }
+    render(<KnockoutTable matches={[resolvedMatch]} predictions={predictions} onChange={noop} />)
+    expect(document.querySelector('.ko-draw-badge')).toBeNull()
+  })
 })
 
 describe('KnockoutTable — onChange', () => {
