@@ -70,7 +70,7 @@ export default function ThirdPlaceTable({ qualification, allGroupsFilled }: Prop
       )}
       <footer className="standings-legend">
         <span className="legend-swatch" />
-        <span>עוברות לשלב הנוקאאוט (8 הטובות מבין צוותי שלישי מקום)</span>
+        <span>עוברות לשלב הנוקאאוט</span>
       </footer>
     </div>
   )
