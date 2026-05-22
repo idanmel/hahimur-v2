@@ -210,6 +210,30 @@ describe('Group completion indicator', () => {
   })
 })
 
+describe('Save predictions', () => {
+  test('Save button downloads predictions as JSON', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('predictions', JSON.stringify({ A1: { home: 2, away: 1 } }))
+    localStorage.setItem('topGoalscorer', 'Mbappé')
+
+    const mockClick = vi.fn()
+    const mockAnchor = { href: '', download: '', click: mockClick }
+    const original = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag, ...args) => {
+      if (tag === 'a') return mockAnchor as any
+      return original(tag as any, ...args)
+    })
+    vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:fake')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /save|שמור/i }))
+
+    expect(mockAnchor.download).toBe('wc2026-predictions.json')
+    expect(mockClick).toHaveBeenCalled()
+  })
+})
+
 describe('Slice 3b — group standings table', () => {
   test('standings table shows all 4 Group A teams', () => {
     render(<App />)

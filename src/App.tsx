@@ -132,6 +132,17 @@ export default function App() {
     localStorage.setItem(GOALSCORER_KEY, name)
   }
 
+  function saveToFile() {
+    const data = { predictions, topGoalscorer }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'wc2026-predictions.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <>
       <header className="poster-header">
@@ -142,6 +153,7 @@ export default function App() {
           <h1 className="poster-subtitle">ההימור 2026</h1>
         </div>
         <div className="poster-bar poster-bar--bottom" />
+        <button className="save-button" onClick={saveToFile}>שמור</button>
       </header>
 
       <main>
