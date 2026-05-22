@@ -15,8 +15,9 @@ export default function KnockoutTable({ matches, predictions, onChange }: Props)
         const id = String(m.matchNum)
         const pred = m.resolved ? (predictions[id] ?? { home: null, away: null }) : { home: null, away: null }
         const isDraw = m.resolved && pred.home !== null && pred.away !== null && pred.home === pred.away
+        const needsDrawWinner = isDraw && !pred.drawWinner
         return (
-          <div key={m.matchNum} className={`ko-card${m.resolved ? ' ko-card--resolved' : ''}`}>
+          <div key={m.matchNum} className={`ko-card${m.resolved ? ' ko-card--resolved' : ''}${needsDrawWinner ? ' ko-card--draw-pending' : ''}`}>
             <div className="ko-matchnum-row">
               <span className="ko-matchnum">{m.matchNum}</span>
               {isDraw && !pred.drawWinner && (

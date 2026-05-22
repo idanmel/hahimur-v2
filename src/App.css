@@ -473,6 +473,10 @@ main {
   border-right-color: var(--gold);
 }
 
+.ko-card--draw-pending {
+  animation: ko-border-pulse 1.4s ease-in-out infinite;
+}
+
 .ko-matchnum {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 10px;
@@ -592,6 +596,15 @@ main {
   50% {
     opacity: 0.5;
     transform: scale(1.08);
+  }
+}
+
+@keyframes ko-border-pulse {
+  0%, 100% {
+    border-right-color: rgba(200, 184, 122, 0.5);
+  }
+  50% {
+    border-right-color: var(--gold);
   }
 }
 
