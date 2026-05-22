@@ -153,7 +153,6 @@ export default function App() {
           <h1 className="poster-subtitle">ההימור 2026</h1>
         </div>
         <div className="poster-bar poster-bar--bottom" />
-        <button className="save-button" onClick={saveToFile}>שמור</button>
       </header>
 
       <main>
@@ -243,6 +242,14 @@ export default function App() {
               onChange={e => updateTopGoalscorer(e.target.value)}
             />
           </div>
+        </section>
+
+        <section className="content-section save-section">
+          <p className="save-hint">כשתסיים למלא את כל ההימורים, שמור אותם כקובץ</p>
+          <button className="save-button" onClick={saveToFile}>
+            <span className="save-button-icon">↓</span>
+            שמור טופס
+          </button>
         </section>
 
         {finalWinner && <ChampionBanner winner={finalWinner} />}
