@@ -733,3 +733,41 @@ main {
 
   animation: champion-shimmer 3.5s linear 0.8s infinite;
 }
+
+/* ── Top Goalscorer Input ──────────────────────────────────── */
+
+.goalscorer-card {
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-right: 4px solid var(--gold);
+  border-radius: 0 6px 6px 0;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+}
+
+.goalscorer-input {
+  width: 100%;
+  background: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: 4px;
+  color: var(--gold);
+  font-family: 'Heebo', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: right;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.goalscorer-input::placeholder {
+  color: rgba(212, 160, 22, 0.25);
+  font-weight: 400;
+}
+
+.goalscorer-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(212, 160, 22, 0.3);
+}

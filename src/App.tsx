@@ -14,6 +14,7 @@ import ChampionBanner from './knockout/ChampionBanner'
 type PredictionsState = Record<string, MatchScores>
 
 const STORAGE_KEY = 'predictions'
+const GOALSCORER_KEY = 'topGoalscorer'
 
 const ALL_GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'] as const
 type GroupLetter = typeof ALL_GROUP_LETTERS[number]
@@ -45,8 +46,13 @@ function loadPredictions(): PredictionsState {
   return initialPredictions
 }
 
+function loadGoalscorer(): string {
+  return localStorage.getItem(GOALSCORER_KEY) ?? ''
+}
+
 export default function App() {
   const [predictions, setPredictions] = useState<PredictionsState>(loadPredictions)
+  const [topGoalscorer, setTopGoalscorer] = useState<string>(loadGoalscorer)
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
   const activeMatches = GROUP_MATCHES[activeGroup] ?? []
   const { standings: activeStandings, tiedTeams: activeTiedTeams } = useMemo(
@@ -119,6 +125,11 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       return next
     })
+  }
+
+  function updateTopGoalscorer(name: string) {
+    setTopGoalscorer(name)
+    localStorage.setItem(GOALSCORER_KEY, name)
   }
 
   return (
@@ -207,6 +218,19 @@ export default function App() {
         <section className="content-section">
           <div className="section-tag">גמר</div>
           <KnockoutTable matches={[knockout.final]} predictions={predictions} onChange={updateScores} />
+        </section>
+
+        <section className="content-section">
+          <div className="section-tag">מלך השערים</div>
+          <div className="goalscorer-card" dir="rtl">
+            <input
+              type="text"
+              className="goalscorer-input"
+              placeholder="שם השחקן..."
+              value={topGoalscorer}
+              onChange={e => updateTopGoalscorer(e.target.value)}
+            />
+          </div>
         </section>
 
         {finalWinner && <ChampionBanner winner={finalWinner} />}
