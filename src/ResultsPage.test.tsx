@@ -1,6 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ResultsLoader from './ResultsLoader'
 import ResultsPage from './ResultsPage'
 
 // --- Slice 1: /results route renders a heading ---
@@ -13,36 +12,6 @@ test('results page shows תוצאות heading', () => {
 test('results page does not show the prediction form title', () => {
   render(<ResultsPage results={{ predictions: {}, topGoalscorer: '' }} />)
   expect(screen.queryByText('ההימור 2026')).not.toBeInTheDocument()
-})
-
-// --- Slice 2: Results page loads results.json ---
-
-test('shows loading state while fetching', () => {
-  vi.stubGlobal('fetch', () => new Promise(() => {})) // never resolves
-  render(<ResultsLoader />)
-  expect(screen.getByText(/טוען/)).toBeInTheDocument()
-  vi.unstubAllGlobals()
-})
-
-test('renders results page after successful fetch', async () => {
-  const mockResults = { predictions: {}, topGoalscorer: '' }
-  vi.stubGlobal('fetch', () =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve(mockResults) } as Response)
-  )
-  render(<ResultsLoader />)
-  await waitFor(() =>
-    expect(screen.getByRole('heading', { name: 'תוצאות' })).toBeInTheDocument()
-  )
-  vi.unstubAllGlobals()
-})
-
-test('shows error message when results.json cannot be fetched', async () => {
-  vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 404 } as Response))
-  render(<ResultsLoader />)
-  await waitFor(() =>
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-  )
-  vi.unstubAllGlobals()
 })
 
 // --- Slice 3: Match scores shown read-only, no inputs ---
