@@ -1,7 +1,7 @@
 import PredictionsView from './PredictionsView'
 import { predictions as talPredictions, topGoalscorer as talGoalscorer } from './users/tal-lichter'
 
-export default function AllPredictionsPage() {
+export default function FormsPage() {
   return (
     <>
       <header className="poster-header">
