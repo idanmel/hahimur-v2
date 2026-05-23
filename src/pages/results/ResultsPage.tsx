@@ -1,6 +1,6 @@
-import type { PredictionsState } from '../shared/types'
-import PredictionsView from '../predictionsView/PredictionsView'
-import Nav from '../Nav'
+import type { PredictionsState } from '../../shared/types'
+import PredictionsView from '../../predictionsView/PredictionsView'
+import Nav from '../../Nav'
 
 interface Results {
   predictions: PredictionsState

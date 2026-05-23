@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import PredictionsView from '../predictionsView/PredictionsView'
-import Nav from '../Nav'
-import { predictions as talPredictions, topGoalscorer as talGoalscorer } from '../users/tal-lichter'
-import { predictions as idanPredictions, topGoalscorer as idanGoalscorer } from '../users/idan-melamed'
-import { predictions as alradPredictions, topGoalscorer as alradGoalscorer } from '../users/alrad-guma'
+import PredictionsView from '../../predictionsView/PredictionsView'
+import Nav from '../../Nav'
+import { predictions as talPredictions, topGoalscorer as talGoalscorer } from '../../users/tal-lichter'
+import { predictions as idanPredictions, topGoalscorer as idanGoalscorer } from '../../users/idan-melamed'
+import { predictions as alradPredictions, topGoalscorer as alradGoalscorer } from '../../users/alrad-guma'
 
 const USERS = [
   { label: 'טל ליכטר', number: '01', predictions: talPredictions, topGoalscorer: talGoalscorer },

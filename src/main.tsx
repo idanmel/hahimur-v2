@@ -3,10 +3,10 @@ import { createRoot } from 'react-dom/client'
 import 'flag-icons/css/flag-icons.min.css'
 import './index.css'
 import App from './App.tsx'
-import ResultsPage from './results/ResultsPage.tsx'
+import ResultsPage from './pages/results/ResultsPage.tsx'
 import * as results from './results.ts'
-import FormsPage from './forms/FormsPage.tsx'
-import HomePage from './home/HomePage.tsx'
+import FormsPage from './pages/forms/FormsPage.tsx'
+import HomePage from './pages/home/HomePage.tsx'
 
 const { pathname } = window.location
 
