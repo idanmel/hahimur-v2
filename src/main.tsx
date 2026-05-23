@@ -4,11 +4,14 @@ import 'flag-icons/css/flag-icons.min.css'
 import './index.css'
 import App from './App.tsx'
 import ResultsLoader from './ResultsLoader.tsx'
+import AllPredictionsPage from './AllPredictionsPage.tsx'
 
-const isResultsPage = window.location.pathname === '/results'
+const { pathname } = window.location
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isResultsPage ? <ResultsLoader /> : <App />}
+    {pathname === '/results' ? <ResultsLoader /> :
+     pathname === '/forms' ? <AllPredictionsPage /> :
+     <App />}
   </StrictMode>,
 )
