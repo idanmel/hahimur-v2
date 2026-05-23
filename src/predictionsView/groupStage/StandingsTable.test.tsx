@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import StandingsTable from './StandingsTable'
-import type { Standing } from '../shared/types'
+import type { Standing } from '../../shared/types'
 
 const makeStanding = (team: string, points = 0): Standing => ({
   team, points, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0,

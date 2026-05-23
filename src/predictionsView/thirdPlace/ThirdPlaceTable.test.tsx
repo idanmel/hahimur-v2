@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import ThirdPlaceTable from './ThirdPlaceTable'
-import type { ThirdPlaceStanding, ThirdPlaceQualification } from '../shared/types'
+import type { ThirdPlaceStanding, ThirdPlaceQualification } from '../../shared/types'
 
 function t(team: string, group: string, points: number, gf = 0, ga = 0): ThirdPlaceStanding {
   return { team, group, points, played: 3, won: 0, drawn: 0, lost: 0, goalsFor: gf, goalsAgainst: ga }

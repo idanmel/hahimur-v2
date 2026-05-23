@@ -3,11 +3,11 @@ import type { PredictionsState } from '../shared/types'
 import { GROUP_MATCHES, GROUP_HEBREW, ALL_GROUP_LETTERS, type GroupLetter } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
 import { useTournament } from '../shared/useTournament'
-import MatchRow from '../groupStage/MatchRow'
-import StandingsTable from '../groupStage/StandingsTable'
-import ThirdPlaceTable from '../thirdPlace/ThirdPlaceTable'
-import KnockoutTable from '../knockout/KnockoutTable'
-import ChampionBanner from '../knockout/ChampionBanner'
+import MatchRow from './groupStage/MatchRow'
+import StandingsTable from './groupStage/StandingsTable'
+import ThirdPlaceTable from './thirdPlace/ThirdPlaceTable'
+import KnockoutTable from './knockout/KnockoutTable'
+import ChampionBanner from './knockout/ChampionBanner'
 
 interface Props {
   predictions: PredictionsState

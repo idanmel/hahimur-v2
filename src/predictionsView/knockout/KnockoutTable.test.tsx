@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import KnockoutTable from './KnockoutTable'
-import type { KnockoutMatch, MatchScores } from '../shared/types'
+import type { KnockoutMatch, MatchScores } from '../../shared/types'
 import { vi } from 'vitest'
 
 const noop = vi.fn()

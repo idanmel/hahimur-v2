@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import type { Match, MatchScores, Standing, ThirdPlaceStanding } from '../shared/types'
-import { calculateStandings } from '../shared/standings'
+import type { Match, MatchScores, Standing, ThirdPlaceStanding } from '../../shared/types'
+import { calculateStandings } from '../../shared/standings'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './thirdPlace'
 
 function st(team: string, points: number, goalsFor: number, goalsAgainst: number): Standing {

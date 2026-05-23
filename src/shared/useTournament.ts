@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import type { PredictionsState } from './types'
 import { GROUP_MATCHES, ALL_GROUP_LETTERS } from './groups'
 import { calculateStandings } from './standings'
-import { getThirdPlaceTeams, qualifyBestThirdPlace } from '../thirdPlace/thirdPlace'
-import { resolveRound32, resolveKnockout } from '../knockout/knockout'
+import { getThirdPlaceTeams, qualifyBestThirdPlace } from '../predictionsView/thirdPlace/thirdPlace'
+import { resolveRound32, resolveKnockout } from '../predictionsView/knockout/knockout'
 
 export function useTournament(predictions: PredictionsState) {
   return useMemo(() => {

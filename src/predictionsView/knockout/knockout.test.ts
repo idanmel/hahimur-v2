@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { resolveKnockout, resolveRound32, clearUnresolvedKOScores } from './knockout'
-import type { KnockoutMatch, ThirdPlaceQualification } from '../shared/types'
+import type { KnockoutMatch, ThirdPlaceQualification } from '../../shared/types'
 
 const unresolvedR32 = (matchNum: number): KnockoutMatch => ({
   matchNum, home: `Home${matchNum}`, away: `Away${matchNum}`, resolved: false,

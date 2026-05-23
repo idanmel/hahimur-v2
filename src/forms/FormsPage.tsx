@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import PredictionsView from './PredictionsView'
+import PredictionsView from '../predictionsView/PredictionsView'
 import Nav from '../Nav'
 import { predictions as talPredictions, topGoalscorer as talGoalscorer } from '../users/tal-lichter'
 import { predictions as idanPredictions, topGoalscorer as idanGoalscorer } from '../users/idan-melamed'

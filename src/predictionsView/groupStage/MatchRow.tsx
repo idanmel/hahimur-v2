@@ -1,6 +1,6 @@
-import type { Match, MatchScores, Score } from '../shared/types'
-import { TEAMS } from '../shared/groups'
-import ScoreInput from '../shared/ScoreInput'
+import type { Match, MatchScores, Score } from '../../shared/types'
+import { TEAMS } from '../../shared/groups'
+import ScoreInput from '../../shared/ScoreInput'
 
 const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 

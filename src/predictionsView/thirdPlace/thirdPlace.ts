@@ -1,5 +1,5 @@
-import type { Standing, ThirdPlaceStanding, ThirdPlaceQualification } from '../shared/types'
-import { goalDifference, byOverallGD } from '../shared/standings'
+import type { Standing, ThirdPlaceStanding, ThirdPlaceQualification } from '../../shared/types'
+import { goalDifference, byOverallGD } from '../../shared/standings'
 
 export function getThirdPlaceTeams(
   groupStandings: { group: string; standings: Standing[] }[]

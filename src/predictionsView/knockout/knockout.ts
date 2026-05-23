@@ -1,6 +1,6 @@
-import type { Standing, ThirdPlaceQualification, KnockoutMatch, MatchScores } from '../shared/types'
+import type { Standing, ThirdPlaceQualification, KnockoutMatch, MatchScores } from '../../shared/types'
 import { ALLOCATION_MATRIX } from './allocationMatrix'
-import { GROUP_HEBREW } from '../shared/groups'
+import { GROUP_HEBREW } from '../../shared/groups'
 
 type GroupData = { group: string; standings: Standing[]; allFilled: boolean }
 type Slot = { team: string; resolved: boolean }

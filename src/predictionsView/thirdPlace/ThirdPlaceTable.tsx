@@ -1,21 +1,25 @@
-import type { Standing } from '../shared/types'
-import { TEAMS } from '../shared/groups'
-import { goalDifference } from '../shared/standings'
+import type { ThirdPlaceQualification, ThirdPlaceStanding } from '../../shared/types'
+import { TEAMS, GROUP_HEBREW } from '../../shared/groups'
+import { goalDifference } from '../../shared/standings'
 
 interface Props {
-  standings: Standing[]
+  qualification: ThirdPlaceQualification
+  allGroupsFilled: boolean
 }
 
-const QUALIFY_COUNT = 2
+const QUALIFY_COUNT = 8
 
-export default function StandingsTable({ standings }: Props) {
+export default function ThirdPlaceTable({ qualification, allGroupsFilled }: Props) {
+  const { all } = qualification
+
   return (
     <div className="standings-wrapper">
       <table className="standings">
         <thead>
           <tr>
             <th className="col-rank">#</th>
-            <th className="col-team">קבוצה</th>
+            <th className="col-group" title="בית">בית</th>
+            <th className="col-team" title="קבוצה">קבוצה</th>
             <th className="col-pts" title="נקודות">נק׳</th>
             <th title="משחקים שוחקו">מש׳</th>
             <th title="ניצחונות">נ</th>
@@ -26,7 +30,7 @@ export default function StandingsTable({ standings }: Props) {
           </tr>
         </thead>
         <tbody>
-          {standings.map((s, i) => {
+          {all.map((s: ThirdPlaceStanding, i: number) => {
             const gd = goalDifference(s)
             const qualifies = i < QUALIFY_COUNT
             const isCutoff = i === QUALIFY_COUNT - 1
@@ -40,8 +44,9 @@ export default function StandingsTable({ standings }: Props) {
                 ].filter(Boolean).join(' ')}
               >
                 <td className="col-rank">
-                  <span className={`rank-badge${qualifies ? ' rank-badge--qualify' : ''}`}>{i + 1}</span>
+                  <span className={`rank-badge${qualifies && qualification.resolved ? ' rank-badge--qualify' : ''}`}>{i + 1}</span>
                 </td>
+                <td className="col-group">{GROUP_HEBREW[s.group]}</td>
                 <td className="col-team">
                   <span className={`fi fi-${TEAMS[s.team].iso}`} />
                   <span>{TEAMS[s.team].he}</span>
@@ -58,9 +63,14 @@ export default function StandingsTable({ standings }: Props) {
           })}
         </tbody>
       </table>
+      {allGroupsFilled && !qualification.resolved && (
+        <div className="third-place-tie-warning">
+          שוויון בין {qualification.tied.map(t => TEAMS[t.team].he).join(', ')} — הכשירות לא מוכרעת
+        </div>
+      )}
       <footer className="standings-legend">
         <span className="legend-swatch" />
-        <span>עוברות לשלב הנוקאאוט (מקומות 1–2)</span>
+        <span>עוברות לשלב הנוקאאוט</span>
       </footer>
     </div>
   )

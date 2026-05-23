@@ -1,4 +1,4 @@
-import { TEAMS } from '../shared/groups'
+import { TEAMS } from '../../shared/groups'
 
 interface Props {
   winner: string
