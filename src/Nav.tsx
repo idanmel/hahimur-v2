@@ -1,7 +1,6 @@
 const LINKS = [
   { href: '/', label: 'בית' },
   { href: '/form', label: 'הטופס' },
-  { href: '/results', label: 'תוצאות' },
 ]
 
 export default function Nav() {

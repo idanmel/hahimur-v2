@@ -1,4 +1,4 @@
-Build the app, run tests, then commit and push all changes to GitHub. If anything fails, diagnose and fix the issue before retrying.
+Build the app, run tests, then commit and push all changes to GitHub. If anything fails, report the exact error and stop — do not retry.
 
 ## Steps
 
@@ -10,10 +10,8 @@ npm run build
 ```
 
 If the build fails:
-- Read the error output carefully
-- Fix TypeScript errors, missing imports, or broken syntax in the relevant files
-- Re-run the build until it passes
-- Do not proceed to tests while the build is red
+- Report the exact error output
+- Stop — do not attempt to fix or retry
 
 ### 2. Test
 
@@ -23,10 +21,8 @@ npm test
 ```
 
 If tests fail:
-- Read each failing test and the error message
-- Fix the production code (or the test if the test itself is wrong)
-- Re-run until all tests pass
-- Do not proceed to commit while tests are red
+- Report the exact failing test names and error messages
+- Stop — do not attempt to fix or retry
 
 ### 3. Commit
 
