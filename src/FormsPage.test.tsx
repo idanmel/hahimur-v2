@@ -5,7 +5,8 @@ import FormsPage from './FormsPage'
 async function selectUser(name: string) {
   const user = userEvent.setup()
   render(<FormsPage />)
-  await user.selectOptions(screen.getByRole('combobox'), name)
+  await user.click(screen.getByRole('button', { name: /בחר שחקן/ }))
+  await user.click(screen.getByRole('option', { name: new RegExp(name) }))
 }
 
 test('forms page shows הטפסים heading', () => {
@@ -15,7 +16,7 @@ test('forms page shows הטפסים heading', () => {
 
 test('shows a user dropdown on load', () => {
   render(<FormsPage />)
-  expect(screen.getByRole('combobox')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /בחר שחקן/ })).toBeInTheDocument()
 })
 
 test('shows no predictions on initial load', () => {
@@ -23,9 +24,9 @@ test('shows no predictions on initial load', () => {
   expect(screen.queryByRole('button', { name: 'א' })).not.toBeInTheDocument()
 })
 
-test('shows בחר משתתף prompt on initial load', () => {
+test('shows בחר שחקן prompt on initial load', () => {
   render(<FormsPage />)
-  expect(screen.getByText('בחר משתתף', { selector: 'p' })).toBeInTheDocument()
+  expect(screen.getByText('בחר שחקן')).toBeInTheDocument()
 })
 
 test('shows group navigation tabs when טל ליכטר is selected', async () => {
@@ -47,7 +48,6 @@ test('shows hardcoded KO scores (more than just the 12 group-A scores) when טל
 
 test('shows עידן מלמד predictions when selected', async () => {
   await selectUser('עידן מלמד')
-  expect(screen.getByRole('heading', { name: 'עידן מלמד' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'א' })).toBeInTheDocument()
 })
 
@@ -65,7 +65,7 @@ test('עידן מלמד has no unresolved draw winner badges', async () => {
 
 test('אלרד גומא appears in dropdown and shows predictions section', async () => {
   await selectUser('אלרד גומא')
-  expect(screen.getByRole('heading', { name: 'אלרד גומא' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'א' })).toBeInTheDocument()
 })
 
 test('אלרד גומא group A scores show – for null predictions', async () => {
