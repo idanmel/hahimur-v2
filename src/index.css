@@ -26,3 +26,110 @@ body {
 #root {
   min-height: 100svh;
 }
+
+/* ── Scoring Table (Home Page) ─────────────────────────────── */
+
+.scoring-section {
+  margin-top: 3.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2rem;
+}
+
+.scoring-section__title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.18em;
+  color: var(--navy);
+  margin: 0 0 0.4rem;
+}
+
+.scoring-section__legend {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
+  letter-spacing: 0.02em;
+}
+
+.scoring-section__legend strong {
+  color: var(--ink);
+}
+
+.scoring-table-wrapper {
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(11, 34, 68, 0.09);
+}
+
+.scoring-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--paper);
+  direction: rtl;
+}
+
+.scoring-table thead tr {
+  background: var(--navy);
+  color: var(--cream);
+}
+
+.scoring-table th {
+  padding: 10px 14px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  font-weight: 400;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.scoring-table th:first-child {
+  text-align: right;
+}
+
+.scoring-table th.col-advance {
+  color: var(--gold);
+}
+
+.scoring-table td {
+  padding: 9px 14px;
+  text-align: center;
+  border-bottom: 1px solid rgba(200, 184, 122, 0.3);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.scoring-table td:first-child {
+  text-align: right;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.scoring-table td.col-advance {
+  color: var(--gold);
+  font-size: 15px;
+}
+
+.scoring-table tbody tr:nth-child(odd) {
+  background: rgba(239, 228, 184, 0.3);
+}
+
+.scoring-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.scoring-section__goalscorer {
+  margin-top: 1rem;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-right: 4px solid var(--gold);
+  border-radius: 0 4px 4px 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ink);
+  direction: rtl;
+}
