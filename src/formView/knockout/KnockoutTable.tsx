@@ -29,7 +29,13 @@ export default function KnockoutTable({ matches, predictions, onChange, readOnly
             </div>
             <div className="ko-team-row">
               <div
-                className={`ko-team-click${!readOnly && isDraw ? ` ko-team-click--selectable${pred.drawWinner === 'home' ? ' ko-team-click--selected' : pred.drawWinner === 'away' ? ' ko-team-click--unselected' : ''}` : ''}`}
+                className={`ko-team-click${
+                  !readOnly && isDraw
+                    ? ` ko-team-click--selectable${pred.drawWinner === 'home' ? ' ko-team-click--selected' : pred.drawWinner === 'away' ? ' ko-team-click--unselected' : ''}`
+                    : isDraw && pred.drawWinner
+                      ? pred.drawWinner === 'home' ? ' ko-team-click--selected' : ' ko-team-click--unselected'
+                      : ''
+                }`}
                 onClick={!readOnly && isDraw ? () => onChange(id, { ...pred, drawWinner: 'home' }) : undefined}
                 role={!readOnly && isDraw ? 'button' : undefined}
                 tabIndex={!readOnly && isDraw ? 0 : undefined}
@@ -44,7 +50,13 @@ export default function KnockoutTable({ matches, predictions, onChange, readOnly
             <div className="ko-row-divider" />
             <div className="ko-team-row">
               <div
-                className={`ko-team-click${!readOnly && isDraw ? ` ko-team-click--selectable${pred.drawWinner === 'away' ? ' ko-team-click--selected' : pred.drawWinner === 'home' ? ' ko-team-click--unselected' : ''}` : ''}`}
+                className={`ko-team-click${
+                  !readOnly && isDraw
+                    ? ` ko-team-click--selectable${pred.drawWinner === 'away' ? ' ko-team-click--selected' : pred.drawWinner === 'home' ? ' ko-team-click--unselected' : ''}`
+                    : isDraw && pred.drawWinner
+                      ? pred.drawWinner === 'away' ? ' ko-team-click--selected' : ' ko-team-click--unselected'
+                      : ''
+                }`}
                 onClick={!readOnly && isDraw ? () => onChange(id, { ...pred, drawWinner: 'away' }) : undefined}
                 role={!readOnly && isDraw ? 'button' : undefined}
                 tabIndex={!readOnly && isDraw ? 0 : undefined}

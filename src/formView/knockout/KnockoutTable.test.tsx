@@ -154,6 +154,40 @@ describe('KnockoutTable — draw winner selection state', () => {
   })
 })
 
+describe('KnockoutTable — read-only draw winner display', () => {
+  test('home team has selected class when drawWinner is home', () => {
+    const predictions: Record<string, MatchScores> = { '89': { home: 1, away: 1, drawWinner: 'home' } }
+    render(<KnockoutTable matches={[resolvedMatch]} predictions={predictions} onChange={noop} readOnly />)
+    const areas = document.querySelectorAll<HTMLElement>('.ko-team-click')
+    expect(areas[0].classList.contains('ko-team-click--selected')).toBe(true)
+    expect(areas[1].classList.contains('ko-team-click--unselected')).toBe(true)
+  })
+
+  test('away team has selected class when drawWinner is away', () => {
+    const predictions: Record<string, MatchScores> = { '89': { home: 1, away: 1, drawWinner: 'away' } }
+    render(<KnockoutTable matches={[resolvedMatch]} predictions={predictions} onChange={noop} readOnly />)
+    const areas = document.querySelectorAll<HTMLElement>('.ko-team-click')
+    expect(areas[0].classList.contains('ko-team-click--unselected')).toBe(true)
+    expect(areas[1].classList.contains('ko-team-click--selected')).toBe(true)
+  })
+
+  test('no selected/unselected classes when draw has no drawWinner', () => {
+    const predictions: Record<string, MatchScores> = { '89': { home: 1, away: 1 } }
+    render(<KnockoutTable matches={[resolvedMatch]} predictions={predictions} onChange={noop} readOnly />)
+    const areas = document.querySelectorAll<HTMLElement>('.ko-team-click')
+    areas.forEach(area => {
+      expect(area.classList.contains('ko-team-click--selected')).toBe(false)
+      expect(area.classList.contains('ko-team-click--unselected')).toBe(false)
+    })
+  })
+
+  test('team areas are not selectable (no click role) in read-only mode', () => {
+    const predictions: Record<string, MatchScores> = { '89': { home: 1, away: 1 } }
+    render(<KnockoutTable matches={[resolvedMatch]} predictions={predictions} onChange={noop} readOnly />)
+    expect(document.querySelector('.ko-team-click--selectable')).toBeNull()
+  })
+})
+
 describe('KnockoutTable — onChange', () => {
   test('fires with correct matchNum key and scores when home score typed', async () => {
     const onChange = vi.fn()
