@@ -1,6 +1,31 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import FormsPage from './FormsPage'
+
+vi.mock('../../users/index', () => {
+  const GROUP_IDS = ['A','B','C','D','E','F','G','H','I','J','K','L'].flatMap(g =>
+    [1,2,3,4,5,6].map(n => `${g}${n}`)
+  )
+  const KO_IDS = Array.from({ length: 32 }, (_, i) => String(73 + i))
+  const ALL_IDS = [...GROUP_IDS, ...KO_IDS]
+
+  function nullPredictions() {
+    return Object.fromEntries(ALL_IDS.map(id => [id, { home: null, away: null }]))
+  }
+
+  function filledPredictions(overrides: Record<string, { home: number; away: number }> = {}) {
+    return Object.fromEntries(ALL_IDS.map(id => [id, overrides[id] ?? { home: 1, away: 0 }]))
+  }
+
+  return {
+    USERS: [
+      { label: 'טל ליכטר',  number: '01', predictions: filledPredictions({ A1: { home: 2, away: 0 } }), topGoalscorer: 'מבאפה' },
+      { label: 'עידן מלמד', number: '02', predictions: filledPredictions(), topGoalscorer: 'מסי' },
+      { label: 'אלרד גומא', number: '03', predictions: nullPredictions(), topGoalscorer: '' },
+    ],
+  }
+})
 
 async function selectUser(name: string) {
   const user = userEvent.setup()

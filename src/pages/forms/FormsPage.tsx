@@ -1,15 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import FormView from '../../formView/FormView'
 import Nav from '../../Nav'
-import { predictions as talPredictions, topGoalscorer as talGoalscorer } from '../../users/tal-lichter'
-import { predictions as idanPredictions, topGoalscorer as idanGoalscorer } from '../../users/idan-melamed'
-import { predictions as alradPredictions, topGoalscorer as alradGoalscorer } from '../../users/alrad-guma'
-
-const USERS = [
-  { label: 'טל ליכטר', number: '01', predictions: talPredictions, topGoalscorer: talGoalscorer },
-  { label: 'עידן מלמד', number: '02', predictions: idanPredictions, topGoalscorer: idanGoalscorer },
-  { label: 'אלרד גומא', number: '03', predictions: alradPredictions, topGoalscorer: alradGoalscorer },
-]
+import { USERS } from '../../users/index'
 
 export default function FormsPage() {
   const [selectedLabel, setSelectedLabel] = useState('')
