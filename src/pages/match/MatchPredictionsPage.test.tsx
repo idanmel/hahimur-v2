@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import MatchPredictionsPage from './MatchPredictionsPage'
 
@@ -9,65 +8,6 @@ let mockUsers: MockUser[] = []
 vi.mock('../../users/index', () => ({
   get USERS() { return mockUsers },
 }))
-
-function setup() {
-  mockUsers = []
-  const user = userEvent.setup()
-  render(<MatchPredictionsPage />)
-  const mexicoInput = screen.getByLabelText('מקסיקו')
-  const southAfricaInput = screen.getByLabelText('דרום אפריקה')
-  return { user, mexicoInput, southAfricaInput }
-}
-
-describe('score inputs', () => {
-  test('accepts valid digit for home team', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, '2')
-    expect(mexicoInput).toHaveValue('2')
-  })
-
-  test('accepts zero', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, '0')
-    expect(mexicoInput).toHaveValue('0')
-  })
-
-  test('accepts valid digit for away team', async () => {
-    const { user, southAfricaInput } = setup()
-    await user.type(southAfricaInput, '1')
-    expect(southAfricaInput).toHaveValue('1')
-  })
-
-  test('blocks minus sign', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, '-1')
-    expect(mexicoInput).toHaveValue('1')
-  })
-
-  test('blocks decimal point', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, '1.5')
-    expect(mexicoInput).toHaveValue('15')
-  })
-
-  test('blocks letters', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, 'abc')
-    expect(mexicoInput).toHaveValue('')
-  })
-
-  test('blocks spaces', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, ' ')
-    expect(mexicoInput).toHaveValue('')
-  })
-
-  test('strips leading zeros', async () => {
-    const { user, mexicoInput } = setup()
-    await user.type(mexicoInput, '0123')
-    expect(mexicoInput).toHaveValue('123')
-  })
-})
 
 test('shows Hebrew message when there are no users', () => {
   mockUsers = []

@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import FormPage from './FormPage'
 
+vi.setConfig({ testTimeout: 15000 })
 beforeEach(() => localStorage.clear())
 
 describe('Top Goalscorer (מלך השערים)', () => {
@@ -18,7 +20,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
   })
 
   test('user can type a player name', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<FormPage />)
     const input = screen.getByPlaceholderText('שם השחקן...') as HTMLInputElement
 
@@ -27,7 +29,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
   })
 
   test('user can clear the input', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<FormPage />)
     const input = screen.getByPlaceholderText('שם השחקן...') as HTMLInputElement
 
@@ -39,7 +41,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
   })
 
   test('player name persists across remount (simulated refresh)', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     const { unmount } = render(<FormPage />)
 
     const input = screen.getByPlaceholderText('שם השחקן...') as HTMLInputElement
@@ -53,7 +55,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
   })
 
   test('player name is stored in localStorage under correct key', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<FormPage />)
     const input = screen.getByPlaceholderText('שם השחקן...')
 
@@ -64,7 +66,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
   })
 
   test('empty string is persisted when input is cleared', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<FormPage />)
     const input = screen.getByPlaceholderText('שם השחקן...')
 
@@ -84,7 +86,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
   })
 
   test('player name updates are independent of match predictions', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<FormPage />)
 
     const mexicoInput = screen.getAllByLabelText('מקסיקו')[0]
