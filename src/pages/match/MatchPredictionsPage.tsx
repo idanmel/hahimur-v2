@@ -87,7 +87,7 @@ export default function MatchPredictionsPage() {
       <Nav />
 
       <div className="match-predictions">
-        <p className="match-predictions__heading">ניבויי השחקנים</p>
+        <p className="match-predictions__heading">הניחושים</p>
 
         <PredictionSummary matchId="A1" homeLabel={home.he} awayLabel={away.he} />
 
