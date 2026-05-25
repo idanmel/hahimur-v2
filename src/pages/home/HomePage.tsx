@@ -1,4 +1,7 @@
 import Nav from '../../Nav'
+import Countdown from './Countdown'
+
+const FIRST_MATCH = new Date('2026-06-11T00:00:00')
 
 export default function HomePage() {
   return (
@@ -13,6 +16,9 @@ export default function HomePage() {
         <div className="poster-bar poster-bar--bottom" />
       </header>
       <Nav />
+      <div className="countdown-wrapper">
+        <Countdown targetDate={FIRST_MATCH} />
+      </div>
 
       <main dir="rtl" style={{ maxWidth: '700px', margin: '0 auto', padding: '3rem 1.5rem', fontSize: '1.1rem', lineHeight: '1.9' }}>
         <p>ברוכים הבאים להימור המסורתי שלנו!</p>
