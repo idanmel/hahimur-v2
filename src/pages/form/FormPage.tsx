@@ -52,6 +52,15 @@ function loadGoalscorer(): string {
 export default function FormPage() {
   const [predictions, setPredictions] = useState<PredictionsState>(loadPredictions)
   const [topGoalscorer, setTopGoalscorer] = useState<string>(loadGoalscorer)
+  const [locked, setLocked] = useState(() => Date.now() >= SUBMISSION_DEADLINE.getTime())
+
+  useEffect(() => {
+    if (locked) return
+    const id = setInterval(() => {
+      if (Date.now() >= SUBMISSION_DEADLINE.getTime()) setLocked(true)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [locked])
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
   const activeMatches = GROUP_MATCHES[activeGroup] ?? []
   const { standings: activeStandings, tiedTeams: activeTiedTeams } = useMemo(
@@ -152,6 +161,7 @@ export default function FormPage() {
               match={match}
               scores={predictions[match.id]}
               onChange={(scores) => updateScores(match.id, scores)}
+              readOnly={locked}
             />
           ))}
           <StandingsTable standings={activeStandings} />
@@ -164,32 +174,32 @@ export default function FormPage() {
 
         <section className="content-section">
           <div className="section-tag">שלב ה-32</div>
-          <KnockoutTable matches={round32Matches} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={round32Matches} predictions={predictions} onChange={updateScores} readOnly={locked} />
         </section>
 
         <section className="content-section">
           <div className="section-tag">שמינית גמר</div>
-          <KnockoutTable matches={knockout.r16} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={knockout.r16} predictions={predictions} onChange={updateScores} readOnly={locked} />
         </section>
 
         <section className="content-section">
           <div className="section-tag">רבע גמר</div>
-          <KnockoutTable matches={knockout.qf} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={knockout.qf} predictions={predictions} onChange={updateScores} readOnly={locked} />
         </section>
 
         <section className="content-section">
           <div className="section-tag">חצי גמר</div>
-          <KnockoutTable matches={knockout.sf} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={knockout.sf} predictions={predictions} onChange={updateScores} readOnly={locked} />
         </section>
 
         <section className="content-section">
           <div className="section-tag">מקום שלישי</div>
-          <KnockoutTable matches={[knockout.thirdPlace]} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={[knockout.thirdPlace]} predictions={predictions} onChange={updateScores} readOnly={locked} />
         </section>
 
         <section className="content-section">
           <div className="section-tag">גמר</div>
-          <KnockoutTable matches={[knockout.final]} predictions={predictions} onChange={updateScores} />
+          <KnockoutTable matches={[knockout.final]} predictions={predictions} onChange={updateScores} readOnly={locked} />
         </section>
 
         <section className="content-section">
@@ -201,13 +211,14 @@ export default function FormPage() {
               placeholder="שם השחקן..."
               value={topGoalscorer}
               onChange={e => updateTopGoalscorer(e.target.value)}
+              disabled={locked}
             />
           </div>
         </section>
 
         <section className="content-section save-section">
           <p className="save-hint">כשתסיים למלא את כל ההימורים, שמור אותם כקובץ</p>
-          <button className="save-button" onClick={saveToFile}>
+          <button className="save-button" onClick={saveToFile} disabled={locked}>
             <span className="save-button-icon">↓</span>
             שמור טופס
           </button>

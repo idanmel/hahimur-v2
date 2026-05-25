@@ -1,9 +1,11 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi, afterEach } from 'vitest'
 import FormPage from './FormPage'
 import { GROUPS } from '../../shared/groups'
 
 beforeEach(() => localStorage.clear())
+afterEach(() => vi.useRealTimers())
 
 function setup() {
   const user = userEvent.setup()
@@ -222,5 +224,31 @@ describe('Knockout stages', () => {
     expect(screen.getByText('חצי גמר')).toBeInTheDocument()
     expect(screen.getByText('מקום שלישי')).toBeInTheDocument()
     expect(screen.getByText('גמר')).toBeInTheDocument()
+  })
+})
+
+describe('Deadline lock', () => {
+  test('group score inputs are editable before the deadline', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-06T23:59:59'))
+    render(<FormPage />)
+    const groupSection = document.querySelector('section.content-section') as HTMLElement
+    expect(within(groupSection).getAllByRole('textbox').length).toBeGreaterThan(0)
+  })
+
+  test('group score inputs are hidden and save button is disabled after the deadline', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-07T00:00:01'))
+    render(<FormPage />)
+    const groupSection = document.querySelector('section.content-section') as HTMLElement
+    expect(within(groupSection).queryAllByRole('textbox')).toHaveLength(0)
+    expect(screen.getByRole('button', { name: /שמור/i })).toBeDisabled()
+  })
+
+  test('goalscorer input is disabled after the deadline', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-07T00:00:01'))
+    render(<FormPage />)
+    expect(screen.getByPlaceholderText('שם השחקן...')).toBeDisabled()
   })
 })
