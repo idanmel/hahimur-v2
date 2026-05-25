@@ -230,7 +230,7 @@ describe('Knockout stages', () => {
 describe('Deadline lock', () => {
   test('group score inputs are editable before the deadline', () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-06T23:59:59'))
+    vi.setSystemTime(new Date('2026-06-06T20:59:59Z')) // 23:59:59 Jerusalem time
     render(<FormPage />)
     const groupSection = document.querySelector('section.content-section') as HTMLElement
     expect(within(groupSection).getAllByRole('textbox').length).toBeGreaterThan(0)
@@ -238,7 +238,7 @@ describe('Deadline lock', () => {
 
   test('group score inputs are hidden and save button is disabled after the deadline', () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-07T00:00:01'))
+    vi.setSystemTime(new Date('2026-06-06T21:00:01Z')) // 00:00:01 Jerusalem time
     render(<FormPage />)
     const groupSection = document.querySelector('section.content-section') as HTMLElement
     expect(within(groupSection).queryAllByRole('textbox')).toHaveLength(0)
@@ -247,7 +247,7 @@ describe('Deadline lock', () => {
 
   test('goalscorer input is disabled after the deadline', () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-07T00:00:01'))
+    vi.setSystemTime(new Date('2026-06-06T21:00:01Z')) // 00:00:01 Jerusalem time
     render(<FormPage />)
     expect(screen.getByPlaceholderText('שם השחקן...')).toBeDisabled()
   })

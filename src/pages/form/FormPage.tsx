@@ -13,7 +13,7 @@ import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
 import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ChampionBanner from '../../formView/knockout/ChampionBanner'
 
-const SUBMISSION_DEADLINE = new Date('2026-06-07T00:00:00')
+const SUBMISSION_DEADLINE = new Date('2026-06-07T00:00:00+03:00')
 
 const STORAGE_KEY = 'predictions'
 const GOALSCORER_KEY = 'topGoalscorer'
