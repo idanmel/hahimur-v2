@@ -1,0 +1,426 @@
+{
+  "predictions": {
+    "73": {
+      "home": 1,
+      "away": 1,
+      "drawWinner": "away"
+    },
+    "74": {
+      "home": 2,
+      "away": 0
+    },
+    "75": {
+      "home": 1,
+      "away": 0
+    },
+    "76": {
+      "home": 2,
+      "away": 1
+    },
+    "77": {
+      "home": 2,
+      "away": 0
+    },
+    "78": {
+      "home": 1,
+      "away": 2
+    },
+    "79": {
+      "home": 1,
+      "away": 0
+    },
+    "80": {
+      "home": 1,
+      "away": 0
+    },
+    "81": {
+      "home": 2,
+      "away": 0
+    },
+    "82": {
+      "home": 1,
+      "away": 1,
+      "drawWinner": "home"
+    },
+    "83": {
+      "home": 2,
+      "away": 2,
+      "drawWinner": "home"
+    },
+    "84": {
+      "home": 1,
+      "away": 0
+    },
+    "85": {
+      "home": 1,
+      "away": 0
+    },
+    "86": {
+      "home": 1,
+      "away": 1,
+      "drawWinner": "home"
+    },
+    "87": {
+      "home": 1,
+      "away": 0
+    },
+    "88": {
+      "home": 1,
+      "away": 2
+    },
+    "89": {
+      "home": 1,
+      "away": 0
+    },
+    "90": {
+      "home": 1,
+      "away": 2
+    },
+    "91": {
+      "home": 1,
+      "away": 0
+    },
+    "92": {
+      "home": 1,
+      "away": 2
+    },
+    "93": {
+      "home": 0,
+      "away": 2
+    },
+    "94": {
+      "home": 0,
+      "away": 1
+    },
+    "95": {
+      "home": 1,
+      "away": 1,
+      "drawWinner": "home"
+    },
+    "96": {
+      "home": 1,
+      "away": 3
+    },
+    "97": {
+      "home": 2,
+      "away": 0
+    },
+    "98": {
+      "home": 2,
+      "away": 0
+    },
+    "99": {
+      "home": 1,
+      "away": 0
+    },
+    "100": {
+      "home": 0,
+      "away": 1
+    },
+    "101": {
+      "home": 1,
+      "away": 2
+    },
+    "102": {
+      "home": 0,
+      "away": 1
+    },
+    "103": {
+      "home": 1,
+      "away": 0
+    },
+    "104": {
+      "home": 1,
+      "away": 2
+    },
+    "A1": {
+      "home": 2,
+      "away": 0
+    },
+    "A2": {
+      "home": 1,
+      "away": 0
+    },
+    "A3": {
+      "home": 1,
+      "away": 0
+    },
+    "A4": {
+      "home": 2,
+      "away": 1
+    },
+    "A5": {
+      "home": 0,
+      "away": 1
+    },
+    "A6": {
+      "home": 1,
+      "away": 1
+    },
+    "B1": {
+      "home": 3,
+      "away": 0
+    },
+    "B2": {
+      "home": 0,
+      "away": 2
+    },
+    "B3": {
+      "home": 1,
+      "away": 0
+    },
+    "B4": {
+      "home": 2,
+      "away": 0
+    },
+    "B5": {
+      "home": 1,
+      "away": 1
+    },
+    "B6": {
+      "home": 4,
+      "away": 0
+    },
+    "C1": {
+      "home": 1,
+      "away": 0
+    },
+    "C2": {
+      "home": 0,
+      "away": 2
+    },
+    "C3": {
+      "home": 0,
+      "away": 1
+    },
+    "C4": {
+      "home": 5,
+      "away": 1
+    },
+    "C5": {
+      "home": 0,
+      "away": 2
+    },
+    "C6": {
+      "home": 3,
+      "away": 0
+    },
+    "D1": {
+      "home": 2,
+      "away": 0
+    },
+    "D2": {
+      "home": 1,
+      "away": 1
+    },
+    "D3": {
+      "home": 2,
+      "away": 0
+    },
+    "D4": {
+      "home": 1,
+      "away": 1
+    },
+    "D5": {
+      "home": 0,
+      "away": 1
+    },
+    "D6": {
+      "home": 3,
+      "away": 1
+    },
+    "E1": {
+      "home": 3,
+      "away": 0
+    },
+    "E2": {
+      "home": 2,
+      "away": 1
+    },
+    "E3": {
+      "home": 1,
+      "away": 1
+    },
+    "E4": {
+      "home": 3,
+      "away": 0
+    },
+    "E5": {
+      "home": 0,
+      "away": 2
+    },
+    "E6": {
+      "home": 1,
+      "away": 2
+    },
+    "F1": {
+      "home": 2,
+      "away": 0
+    },
+    "F2": {
+      "home": 1,
+      "away": 0
+    },
+    "F3": {
+      "home": 2,
+      "away": 1
+    },
+    "F4": {
+      "home": 0,
+      "away": 3
+    },
+    "F5": {
+      "home": 2,
+      "away": 1
+    },
+    "F6": {
+      "home": 0,
+      "away": 2
+    },
+    "G1": {
+      "home": 1,
+      "away": 2
+    },
+    "G2": {
+      "home": 2,
+      "away": 0
+    },
+    "G3": {
+      "home": 2,
+      "away": 1
+    },
+    "G4": {
+      "home": 1,
+      "away": 3
+    },
+    "G5": {
+      "home": 1,
+      "away": 1
+    },
+    "G6": {
+      "home": 0,
+      "away": 3
+    },
+    "H1": {
+      "home": 3,
+      "away": 0
+    },
+    "H2": {
+      "home": 1,
+      "away": 2
+    },
+    "H3": {
+      "home": 2,
+      "away": 0
+    },
+    "H4": {
+      "home": 1,
+      "away": 0
+    },
+    "H5": {
+      "home": 1,
+      "away": 2
+    },
+    "H6": {
+      "home": 0,
+      "away": 0
+    },
+    "I1": {
+      "home": 2,
+      "away": 0
+    },
+    "I2": {
+      "home": 0,
+      "away": 3
+    },
+    "I3": {
+      "home": 3,
+      "away": 0
+    },
+    "I4": {
+      "home": 1,
+      "away": 1
+    },
+    "I5": {
+      "home": 1,
+      "away": 1
+    },
+    "I6": {
+      "home": 2,
+      "away": 1
+    },
+    "J1": {
+      "home": 3,
+      "away": 0
+    },
+    "J2": {
+      "home": 2,
+      "away": 0
+    },
+    "J3": {
+      "home": 3,
+      "away": 1
+    },
+    "J4": {
+      "home": 1,
+      "away": 1
+    },
+    "J5": {
+      "home": 1,
+      "away": 1
+    },
+    "J6": {
+      "home": 1,
+      "away": 2
+    },
+    "K1": {
+      "home": 3,
+      "away": 0
+    },
+    "K2": {
+      "home": 0,
+      "away": 3
+    },
+    "K3": {
+      "home": 3,
+      "away": 0
+    },
+    "K4": {
+      "home": 2,
+      "away": 0
+    },
+    "K5": {
+      "home": 1,
+      "away": 1
+    },
+    "K6": {
+      "home": 0,
+      "away": 0
+    },
+    "L1": {
+      "home": 2,
+      "away": 0
+    },
+    "L2": {
+      "home": 3,
+      "away": 0
+    },
+    "L3": {
+      "home": 1,
+      "away": 1
+    },
+    "L4": {
+      "home": 1,
+      "away": 3
+    },
+    "L5": {
+      "home": 0,
+      "away": 3
+    },
+    "L6": {
+      "home": 1,
+      "away": 2
+    }
+  },
+  "topGoalscorer": "וירץ (גרמניה)"
+}
