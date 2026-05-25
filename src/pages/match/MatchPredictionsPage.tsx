@@ -9,6 +9,46 @@ import './MatchPredictionsPage.css'
 
 const MATCH = GROUPS.A.matches[0]
 
+function ScoreFrequencyTable({ matchId }: { matchId: string }) {
+  const counts = new Map<string, number>()
+  for (const u of USERS) {
+    const p = u.predictions[matchId]
+    if (!p || isUnpredicted(p)) continue
+    const key = `${p.home}-${p.away}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const total = [...counts.values()].reduce((s, n) => s + n, 0)
+  const rows = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => ({ key, count, pct: Math.round((count / total) * 100) }))
+
+  if (rows.length === 0) return null
+
+  return (
+    <div data-testid="score-freq-table" className="score-freq">
+      {rows.map(({ key, count, pct }, i) => (
+        <div
+          key={key}
+          data-testid="score-freq-row"
+          className={`score-freq__row${i === 0 ? ' score-freq__row--leader' : ''}`}
+          style={{ '--bar-pct': `${pct}%`, '--row-delay': `${i * 80}ms`, animationDelay: `${i * 80}ms` } as React.CSSProperties}
+        >
+          <div className="score-freq__content">
+            <span className="score-freq__score">{key.replace('-', '–')}</span>
+            <div className="score-freq__meta">
+              <span className="score-freq__count">{count}</span>
+              <span className="score-freq__pct">{pct}%</span>
+            </div>
+          </div>
+          <div className="score-freq__track">
+            <div className="score-freq__fill" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function PredictionSummary({ matchId, homeLabel, awayLabel }: { matchId: string; homeLabel: string; awayLabel: string }) {
   let homeWins = 0, draws = 0, awayWins = 0
   for (const u of USERS) {
@@ -90,19 +130,18 @@ export default function MatchPredictionsPage() {
         <p className="match-predictions__heading">הניחושים</p>
 
         <PredictionSummary matchId="A1" homeLabel={home.he} awayLabel={away.he} />
+        <ScoreFrequencyTable matchId="A1" />
 
         {USERS.length === 0 ? (
           <p className="match-predictions__empty">אין תחזיות למשחק זה</p>
         ) : (
           [...USERS].sort((a, b) => {
-            const outcome = (u: typeof a) => {
-              const p = u.predictions['A1']
-              if (!p || isUnpredicted(p)) return 3
-              if (p.home! > p.away!) return 0
-              if (p.home! === p.away!) return 1
-              return 2
-            }
-            return outcome(a) - outcome(b) || a.label.localeCompare(b.label, 'he')
+            const pa = a.predictions['A1'], pb = b.predictions['A1']
+            const ua = !pa || isUnpredicted(pa), ub = !pb || isUnpredicted(pb)
+            if (ua && ub) return a.label.localeCompare(b.label, 'he')
+            if (ua) return 1
+            if (ub) return -1
+            return pa.home! - pb.home! || pa.away! - pb.away! || a.label.localeCompare(b.label, 'he')
           }).map((u, i) => {
             const p = u.predictions['A1']
             const unpredicted = !p || isUnpredicted(p)
