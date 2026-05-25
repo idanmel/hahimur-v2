@@ -34,7 +34,7 @@ function ScoreFrequencyTable({ matchId }: { matchId: string }) {
           style={{ '--bar-pct': `${pct}%`, '--row-delay': `${i * 80}ms`, animationDelay: `${i * 80}ms` } as React.CSSProperties}
         >
           <div className="score-freq__content">
-            <span className="score-freq__score">{key.replace('-', '–')}</span>
+            <span className="score-freq__score">{key.split('-').reverse().join('–')}</span>
             <div className="score-freq__meta">
               <span className="score-freq__count">{count}</span>
               <span className="score-freq__pct">{pct}%</span>
@@ -64,23 +64,23 @@ function PredictionSummary({ matchId, homeLabel, awayLabel }: { matchId: string;
   return (
     <div className="pred-summary">
       <div className="pred-summary__cols">
-        <div className="pred-summary__col pred-summary__col--home">
-          <span className="pred-summary__count" data-testid="pred-count">{homeWins}</span>
-          <span className="pred-summary__label">{homeLabel}</span>
+        <div className="pred-summary__col pred-summary__col--away">
+          <span className="pred-summary__count" data-testid="pred-count">{awayWins}</span>
+          <span className="pred-summary__label">{awayLabel}</span>
         </div>
         <div className="pred-summary__col pred-summary__col--draw">
           <span className="pred-summary__count" data-testid="pred-count">{draws}</span>
           <span className="pred-summary__label">תיקו</span>
         </div>
-        <div className="pred-summary__col pred-summary__col--away">
-          <span className="pred-summary__count" data-testid="pred-count">{awayWins}</span>
-          <span className="pred-summary__label">{awayLabel}</span>
+        <div className="pred-summary__col pred-summary__col--home">
+          <span className="pred-summary__count" data-testid="pred-count">{homeWins}</span>
+          <span className="pred-summary__label">{homeLabel}</span>
         </div>
       </div>
       <div className="pred-summary__bar" aria-hidden="true">
-        <div className="pred-summary__seg pred-summary__seg--home" style={{ width: `${pct(homeWins)}%` }} />
-        <div className="pred-summary__seg pred-summary__seg--draw" style={{ width: `${pct(draws)}%` }} />
         <div className="pred-summary__seg pred-summary__seg--away" style={{ width: `${pct(awayWins)}%` }} />
+        <div className="pred-summary__seg pred-summary__seg--draw" style={{ width: `${pct(draws)}%` }} />
+        <div className="pred-summary__seg pred-summary__seg--home" style={{ width: `${pct(homeWins)}%` }} />
       </div>
     </div>
   )
@@ -99,19 +99,19 @@ export default function MatchPredictionsPage() {
 
         <div className="match-header__teams">
           <div className="match-team">
-            <span className={`fi fi-${home.iso} match-team__flag`} />
-            <span className="match-team__name">{home.he}</span>
+            <span className={`fi fi-${away.iso} match-team__flag`} />
+            <span className="match-team__name">{away.he}</span>
           </div>
 
           <div className="match-header__vs">
-            <ScoreInput label={home.he} value={homeScore} onChange={setHomeScore} />
-            <span className="match-header__vs-text">–</span>
             <ScoreInput label={away.he} value={awayScore} onChange={setAwayScore} />
+            <span className="match-header__vs-text">–</span>
+            <ScoreInput label={home.he} value={homeScore} onChange={setHomeScore} />
           </div>
 
           <div className="match-team">
-            <span className={`fi fi-${away.iso} match-team__flag`} />
-            <span className="match-team__name">{away.he}</span>
+            <span className={`fi fi-${home.iso} match-team__flag`} />
+            <span className="match-team__name">{home.he}</span>
           </div>
         </div>
 
@@ -155,9 +155,9 @@ export default function MatchPredictionsPage() {
               >
                 <span className="prediction-row__name">{u.label}</span>
                 <div className="prediction-row__score">
-                  <span className="prediction-row__digit">{score(p?.home ?? null)}</span>
-                  <span className="prediction-row__sep">–</span>
                   <span className="prediction-row__digit">{score(p?.away ?? null)}</span>
+                  <span className="prediction-row__sep">–</span>
+                  <span className="prediction-row__digit">{score(p?.home ?? null)}</span>
                 </div>
               </div>
             )

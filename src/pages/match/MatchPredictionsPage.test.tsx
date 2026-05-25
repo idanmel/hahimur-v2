@@ -71,7 +71,7 @@ test('shows summary counts: 2 home wins, 1 draw, 0 away wins', () => {
     { label: 'שחקן ג', predictions: { A1: { home: 3, away: 2 } }, topGoalscorer: '' },
   ]
   render(<MatchPredictionsPage />)
-  expect(getCounts()).toEqual(['2', '1', '0'])
+  expect(getCounts()).toEqual(['0', '1', '2'])
 })
 
 test('shows summary counts: 0 home wins, 0 draws, 1 away win', () => {
@@ -79,7 +79,7 @@ test('shows summary counts: 0 home wins, 0 draws, 1 away win', () => {
     { label: 'שחקן א', predictions: { A1: { home: 0, away: 2 } }, topGoalscorer: '' },
   ]
   render(<MatchPredictionsPage />)
-  expect(getCounts()).toEqual(['0', '0', '1'])
+  expect(getCounts()).toEqual(['1', '0', '0'])
 })
 
 test('always shows draw count as 0 when no one predicted a draw', () => {
@@ -99,7 +99,7 @@ test('excludes unpredicted entries from summary counts', () => {
     { label: 'שחקן ב', predictions: { A1: { home: 1, away: 0 } }, topGoalscorer: '' },
   ]
   render(<MatchPredictionsPage />)
-  expect(getCounts()).toEqual(['1', '0', '0'])
+  expect(getCounts()).toEqual(['0', '0', '1'])
 })
 
 test('sorts predictions by home score asc then away score asc, unpredicted last', () => {
@@ -155,7 +155,7 @@ test('score frequency table is sorted by count descending', () => {
   ]
   render(<MatchPredictionsPage />)
   const rows = screen.getAllByTestId('score-freq-row')
-  expect(rows[0]).toHaveTextContent('2–1')
+  expect(rows[0]).toHaveTextContent('1–2')
   expect(rows[1]).toHaveTextContent('0–0')
 })
 
