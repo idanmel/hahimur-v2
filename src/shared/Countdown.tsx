@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 
 interface Props {
   targetDate: Date
+  label?: string
 }
 
 function getTimeLeft(target: Date) {
@@ -36,7 +37,7 @@ function FlipUnit({ value, label }: { value: number; label: string }) {
   )
 }
 
-export default function Countdown({ targetDate }: Props) {
+export default function Countdown({ targetDate, label }: Props) {
   const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(targetDate))
 
   useEffect(() => {
@@ -52,13 +53,16 @@ export default function Countdown({ targetDate }: Props) {
   ]
 
   return (
-    <div className="countdown" dir="ltr">
-      {units.map(({ value, label }, i) => (
-        <Fragment key={label}>
-          <FlipUnit value={value} label={label} />
-          {i < units.length - 1 && <span className="countdown__sep" aria-hidden>:</span>}
-        </Fragment>
-      ))}
+    <div className="countdown-wrapper">
+      {label && <p className="countdown-eyebrow">{label}</p>}
+      <div className="countdown" dir="ltr">
+        {units.map(({ value, label: unitLabel }, i) => (
+          <Fragment key={unitLabel}>
+            <FlipUnit value={value} label={unitLabel} />
+            {i < units.length - 1 && <span className="countdown__sep" aria-hidden>:</span>}
+          </Fragment>
+        ))}
+      </div>
     </div>
   )
 }
