@@ -27,6 +27,100 @@ body {
   min-height: 100svh;
 }
 
+/* ── Update Banner ──────────────────────────────────────────── */
+
+@keyframes banner-slide-in {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes banner-dot-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.7); }
+}
+
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 20px;
+  direction: rtl;
+  gap: 16px;
+  animation: banner-slide-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.update-banner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--navy) 33.33%, var(--red) 33.33%, var(--red) 66.66%, var(--gold) 66.66%
+  );
+}
+
+.update-banner__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+  animation: banner-dot-pulse 1.6s ease-in-out infinite;
+}
+
+.update-banner__copy {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.update-banner__headline {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.update-banner__sub {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  color: rgba(239, 228, 184, 0.38);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.update-banner__btn {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--gold);
+  border: none;
+  padding: 7px 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s;
+}
+
+.update-banner__btn:hover {
+  background: var(--cream);
+}
+
 /* ── Countdown (Home Page) ──────────────────────────────────── */
 
 .countdown-wrapper {
