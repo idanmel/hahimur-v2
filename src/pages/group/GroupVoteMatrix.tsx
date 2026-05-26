@@ -1,5 +1,5 @@
-import { TEAMS } from './groups'
-import type { GroupVotes } from '../pages/group/groupVotes'
+import { TEAMS } from '../../shared/groups'
+import type { GroupVotes } from './groupVotes'
 import './GroupVoteMatrix.css'
 
 interface Props {

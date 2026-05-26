@@ -7,7 +7,7 @@ import { USERS } from '../../users/index'
 import PageLayout from '../../shared/PageLayout'
 import MatchRow from '../../formView/groupStage/MatchRow'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
-import GroupVoteMatrix from '../../shared/GroupVoteMatrix'
+import GroupVoteMatrix from '../group/GroupVoteMatrix'
 import './ResultsPage.css'
 
 interface Results {

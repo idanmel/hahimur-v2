@@ -1,12 +1,8 @@
 import FormPage from './pages/form/FormPage'
 import FormsPage from './pages/forms/FormsPage'
-import GroupPage from './pages/group/GroupPage'
 import HomePage from './pages/home/HomePage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
 import ResultsPage from './pages/results/ResultsPage'
-import { GROUPS } from './shared/groups'
-import { computeGroupVotes } from './pages/group/groupVotes'
-import { USERS } from './users/index'
 import * as results from './results'
 import { useUpdateCheck } from './shared/useUpdateCheck'
 import UpdateBanner from './shared/UpdateBanner'
@@ -19,7 +15,6 @@ export default function App() {
   const interval = new URLSearchParams(window.location.search).has('fastCheck') ? FAST_CHECK : FIVE_MINUTES
   const { updateAvailable } = useUpdateCheck(interval)
   const matchId = pathname.startsWith('/matches/') ? pathname.slice('/matches/'.length).toUpperCase() : null
-  const groupLetter = pathname.startsWith('/group/') ? pathname.slice('/group/'.length).toUpperCase() : null
 
   return (
     <>
@@ -28,7 +23,6 @@ export default function App() {
        pathname === '/results'                            ? <ResultsPage results={results} /> :
        pathname === '/forms'                              ? <FormsPage /> :
        pathname === '/form'                               ? <FormPage /> :
-       groupLetter && GROUPS[groupLetter]                 ? <GroupPage groupName={`בית ${GROUPS[groupLetter].he}`} votes={computeGroupVotes(USERS, groupLetter)} /> :
        <HomePage />}
     </>
   )
