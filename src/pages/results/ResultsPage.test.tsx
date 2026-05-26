@@ -22,14 +22,15 @@ test('results page has no input elements', () => {
 
 // --- Slice 4: Group selector navigation ---
 
-test('results page shows a group dropdown', () => {
+test('results page shows a group dropdown trigger', () => {
   render(<ResultsPage results={{ predictions: {}, topGoalscorer: '' }} />)
-  expect(screen.getByRole('combobox', { name: 'בחר בית' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /בית/ })).toBeInTheDocument()
 })
 
 test('selecting group B from dropdown switches the active group', () => {
   render(<ResultsPage results={{ predictions: {}, topGoalscorer: '' }} />)
-  const dropdown = screen.getByRole('combobox', { name: 'בחר בית' })
-  fireEvent.change(dropdown, { target: { value: 'B' } })
-  expect(dropdown).toHaveValue('B')
+  const trigger = screen.getByRole('button', { name: /בית/ })
+  fireEvent.click(trigger)
+  fireEvent.click(screen.getByRole('option', { name: 'ב' }))
+  expect(trigger).toHaveTextContent('ב')
 })

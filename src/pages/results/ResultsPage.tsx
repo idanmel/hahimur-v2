@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import type { PredictionsState } from '../../shared/types'
 import { GROUP_MATCHES, GROUP_HEBREW, ALL_GROUP_LETTERS, type GroupLetter } from '../../shared/groups'
 import { calculateStandings } from '../../shared/standings'
@@ -23,6 +23,18 @@ const noop = () => {}
 
 export default function ResultsPage({ results }: Props) {
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const matches = GROUP_MATCHES[activeGroup] ?? []
   const { standings } = useMemo(
@@ -34,18 +46,43 @@ export default function ResultsPage({ results }: Props) {
   return (
     <PageLayout title="תוצאות">
       <main className="results-main">
-        <div className="results-group-select" dir="rtl">
-          <select
-            value={activeGroup}
-            onChange={e => setActiveGroup(e.target.value as GroupLetter)}
-            aria-label="בחר בית"
+        <div
+          className={`group-picker${dropdownOpen ? ' group-picker--open' : ''}`}
+          ref={dropdownRef}
+          dir="rtl"
+        >
+          <button
+            type="button"
+            className="group-picker__trigger"
+            onClick={() => setDropdownOpen(o => !o)}
+            aria-expanded={dropdownOpen}
+            aria-haspopup="listbox"
           >
-            {ALL_GROUP_LETTERS.map(letter => (
-              <option key={letter} value={letter}>
-                בית {GROUP_HEBREW[letter]}
-              </option>
-            ))}
-          </select>
+            <span className="group-picker__trigger-he">בית {GROUP_HEBREW[activeGroup]}</span>
+            <svg className="group-picker__chevron" width="11" height="7" viewBox="0 0 11 7" fill="none" aria-hidden="true">
+              <path d="M1 1L5.5 6L10 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
+          {dropdownOpen && (
+            <div className="group-picker__panel" role="listbox" aria-label="בחר בית">
+              <div className="group-picker__eyebrow">בחר בית</div>
+              <div className="group-picker__grid">
+                {ALL_GROUP_LETTERS.map(letter => (
+                  <button
+                    key={letter}
+                    type="button"
+                    role="option"
+                    aria-selected={letter === activeGroup}
+                    className={`group-picker__item${letter === activeGroup ? ' group-picker__item--active' : ''}`}
+                    onClick={() => { setActiveGroup(letter as GroupLetter); setDropdownOpen(false) }}
+                  >
+                    <span className="group-picker__item-letter">{GROUP_HEBREW[letter]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <section className="content-section">
