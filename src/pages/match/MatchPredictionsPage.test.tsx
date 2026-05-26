@@ -13,6 +13,12 @@ function getCounts() {
   return screen.getAllByTestId('pred-count').map(el => el.textContent)
 }
 
+test('shows not found message for unknown matchId', () => {
+  mockUsers = []
+  render(<MatchPredictionsPage matchId="DOESNOTEXIST" />)
+  expect(screen.getByText('משחק לא נמצא')).toBeInTheDocument()
+})
+
 test('shows Hebrew message when there are no users', () => {
   mockUsers = []
   render(<MatchPredictionsPage matchId="A1" />)

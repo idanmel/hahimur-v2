@@ -18,7 +18,7 @@ const compareScores = (ha: number, aa: number, hb: number, ab: number) => {
 }
 
 function findMatch(matchId: string) {
-  return ALL_MATCHES.find(m => m.id === matchId) ?? GROUPS.A.matches[0]
+  return ALL_MATCHES.find(m => m.id === matchId) ?? null
 }
 
 function ScoreFrequencyTable({ matchId }: { matchId: string }) {
@@ -101,10 +101,19 @@ function PredictionSummary({ matchId, homeLabel, awayLabel }: { matchId: string;
 
 export default function MatchPredictionsPage({ matchId = 'A1' }: { matchId?: string }) {
   const match = findMatch(matchId)
-  const home = TEAMS[match.homeTeam]
-  const away = TEAMS[match.awayTeam]
+  const home = match ? TEAMS[match.homeTeam] : null
+  const away = match ? TEAMS[match.awayTeam] : null
   const [homeScore, setHomeScore] = useState<Score>(null)
   const [awayScore, setAwayScore] = useState<Score>(null)
+
+  if (!match || !home || !away) {
+    return (
+      <>
+        <Nav />
+        <p style={{ textAlign: 'center', marginTop: '2rem' }}>משחק לא נמצא</p>
+      </>
+    )
+  }
 
   return (
     <>
