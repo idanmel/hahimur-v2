@@ -150,10 +150,22 @@ export default function MatchPredictionsPage({ matchId = 'A1' }: { matchId?: str
       <Nav />
 
       <div className="match-predictions">
-        <p className="match-predictions__heading">הניחושים</p>
-
+        <header className="section-heading" dir="rtl">
+          <span className="section-heading__eyebrow">ניחושים</span>
+          <h2 className="section-heading__title">סך הכל</h2>
+        </header>
         <PredictionSummary matchId={matchId} homeLabel={home.he} awayLabel={away.he} />
+
+        <header className="section-heading" dir="rtl">
+          <span className="section-heading__eyebrow">סטטיסטיקה</span>
+          <h2 className="section-heading__title">התפלגות תוצאות</h2>
+        </header>
         <ScoreFrequencyTable matchId={matchId} />
+
+        <header className="section-heading" dir="rtl">
+          <span className="section-heading__eyebrow">ניחושים</span>
+          <h2 className="section-heading__title">פירוט</h2>
+        </header>
 
         {USERS.length === 0 ? (
           <p className="match-predictions__empty">אין תחזיות למשחק זה</p>
