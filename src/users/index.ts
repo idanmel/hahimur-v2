@@ -19,3 +19,5 @@ export const USERS: User[] = [
   oren_laniado,
   tal_lichter,
 ]
+
+export const USERS_SORTED = [...USERS].sort((a, b) => a.label.localeCompare(b.label, 'he'))

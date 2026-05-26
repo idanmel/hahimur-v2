@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import FormView from '../../formView/FormView'
 import PageLayout from '../../shared/PageLayout'
-import { USERS } from '../../users/index'
+import { USERS, USERS_SORTED } from '../../users/index'
 
 export default function FormsPage() {
   const [selectedLabel, setSelectedLabel] = useState('')
@@ -44,7 +44,7 @@ export default function FormsPage() {
 
           {isOpen && (
             <div className="user-picker__menu" role="listbox" aria-label="בחר שחקן">
-              {[...USERS].sort((a, b) => a.label.localeCompare(b.label, 'he')).map(u => (
+              {USERS_SORTED.map(u => (
                 <button
                   key={u.label}
                   role="option"
