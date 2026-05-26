@@ -1,7 +1,7 @@
 import Nav from '../../Nav'
 import Countdown from '../../shared/Countdown'
 
-const FIRST_MATCH = new Date('2026-06-11T00:00:00')
+const FIRST_MATCH = new Date('2026-06-11T19:00:00Z')
 
 export default function HomePage() {
   return (
