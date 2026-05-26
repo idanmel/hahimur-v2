@@ -1,0 +1,187 @@
+/* ── Group Body ───────────────────────────────────────────── */
+
+.group-body {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.group-empty {
+  text-align: center;
+  color: var(--muted);
+  direction: rtl;
+  font-size: 0.9rem;
+  padding: 3rem 0;
+  letter-spacing: 0.04em;
+}
+
+/* ── Voting Matrix ────────────────────────────────────────── */
+
+.group-matrix {
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(11, 34, 68, 0.1);
+  animation: gm-appear 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes gm-appear {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Header row — RTL so teams column is on the right */
+.group-matrix__head,
+.group-matrix__row {
+  display: grid;
+  direction: rtl;
+  grid-template-columns: 1fr repeat(4, clamp(44px, 13vw, 58px));
+}
+
+.group-matrix__head {
+  background: var(--navy);
+  border-bottom: 2px solid rgba(212, 160, 22, 0.5);
+}
+
+.group-matrix__spacer { /* occupies the team name column in the header */ }
+
+.group-matrix__pos-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.65rem 0.3rem 0.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gm-pos-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.45rem;
+  line-height: 1;
+  color: rgba(239, 228, 184, 0.4);
+  letter-spacing: 0.04em;
+}
+
+.gm-pos--1 .gm-pos-num {
+  color: var(--gold);
+  text-shadow: 0 0 14px rgba(212, 160, 22, 0.45);
+}
+
+.gm-pos--2 .gm-pos-num { color: rgba(220, 218, 210, 0.7); }
+.gm-pos--3 .gm-pos-num { color: rgba(192, 122, 60, 0.65); }
+.gm-pos--4 .gm-pos-num { color: rgba(239, 228, 184, 0.22); }
+
+.gm-pos-lbl {
+  font-family: 'Heebo', sans-serif;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(239, 228, 184, 0.2);
+  direction: rtl;
+  margin-top: 2px;
+}
+
+/* ── Data Rows ────────────────────────────────────────────── */
+
+.group-matrix__row {
+  border-bottom: 1px solid rgba(200, 184, 122, 0.2);
+  opacity: 0;
+  animation: gm-row-in 0.38s ease forwards;
+  animation-delay: var(--row-delay, 0ms);
+}
+
+.group-matrix__row:last-child {
+  border-bottom: none;
+}
+
+@keyframes gm-row-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Team info cell */
+.group-matrix__team {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.8rem 0.85rem;
+  direction: rtl;
+  min-width: 0;
+}
+
+.gm-flag {
+  width: 24px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.gm-name {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Vote Cells ───────────────────────────────────────────── */
+
+.group-matrix__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid rgba(200, 184, 122, 0.18);
+  position: relative;
+  overflow: hidden;
+  min-height: 54px;
+}
+
+/* Fill rising from the bottom, proportional to vote count */
+.group-matrix__cell::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(11, 34, 68, 0.055);
+  animation: gm-fill 0.55s cubic-bezier(0.22, 1, 0.36, 1) var(--cell-delay, 0ms) both;
+}
+
+.gm-cell--top::before {
+  background: rgba(212, 160, 22, 0.15);
+}
+
+@keyframes gm-fill {
+  from { height: 0; }
+  to   { height: var(--fill, 0%); }
+}
+
+/* Gold bottom bar on top cell */
+.gm-cell--top::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(212, 160, 22, 0.55);
+}
+
+/* Vote count number */
+.gm-count {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.55rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: rgba(11, 34, 68, 0.32);
+  position: relative;
+  z-index: 1;
+}
+
+.gm-cell--top .gm-count {
+  color: var(--navy);
+  font-size: 1.85rem;
+}
