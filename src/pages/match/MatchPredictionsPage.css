@@ -34,6 +34,8 @@
   justify-content: center;
   gap: 0;
   direction: ltr;
+  max-width: 480px;
+  margin-inline: auto;
 }
 
 .match-header .match-team {
@@ -54,14 +56,16 @@
 
 .match-team__name {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-size: clamp(1rem, 3vw, 1.3rem);
   letter-spacing: 0.08em;
   color: var(--cream);
   line-height: 1;
+  min-height: 2em;
 }
 
 .match-header__vs {
   flex: 0 0 auto;
+  align-self: center;
   display: flex;
   flex-direction: row;
   align-items: center;
