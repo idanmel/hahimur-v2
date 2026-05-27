@@ -4,16 +4,13 @@ import HomePage from './pages/home/HomePage'
 import LeaderboardPage from './leaderboard/LeaderboardPage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
 import SimPage from './pages/sim/SimPage'
-import ResultsPage from './pages/results/ResultsPage'
 import StatsPage from './pages/stats/StatsPage'
 import GroupStatsPage from './pages/stats/group/GroupStatsPage'
 import type { GroupLetter } from './shared/groups'
 import { ALL_GROUP_LETTERS } from './shared/groups'
-import { prepareResultsData } from './pages/results/prepareResultsData'
+import { useUpdateCheck } from './shared/useUpdateCheck'
 
 const GROUP_STATS_RE = /^\/stats\/groups\/([a-l])$/
-import * as results from './results'
-import { useUpdateCheck } from './shared/useUpdateCheck'
 import UpdateBanner from './shared/UpdateBanner'
 
 const FIVE_MINUTES = 5 * 60 * 1000
@@ -33,8 +30,7 @@ export default function App() {
       {matchId                                            ? <MatchPredictionsPage matchId={matchId} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/leaderboard'                         ? <LeaderboardPage /> :
-       pathname === '/results'                            ? <ResultsPage data={prepareResultsData(results.predictions)} /> :
-       pathname === '/sim'                                ? <SimPage /> :
+       pathname === '/results'                            ? <SimPage /> :
        pathname === '/stats'                             ? <StatsPage /> :
        pathname === '/forms'                              ? <FormsPage /> :
        pathname === '/form'                               ? <FormPage /> :

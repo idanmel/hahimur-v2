@@ -78,7 +78,7 @@ export default function SimPage() {
   })).sort((a, b) => b.total - a.total)
 
   return (
-    <PageLayout title="סימולציה">
+    <PageLayout title="תוצאות">
       <div className="pg-page" dir="rtl">
 
         <div className="pg-toolbar">

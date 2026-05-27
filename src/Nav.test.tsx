@@ -10,13 +10,13 @@ test('regular user sees only home and form links', () => {
   expect(screen.queryByText('תוצאות')).not.toBeInTheDocument()
 })
 
-test('ליכטטור sees forms and results links in addition to regular links', () => {
+test('ליכטטור sees admin links in addition to regular links', () => {
   localStorage.setItem('userName', 'ליכטטור')
   render(<Nav />)
   expect(screen.getByText('בית')).toBeInTheDocument()
   expect(screen.getByText('הטופס')).toBeInTheDocument()
   expect(screen.getByText('טפסים')).toBeInTheDocument()
-  expect(screen.getByText('תוצאות')).toBeInTheDocument()
+  expect(screen.getByText('הטבלה')).toBeInTheDocument()
 })
 
 test('ליכטטור sees stats link', () => {
