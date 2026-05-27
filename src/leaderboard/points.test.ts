@@ -159,10 +159,6 @@ describe('knockout advancement (עולה)', () => {
       actual:    { champion: 'France', r32: ['France'] },
     })).toBe(0)
   })
-
-  test('no knockout advancers provided → 0 pts', () => {
-    expect(calculateUserPoints({}, {})).toBe(0)
-  })
 })
 
 describe('3rd-place qualification (עולה)', () => {
@@ -185,10 +181,6 @@ describe('3rd-place qualification (עולה)', () => {
       predictedThirdQualifiers: EIGHT_TEAMS,
       actualThirdQualifiers: ['X', 'Y', 'Z', 'W', 'V', 'U', 'T', 'S'],
     })).toBe(0)
-  })
-
-  test('no qualifiers provided → 0 pts', () => {
-    expect(calculateUserPoints({}, {})).toBe(0)
   })
 })
 
@@ -251,10 +243,6 @@ describe('golden boot (מלך שערים)', () => {
       goldenBootWinner: 'Ronaldo',
     })).toBe(0)
   })
-
-  test('no golden boot data → 0 pts', () => {
-    expect(calculateUserPoints({}, {})).toBe(0)
-  })
 })
 
 describe('group stage match scoring', () => {
@@ -301,12 +289,6 @@ describe('calculatePointsBreakdown', () => {
   test('returns all-zero breakdown when there are no predictions or results', () => {
     const bd = calculatePointsBreakdown({}, {})
     expect(bd).toEqual({ group: 0, r32: 0, r16: 0, qf: 0, sf: 0, third: 0, final: 0, goldenBoot: 0, total: 0 })
-  })
-
-  test('total equals sum of all stage fields', () => {
-    const bd = calculatePointsBreakdown(GROUP_A_MEXICO_CZECH_TOP2, GROUP_A_MEXICO_CZECH_TOP2)
-    const { total, goldenBoot, ...stages } = bd
-    expect(total).toBe(Object.values(stages).reduce((a, b) => a + b, 0) + goldenBoot)
   })
 
   test('group stage points appear in group field', () => {

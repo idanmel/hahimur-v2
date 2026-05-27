@@ -1,4 +1,4 @@
-import type { MatchScores, PredictionsState, KnockoutMatch } from '../shared/types'
+import { isUnpredicted, type MatchScores, type PredictionsState, type KnockoutMatch } from '../shared/types'
 import { isPlayerParticipatingInKOMatch, buildKnockoutBracket, getQualifiedThirdPlaceTeams } from '../formView/knockout/knockout'
 import { GROUPS } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
@@ -43,8 +43,8 @@ function isDraw(scores: MatchScores): boolean {
 }
 
 function singleMatchPoints(matchId: string, predicted: MatchScores, actual: MatchScores): number {
-  if (predicted.home === null || predicted.away === null) return 0
-  if (actual.home === null || actual.away === null) return 0
+  if (isUnpredicted(predicted)) return 0
+  if (isUnpredicted(actual)) return 0
   const { pagiya, tzelifa } = ROUND_POINTS[roundOf(matchId)]
   if (isExactMatch(predicted, actual)) return tzelifa
   if (isDraw(predicted) !== isDraw(actual)) return 0
@@ -57,7 +57,10 @@ function top2(groupId: string, predictions: PredictionsState): Set<string> {
   return new Set(standings.slice(0, 2).map(s => s.team))
 }
 
-// --- Exported interfaces ---
+function advPts(predicted: string[], actual: string[], pts: number): number {
+  const actualSet = new Set(actual)
+  return predicted.reduce((sum, t) => sum + (actualSet.has(t) ? pts : 0), 0)
+}
 
 export interface ThirdPlaceQualifiers {
   predictedThirdQualifiers: string[]
@@ -84,8 +87,6 @@ export interface GoldenBoot {
   goldenBootWinner: string
 }
 
-// --- Part functions ---
-
 export function calculateGroupMatchPoints(
   groupId: string,
   userPredictions: PredictionsState,
@@ -106,16 +107,18 @@ export function calculateGroupAdvancementPoints(
 ): number {
   const allPlayed = GROUPS[groupId].matches.every(m => {
     const r = results[m.id]
-    return r && r.home !== null && r.away !== null
+    return r && !isUnpredicted(r)
   })
   if (!allPlayed) return 0
-  const predictedTop2 = top2(groupId, userPredictions)
-  const actualTop2 = top2(groupId, results)
-  let pts = 0
-  for (const team of predictedTop2) {
-    if (actualTop2.has(team)) pts += 5
-  }
-  return pts
+  return advPts(Array.from(top2(groupId, userPredictions)), Array.from(top2(groupId, results)), 5)
+}
+
+function sumGroupPoints(userPredictions: PredictionsState, results: PredictionsState): number {
+  return Object.keys(GROUPS).reduce((total, groupId) => {
+    return total
+      + calculateGroupMatchPoints(groupId, userPredictions, results)
+      + calculateGroupAdvancementPoints(groupId, userPredictions, results)
+  }, 0)
 }
 
 export function calculateKnockoutMatchPoints(
@@ -155,22 +158,14 @@ export function calculateKnockoutAdvancementPoints(knockoutOleh: KnockoutOleh): 
     if (typeof pred === 'string') {
       if (pred === act) pts += pointsForRound
     } else {
-      const actualSet = new Set(act as string[])
-      for (const team of pred as string[]) {
-        if (actualSet.has(team)) pts += pointsForRound
-      }
+      pts += advPts(pred as string[], act as string[], pointsForRound)
     }
   }
   return pts
 }
 
 export function calculateThirdPlaceQualifierPoints(thirdPlace: ThirdPlaceQualifiers): number {
-  const actualSet = new Set(thirdPlace.actualThirdQualifiers)
-  let pts = 0
-  for (const team of thirdPlace.predictedThirdQualifiers) {
-    if (actualSet.has(team)) pts += 5
-  }
-  return pts
+  return advPts(thirdPlace.predictedThirdQualifiers, thirdPlace.actualThirdQualifiers, 5)
 }
 
 export function calculateGoldenBootPoints(goldenBoot: GoldenBoot): number {
@@ -179,8 +174,6 @@ export function calculateGoldenBootPoints(goldenBoot: GoldenBoot): number {
   if (goldenBoot.predictedPlayer === goldenBoot.goldenBootWinner) pts += 10
   return pts
 }
-
-// --- Breakdown ---
 
 export interface PointsBreakdown {
   group: number
@@ -205,23 +198,18 @@ function bracketWinner(matchId: string, bracket: KnockoutMatch[], predictions: P
   const m = bracket.find(b => b.matchNum === Number(matchId))
   if (!m || !m.home || !m.away) return undefined
   const pred = predictions[matchId]
-  if (!pred || pred.home === null || pred.away === null) return undefined
-  if (pred.home > pred.away) return m.home
-  if (pred.away > pred.home) return m.away
+  if (!pred || isUnpredicted(pred)) return undefined
+  if (pred.home! > pred.away!) return m.home
+  if (pred.away! > pred.home!) return m.away
   if (pred.drawWinner === 'home') return m.home
   if (pred.drawWinner === 'away') return m.away
   return undefined
 }
 
-function advPts(predicted: string[], actual: string[], pts: number): number {
-  const actualSet = new Set(actual)
-  return predicted.reduce((sum, t) => sum + (actualSet.has(t) ? pts : 0), 0)
-}
-
 function roundComplete(matchIds: string[], results: PredictionsState): boolean {
   return matchIds.every(id => {
     const r = results[id]
-    return r && r.home !== null && r.away !== null
+    return r && !isUnpredicted(r)
   })
 }
 
@@ -269,11 +257,7 @@ export function calculatePointsBreakdown(
     ? advPts(getQualifiedThirdPlaceTeams(userPredictions) ?? [], actualThirdQual, 5)
     : 0
 
-  const group = Object.keys(GROUPS).reduce((total, groupId) => {
-    return total
-      + calculateGroupMatchPoints(groupId, userPredictions, results)
-      + calculateGroupAdvancementPoints(groupId, userPredictions, results)
-  }, 0) + thirdPlaceQualPts
+  const group = sumGroupPoints(userPredictions, results) + thirdPlaceQualPts
   const r32 = calculateRoundMatchPoints(R32_IDS, userPredictions, results, participating)
             + (roundComplete(R32_IDS, results) ? advPts(teamsIn(userBracket, R16_IDS), teamsIn(actualBracket, R16_IDS), KNOCKOUT_OLEH_POINTS.r32) : 0)
   const r16 = calculateRoundMatchPoints(R16_IDS, userPredictions, results, participating)
@@ -282,18 +266,16 @@ export function calculatePointsBreakdown(
             + (roundComplete(QF_IDS, results) ? advPts(teamsIn(userBracket, SF_IDS), teamsIn(actualBracket, SF_IDS), KNOCKOUT_OLEH_POINTS.qf) : 0)
   const sf  = calculateRoundMatchPoints(SF_IDS, userPredictions, results, participating)
             + (roundComplete(SF_IDS, results) ? advPts(teamsIn(userBracket, FINAL_ID), teamsIn(actualBracket, FINAL_ID), KNOCKOUT_OLEH_POINTS.sf) : 0)
+  const thirdActualWinner = bracketWinner('103', actualBracket, results)
   const third = calculateRoundMatchPoints(THIRD_ID, userPredictions, results, participating)
-              + (bracketWinner('103', userBracket, userPredictions) === bracketWinner('103', actualBracket, results)
-                  && bracketWinner('103', actualBracket, results) !== undefined ? KNOCKOUT_OLEH_POINTS.thirdPlaceWinner : 0)
+              + (thirdActualWinner !== undefined && bracketWinner('103', userBracket, userPredictions) === thirdActualWinner ? KNOCKOUT_OLEH_POINTS.thirdPlaceWinner : 0)
+  const finalActualWinner = bracketWinner('104', actualBracket, results)
   const final_pts = calculateRoundMatchPoints(FINAL_ID, userPredictions, results, participating)
-                  + (bracketWinner('104', userBracket, userPredictions) === bracketWinner('104', actualBracket, results)
-                      && bracketWinner('104', actualBracket, results) !== undefined ? KNOCKOUT_OLEH_POINTS.champion : 0)
+                  + (finalActualWinner !== undefined && bracketWinner('104', userBracket, userPredictions) === finalActualWinner ? KNOCKOUT_OLEH_POINTS.champion : 0)
   const goldenBootPts = goldenBoot ? calculateGoldenBootPoints(goldenBoot) : 0
   const total = group + r32 + r16 + qf + sf + third + final_pts + goldenBootPts
   return { group, r32, r16, qf, sf, third, final: final_pts, goldenBoot: goldenBootPts, total }
 }
-
-// --- Main aggregator ---
 
 export function calculateUserPoints(
   userPredictions: PredictionsState,
@@ -302,13 +284,7 @@ export function calculateUserPoints(
   knockoutOleh?: KnockoutOleh,
   goldenBoot?: GoldenBoot,
 ): number {
-  const groupPts = Object.keys(GROUPS).reduce((total, groupId) => {
-    return total
-      + calculateGroupMatchPoints(groupId, userPredictions, results)
-      + calculateGroupAdvancementPoints(groupId, userPredictions, results)
-  }, 0)
-
-  return groupPts
+  return sumGroupPoints(userPredictions, results)
     + calculateKnockoutMatchPoints(userPredictions, results)
     + (knockoutOleh ? calculateKnockoutAdvancementPoints(knockoutOleh) : 0)
     + (thirdPlace   ? calculateThirdPlaceQualifierPoints(thirdPlace)   : 0)
