@@ -1,4 +1,5 @@
-import type { MatchScores, PredictionsState } from '../shared/types'
+import type { MatchScores, PredictionsState, KnockoutMatch } from '../shared/types'
+import { isPlayerParticipatingInKOMatch, buildKnockoutBracket } from '../formView/knockout/knockout'
 import { GROUPS } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
 
@@ -115,11 +116,22 @@ export function calculateGroupAdvancementPoints(
 export function calculateKnockoutMatchPoints(
   userPredictions: PredictionsState,
   results: PredictionsState,
+  userBracket?: KnockoutMatch[],
+  actualBracket?: KnockoutMatch[],
 ): number {
+  const userByNum   = userBracket   ? Object.fromEntries(userBracket.map(m   => [m.matchNum, m])) : null
+  const actualByNum = actualBracket ? Object.fromEntries(actualBracket.map(m => [m.matchNum, m])) : null
+
   return Object.entries(results).reduce((total, [matchId, actual]) => {
-    if (isNaN(Number(matchId))) return total
+    const matchNum = Number(matchId)
+    if (isNaN(matchNum)) return total
     const predicted = userPredictions[matchId]
     if (!predicted) return total
+    if (userByNum && actualByNum) {
+      const userMatch   = userByNum[matchNum]
+      const actualMatch = actualByNum[matchNum]
+      if (!userMatch || !actualMatch || !isPlayerParticipatingInKOMatch(actualMatch, userMatch)) return total
+    }
     return total + singleMatchPoints(matchId, predicted, actual)
   }, 0)
 }
@@ -181,8 +193,10 @@ function calculateRoundMatchPoints(
   matchIds: string[],
   userPredictions: PredictionsState,
   results: PredictionsState,
+  participating?: Set<number>,
 ): number {
   return matchIds.reduce((total, matchId) => {
+    if (participating && !participating.has(Number(matchId))) return total
     const predicted = userPredictions[matchId]
     const actual = results[matchId]
     if (!predicted || !actual) return total
@@ -202,17 +216,29 @@ export function calculatePointsBreakdown(
   results: PredictionsState,
   goldenBoot?: GoldenBoot,
 ): PointsBreakdown {
+  const userBracket   = buildKnockoutBracket(userPredictions)
+  const actualBracket = buildKnockoutBracket(results)
+  const actualByNum   = Object.fromEntries(actualBracket.map(m => [m.matchNum, m]))
+  const participating = new Set(
+    userBracket
+      .filter(userMatch => {
+        const actualMatch = actualByNum[userMatch.matchNum]
+        return actualMatch && isPlayerParticipatingInKOMatch(actualMatch, userMatch)
+      })
+      .map(m => m.matchNum)
+  )
+
   const group = Object.keys(GROUPS).reduce((total, groupId) => {
     return total
       + calculateGroupMatchPoints(groupId, userPredictions, results)
       + calculateGroupAdvancementPoints(groupId, userPredictions, results)
   }, 0)
-  const r32       = calculateRoundMatchPoints(R32_IDS,  userPredictions, results)
-  const r16       = calculateRoundMatchPoints(R16_IDS,  userPredictions, results)
-  const qf        = calculateRoundMatchPoints(QF_IDS,   userPredictions, results)
-  const sf        = calculateRoundMatchPoints(SF_IDS,   userPredictions, results)
-  const third     = calculateRoundMatchPoints(THIRD_ID, userPredictions, results)
-  const final_pts = calculateRoundMatchPoints(FINAL_ID, userPredictions, results)
+  const r32       = calculateRoundMatchPoints(R32_IDS,  userPredictions, results, participating)
+  const r16       = calculateRoundMatchPoints(R16_IDS,  userPredictions, results, participating)
+  const qf        = calculateRoundMatchPoints(QF_IDS,   userPredictions, results, participating)
+  const sf        = calculateRoundMatchPoints(SF_IDS,   userPredictions, results, participating)
+  const third     = calculateRoundMatchPoints(THIRD_ID, userPredictions, results, participating)
+  const final_pts = calculateRoundMatchPoints(FINAL_ID, userPredictions, results, participating)
   const goldenBootPts = goldenBoot ? calculateGoldenBootPoints(goldenBoot) : 0
   const total = group + r32 + r16 + qf + sf + third + final_pts + goldenBootPts
   return { group, r32, r16, qf, sf, third, final: final_pts, goldenBoot: goldenBootPts, total }

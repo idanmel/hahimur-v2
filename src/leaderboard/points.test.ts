@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import type { PredictionsState } from '../shared/types'
-import { calculateUserPoints } from './points'
+import type { PredictionsState, KnockoutMatch } from '../shared/types'
+import { calculateUserPoints, calculateKnockoutMatchPoints } from './points'
 
 const NO_RESULTS: PredictionsState = {}
 
@@ -288,5 +288,38 @@ describe('group stage match scoring', () => {
       A3: { home: 0, away: 1 },
     }
     expect(calculateUserPoints(predictions, results)).toBe(6)
+  })
+})
+
+describe('ko match participation', () => {
+  const bracket = (matchNum: number, home: string, away: string): KnockoutMatch => ({
+    matchNum, home, away, resolved: true,
+  })
+
+  test('user gets points when bracket has the same teams', () => {
+    const predictions: PredictionsState = { '101': { home: 2, away: 1 } }
+    const results: PredictionsState    = { '101': { home: 2, away: 1 } }
+    expect(calculateKnockoutMatchPoints(predictions, results, [bracket(101, 'Brazil', 'England')], [bracket(101, 'Brazil', 'England')])).toBe(16)
+  })
+
+  test('user gets 0 when bracket has different teams', () => {
+    const predictions: PredictionsState = { '101': { home: 2, away: 1 } }
+    const results: PredictionsState    = { '101': { home: 2, away: 1 } }
+    expect(calculateKnockoutMatchPoints(predictions, results, [bracket(101, 'France', 'Argentina')], [bracket(101, 'Brazil', 'England')])).toBe(0)
+  })
+
+  test('home/away order does not matter for participation', () => {
+    const predictions: PredictionsState = { '101': { home: 2, away: 1 } }
+    const results: PredictionsState    = { '101': { home: 2, away: 1 } }
+    expect(calculateKnockoutMatchPoints(predictions, results, [bracket(101, 'England', 'Brazil')], [bracket(101, 'Brazil', 'England')])).toBe(16)
+  })
+
+  test('only the non-participating match is skipped, others still score', () => {
+    const predictions: PredictionsState = { '101': { home: 2, away: 1 }, '102': { home: 1, away: 0 } }
+    const results: PredictionsState    = { '101': { home: 2, away: 1 }, '102': { home: 1, away: 0 } }
+    const userBracket   = [bracket(101, 'France', 'Argentina'), bracket(102, 'Germany', 'Spain')]
+    const actualBracket = [bracket(101, 'Brazil',  'England'),  bracket(102, 'Germany', 'Spain')]
+    // 101: no participation → 0; 102: participates, exact score → 16
+    expect(calculateKnockoutMatchPoints(predictions, results, userBracket, actualBracket)).toBe(16)
   })
 })

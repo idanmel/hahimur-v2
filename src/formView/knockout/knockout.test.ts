@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveKnockout, resolveRound32, clearUnresolvedKOScores } from './knockout'
+import { resolveKnockout, resolveRound32, clearUnresolvedKOScores, isPlayerParticipatingInKOMatch } from './knockout'
 import type { KnockoutMatch, ThirdPlaceQualification } from '../../shared/types'
 
 const unresolvedR32 = (matchNum: number): KnockoutMatch => ({
@@ -221,6 +221,35 @@ describe('resolveRound32', () => {
 
     const m73 = result.find(m => m.matchNum === 73)!
     expect(m73.resolved).toBe(true)
+  })
+})
+
+describe('isPlayerParticipatingInKOMatch', () => {
+  const resolved = (home: string, away: string): KnockoutMatch => ({
+    matchNum: 101, home, away, resolved: true,
+  })
+  const unresolved = (home: string, away: string): KnockoutMatch => ({
+    matchNum: 101, home, away, resolved: false,
+  })
+
+  it('returns true when user has same teams in same order', () => {
+    expect(isPlayerParticipatingInKOMatch(resolved('Brazil', 'England'), resolved('Brazil', 'England'))).toBe(true)
+  })
+
+  it('returns true when user has same teams in reversed order', () => {
+    expect(isPlayerParticipatingInKOMatch(resolved('Brazil', 'England'), resolved('England', 'Brazil'))).toBe(true)
+  })
+
+  it('returns false when user has different teams', () => {
+    expect(isPlayerParticipatingInKOMatch(resolved('Brazil', 'England'), resolved('France', 'England'))).toBe(false)
+  })
+
+  it('returns false when the actual match is unresolved', () => {
+    expect(isPlayerParticipatingInKOMatch(unresolved('Brazil', 'England'), resolved('Brazil', 'England'))).toBe(false)
+  })
+
+  it('returns false when the user match is unresolved', () => {
+    expect(isPlayerParticipatingInKOMatch(resolved('Brazil', 'England'), unresolved('Brazil', 'England'))).toBe(false)
   })
 })
 

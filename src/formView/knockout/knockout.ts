@@ -1,10 +1,11 @@
-import type { Standing, ThirdPlaceQualification, KnockoutMatch, MatchScores } from '../../shared/types'
+import type { Standing, ThirdPlaceQualification, KnockoutMatch, PredictionsState } from '../../shared/types'
 import { ALLOCATION_MATRIX } from './allocationMatrix'
-import { GROUP_HEBREW } from '../../shared/groups'
+import { GROUP_HEBREW, GROUP_MATCHES, ALL_GROUP_LETTERS } from '../../shared/groups'
+import { calculateStandings } from '../../shared/standings'
+import { getThirdPlaceTeams, qualifyBestThirdPlace } from '../thirdPlace/thirdPlace'
 
 type GroupData = { group: string; standings: Standing[]; allFilled: boolean }
 type Slot = { team: string; resolved: boolean }
-type PredictionsState = Record<string, MatchScores>
 
 export interface KnockoutStages {
   r16: KnockoutMatch[]
@@ -144,6 +145,15 @@ export function clearUnresolvedKOScores(
   return next
 }
 
+export function isPlayerParticipatingInKOMatch(
+  actualMatch: KnockoutMatch,
+  userMatch: KnockoutMatch,
+): boolean {
+  if (!actualMatch.resolved || !userMatch.resolved) return false
+  const actual = new Set([actualMatch.home, actualMatch.away])
+  return actual.has(userMatch.home) && actual.has(userMatch.away)
+}
+
 export function resolveKnockout(round32: KnockoutMatch[], predictions: PredictionsState): KnockoutStages {
   const byNum: Record<number, KnockoutMatch> = {}
   for (const m of round32) byNum[m.matchNum] = m
@@ -183,4 +193,20 @@ export function resolveKnockout(round32: KnockoutMatch[], predictions: Predictio
   const final      = mk(104, w(101), w(102))
 
   return { r16, qf, sf, thirdPlace, final }
+}
+
+export function buildKnockoutBracket(predictions: PredictionsState): KnockoutMatch[] {
+  const allGroupData = ALL_GROUP_LETTERS.map(letter => {
+    const matches = GROUP_MATCHES[letter] ?? []
+    const { standings } = calculateStandings(matches, predictions)
+    const allFilled = matches.length > 0 && matches.every(m => {
+      const s = predictions[m.id]
+      return s && s.home !== null && s.away !== null
+    })
+    return { group: letter as string, standings, allFilled }
+  })
+  const thirdPlaceQual = qualifyBestThirdPlace(getThirdPlaceTeams(allGroupData))
+  const round32 = resolveRound32(allGroupData, thirdPlaceQual)
+  const { r16, qf, sf, thirdPlace, final } = resolveKnockout(round32, predictions)
+  return [...round32, ...r16, ...qf, ...sf, thirdPlace, final]
 }
