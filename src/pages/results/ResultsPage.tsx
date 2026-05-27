@@ -160,6 +160,7 @@ export default function ResultsPage() {
                   match={match}
                   scores={editedResults[match.id] ?? { home: null, away: null }}
                   onChange={scores => updateMatch(match.id, scores)}
+                  href={`/matches/${match.id.toLowerCase()}`}
                 />
               ))}
             </div>

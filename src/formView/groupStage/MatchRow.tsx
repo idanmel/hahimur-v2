@@ -15,12 +15,13 @@ interface Props {
   scores: MatchScores
   onChange: (scores: MatchScores) => void
   readOnly?: boolean
+  href?: string
 }
 
-export default function MatchRow({ match, scores, onChange, readOnly = false }: Props) {
+export default function MatchRow({ match, scores, onChange, readOnly = false, href }: Props) {
   const set = (home: Score, away: Score) => onChange({ home, away })
-  const Card = readOnly ? 'a' : 'div'
-  const cardProps = readOnly ? { href: `/matches/${match.id.toLowerCase()}`, className: 'match-card' } : { className: 'match-card' }
+  const Card = href && readOnly ? 'a' : 'div'
+  const cardProps = href && readOnly ? { href, className: 'match-card' } : { className: 'match-card' }
   return (
     <Card {...cardProps}>
       {(match.matchDate || match.kickoffIST) && (
@@ -61,12 +62,17 @@ export default function MatchRow({ match, scores, onChange, readOnly = false }: 
         <span className="match-team-name">{TEAMS[match.awayTeam].he}</span>
         <span className={`fi fi-${TEAMS[match.awayTeam].iso} match-team-flag`} />
       </div>
-      {readOnly && (
+      {href && readOnly ? (
         <div className="match-card-hint" aria-hidden="true">
           <span className="match-card-hint__label">לפרטים</span>
           <span className="match-card-hint__chevron">›</span>
         </div>
-      )}
+      ) : href ? (
+        <a href={href} className="match-card-hint" onClick={e => e.stopPropagation()}>
+          <span className="match-card-hint__label">לפרטים</span>
+          <span className="match-card-hint__chevron">›</span>
+        </a>
+      ) : null}
     </Card>
   )
 }

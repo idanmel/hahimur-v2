@@ -419,8 +419,15 @@ a.match-card:active {
 }
 
 a.match-card:hover .match-card-hint__label,
-a.match-card:hover .match-card-hint__chevron {
+a.match-card:hover .match-card-hint__chevron,
+a.match-card-hint:hover .match-card-hint__label,
+a.match-card-hint:hover .match-card-hint__chevron {
   opacity: 1;
+}
+
+a.match-card-hint {
+  text-decoration: none;
+  cursor: pointer;
 }
 
 /* ── Match Meta (date / time) ───────────────────────────────── */
