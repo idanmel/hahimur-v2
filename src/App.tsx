@@ -5,6 +5,7 @@ import LeaderboardPage from './leaderboard/LeaderboardPage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
 import SimPage from './pages/sim/SimPage'
 import ResultsPage from './pages/results/ResultsPage'
+import StatsPage from './pages/stats/StatsPage'
 import { prepareResultsData } from './pages/results/prepareResultsData'
 import * as results from './results'
 import { useUpdateCheck } from './shared/useUpdateCheck'
@@ -26,6 +27,7 @@ export default function App() {
        pathname === '/leaderboard'                         ? <LeaderboardPage /> :
        pathname === '/results'                            ? <ResultsPage data={prepareResultsData(results.predictions)} /> :
        pathname === '/sim'                                ? <SimPage /> :
+       pathname === '/stats'                             ? <StatsPage /> :
        pathname === '/forms'                              ? <FormsPage /> :
        pathname === '/form'                               ? <FormPage /> :
        <HomePage />}

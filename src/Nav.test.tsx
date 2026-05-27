@@ -18,3 +18,14 @@ test('ליכטטור sees forms and results links in addition to regular links',
   expect(screen.getByText('טפסים')).toBeInTheDocument()
   expect(screen.getByText('תוצאות')).toBeInTheDocument()
 })
+
+test('ליכטטור sees stats link', () => {
+  localStorage.setItem('userName', 'ליכטטור')
+  render(<Nav />)
+  expect(screen.getByText('סטטיסטיקות')).toBeInTheDocument()
+})
+
+test('regular user does not see stats link', () => {
+  render(<Nav />)
+  expect(screen.queryByText('סטטיסטיקות')).not.toBeInTheDocument()
+})
