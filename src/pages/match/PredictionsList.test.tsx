@@ -41,3 +41,15 @@ test('sorts home wins before draws before away wins, unpredicted last', () => {
   const names = screen.getAllByText(/עידן|טל|אורן|מנחה/).map(el => el.textContent)
   expect(names).toEqual(['עידן', 'טל', 'אורן', 'מנחה'])
 })
+
+test('shows points when actualScore is provided', () => {
+  render(<PredictionsList matchId="M1" users={[u('עידן', 2, 1)]} actualScore={{ home: 2, away: 1 }} />)
+  const row = screen.getByText('עידן').closest('.prediction-row')!
+  expect(row.querySelector('.prediction-row__pts')?.textContent).toBe('4')
+})
+
+test('shows no points when actualScore is null', () => {
+  render(<PredictionsList matchId="M1" users={[u('עידן', 2, 1)]} actualScore={null} />)
+  const row = screen.getByText('עידן').closest('.prediction-row')!
+  expect(row.querySelector('.prediction-row__pts')).toBeNull()
+})

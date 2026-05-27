@@ -338,60 +338,179 @@
 
 /* ── Prediction Row ─────────────────────────────────────────── */
 
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes exact-sweep {
+  0%    { transform: translateX(250%) skewX(-18deg); opacity: 0; }
+  8%    { opacity: 1; }
+  18%   { transform: translateX(-250%) skewX(-18deg); opacity: 0; }
+  18.1%, 100% { transform: translateX(250%) skewX(-18deg); opacity: 0; }
+}
+
 .prediction-row {
   display: flex;
   align-items: center;
   background: var(--paper);
   border: 1.5px solid var(--border);
   border-radius: 4px;
-  padding: 0.9rem 1.25rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.45rem;
   direction: rtl;
+  position: relative;
+  overflow: hidden;
   opacity: 0;
-  animation: row-in 0.4s ease forwards;
+  animation: row-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes row-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── Outcome states ─────────────────────────────────────────── */
+
+.prediction-row--exact {
+  background: linear-gradient(90deg, rgba(212, 160, 22, 0.09) 0%, var(--paper) 42%);
+  box-shadow:
+    inset 4px 0 0 var(--gold),
+    0 3px 18px rgba(212, 160, 22, 0.2),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Diagonal shimmer sweep on exact rows */
+.prediction-row--exact::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(212, 160, 22, 0.12) 50%,
+    transparent 70%
+  );
+  animation: exact-sweep 7s ease-in-out 1.2s infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.prediction-row--partial {
+  background: linear-gradient(90deg, rgba(11, 34, 68, 0.06) 0%, var(--paper) 42%);
+  box-shadow: inset 4px 0 0 var(--navy);
+}
+
+.prediction-row--miss {
+  box-shadow: inset 4px 0 0 rgba(192, 39, 45, 0.55);
 }
 
 .prediction-row--unpredicted {
-  border-color: rgba(200, 184, 122, 0.4);
+  border: 1.5px dashed rgba(200, 184, 122, 0.45);
   background: rgba(251, 248, 236, 0.5);
 }
 
+/* ── Name ───────────────────────────────────────────────────── */
+
 .prediction-row__name {
   flex: 1;
-  font-size: 0.95rem;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.93rem;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: 0.01em;
+  padding: 0.8rem 1.1rem;
+  position: relative;
+  z-index: 1;
 }
 
-.prediction-row--unpredicted .prediction-row__name {
+.prediction-row--unpredicted .prediction-row__name,
+.prediction-row--miss .prediction-row__name {
   color: var(--muted);
 }
+
+/* ── Score ──────────────────────────────────────────────────── */
 
 .prediction-row__score {
   display: flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 0.3rem;
   direction: ltr;
+  padding: 0.55rem 0.8rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .prediction-row__digit {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 2rem;
+  font-size: 2.2rem;
   line-height: 1;
   color: var(--navy);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   min-width: 1.1ch;
   text-align: center;
 }
 
+.prediction-row--exact .prediction-row__digit {
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(212, 160, 22, 0.6);
+}
+
+.prediction-row--miss .prediction-row__digit,
 .prediction-row--unpredicted .prediction-row__digit {
-  color: var(--border);
+  color: rgba(200, 184, 122, 0.6);
+}
+
+/* ── Points area ────────────────────────────────────────────── */
+
+.prediction-row__pts-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.6rem;
+  padding: 0.55rem 0.75rem 0.55rem 0.6rem;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(200, 184, 122, 0.25);
+  position: relative;
+  z-index: 1;
+}
+
+.prediction-row__pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.9rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.prediction-row--exact .prediction-row__pts {
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(212, 160, 22, 0.55);
+}
+
+.prediction-row--partial .prediction-row__pts {
+  color: var(--navy);
+}
+
+.prediction-row--miss .prediction-row__pts {
+  color: rgba(122, 104, 69, 0.45);
+}
+
+.prediction-row__pts--na {
+  color: rgba(200, 184, 122, 0.45);
+  font-size: 1.4rem;
+}
+
+.prediction-row__pts-label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  opacity: 0.55;
+  margin-top: 1px;
+  line-height: 1;
+}
+
+.prediction-row--exact .prediction-row__pts-label {
+  color: var(--gold);
+  opacity: 0.65;
 }
 
 /* ── Score Frequency Table ─────────────────────────────────── */
@@ -509,8 +628,12 @@
 
 .prediction-row__sep {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.3rem;
-  color: var(--border);
+  font-size: 1.35rem;
+  color: rgba(200, 184, 122, 0.55);
   line-height: 1;
   padding-bottom: 2px;
+}
+
+.prediction-row--exact .prediction-row__sep {
+  color: rgba(212, 160, 22, 0.45);
 }

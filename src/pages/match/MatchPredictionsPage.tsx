@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import Nav from '../../Nav'
-import type { Match } from '../../shared/types'
+import type { Match, Score } from '../../shared/types'
 import type { User } from '../../users/index'
 import MatchHeader from './MatchHeader'
 import PredictionSummary from './PredictionSummary'
@@ -17,6 +18,9 @@ type Props = {
 }
 
 export default function MatchPredictionsPage({ match, home, away, users }: Props) {
+  const [homeScore, setHomeScore] = useState<Score>(null)
+  const [awayScore, setAwayScore] = useState<Score>(null)
+
   if (!match || !home || !away) {
     return (
       <>
@@ -28,7 +32,11 @@ export default function MatchPredictionsPage({ match, home, away, users }: Props
 
   return (
     <>
-      <MatchHeader match={match} home={home} away={away} />
+      <MatchHeader
+        match={match} home={home} away={away}
+        homeScore={homeScore} awayScore={awayScore}
+        onHomeScore={setHomeScore} onAwayScore={setAwayScore}
+      />
       <Nav />
 
       <div className="match-predictions">
@@ -48,7 +56,7 @@ export default function MatchPredictionsPage({ match, home, away, users }: Props
           <span className="section-heading__eyebrow">ניחושים</span>
           <h2 className="section-heading__title">פירוט</h2>
         </header>
-        <PredictionsList matchId={match.id} users={users} />
+        <PredictionsList matchId={match.id} users={users} actualScore={homeScore !== null && awayScore !== null ? { home: homeScore, away: awayScore } : null} />
       </div>
     </>
   )

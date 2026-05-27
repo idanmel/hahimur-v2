@@ -42,7 +42,7 @@ function isDraw(scores: MatchScores): boolean {
   return scores.home === scores.away
 }
 
-function singleMatchPoints(matchId: string, predicted: MatchScores, actual: MatchScores): number {
+export function singleMatchPoints(matchId: string, predicted: MatchScores, actual: MatchScores): number {
   if (isUnpredicted(predicted)) return 0
   if (isUnpredicted(actual)) return 0
   const { pagiya, tzelifa } = ROUND_POINTS[roundOf(matchId)]
