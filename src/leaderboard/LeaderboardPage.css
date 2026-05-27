@@ -1,0 +1,171 @@
+/* ── Leaderboard Page ─────────────────────────────────────── */
+
+.lb-page {
+  padding: 1.75rem 0 4rem;
+}
+
+.lb-scroll {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Table ── */
+
+.lb-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+/* ── Animations ── */
+
+@keyframes lb-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Header ── */
+
+.lb-table thead tr {
+  border-top: 3px solid var(--gold);
+}
+
+.lb-th {
+  background: var(--navy);
+  color: var(--cream);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11.5px;
+  letter-spacing: 0.24em;
+  font-weight: 400;
+  padding: 11px 10px;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(212, 160, 22, 0.15);
+}
+
+.lb-th--rank {
+  width: 44px;
+  padding-right: 14px;
+}
+
+.lb-th--name {
+  text-align: right;
+  padding-right: 14px;
+  min-width: 90px;
+}
+
+.lb-th--total {
+  color: var(--gold);
+  border-right: 1px solid rgba(212, 160, 22, 0.18);
+}
+
+/* ── Rows ── */
+
+.lb-row {
+  border-bottom: 1px solid rgba(200, 184, 122, 0.22);
+  animation: lb-row-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) var(--delay, 0ms) both;
+  transition: background 0.12s ease;
+}
+
+.lb-row:last-child {
+  border-bottom: none;
+}
+
+.lb-row:nth-child(even) td {
+  background: rgba(239, 228, 184, 0.28);
+}
+
+/* Leader row: gold accent stripe on right edge (RTL start) + warm wash */
+.lb-row--rank-1 td {
+  background: linear-gradient(to left, rgba(212, 160, 22, 0.08) 0%, transparent 70%);
+}
+
+.lb-row--rank-1 td:first-child {
+  box-shadow: inset -4px 0 0 var(--gold);
+}
+
+/* Silver/Bronze subtle left-side accent on their data cells */
+.lb-row--rank-2 td:first-child {
+  box-shadow: inset -3px 0 0 #9daabb;
+}
+
+.lb-row--rank-3 td:first-child {
+  box-shadow: inset -3px 0 0 #b8855a;
+}
+
+/* Hover */
+.lb-row:not(.lb-row--rank-1):hover td {
+  background: rgba(11, 34, 68, 0.04);
+}
+
+.lb-row--rank-1:hover td {
+  background: linear-gradient(to left, rgba(212, 160, 22, 0.13) 0%, rgba(212, 160, 22, 0.03) 70%);
+}
+
+/* ── Cells ── */
+
+.lb-td {
+  padding: 12px 10px;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Zero/dash cells are muted */
+.lb-td:not(.lb-td--rank):not(.lb-td--name):not(.lb-td--total) {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lb-td--rank {
+  padding-right: 14px;
+  font-size: 17px;
+  color: var(--muted);
+  width: 44px;
+}
+
+.lb-td--name {
+  text-align: right;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  padding-right: 14px;
+  white-space: nowrap;
+}
+
+.lb-td--total {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 0.04em;
+  border-right: 1px solid rgba(200, 184, 122, 0.22);
+}
+
+/* ── Rank-specific overrides ── */
+
+.lb-row--rank-1 .lb-td--rank   { font-size: 20px; }
+.lb-row--rank-1 .lb-td--name   { font-weight: 900; color: var(--ink); }
+.lb-row--rank-1 .lb-td--total  { color: var(--gold); font-size: 21px; }
+
+/* Actual point values in rank-1 row: slightly warmer */
+.lb-row--rank-1 .lb-td:not(.lb-td--rank):not(.lb-td--name):not(.lb-td--total) {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.lb-row--rank-2 .lb-td--total  { color: var(--ink); font-size: 18px; }
+.lb-row--rank-3 .lb-td--total  { color: var(--muted); }

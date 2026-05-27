@@ -1,6 +1,7 @@
 import FormPage from './pages/form/FormPage'
 import FormsPage from './pages/forms/FormsPage'
 import HomePage from './pages/home/HomePage'
+import LeaderboardPage from './leaderboard/LeaderboardPage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
 import ResultsPage from './pages/results/ResultsPage'
 import { prepareResultsData } from './pages/results/prepareResultsData'
@@ -21,6 +22,7 @@ export default function App() {
     <>
       <UpdateBanner updateAvailable={updateAvailable} />
       {matchId                                            ? <MatchPredictionsPage matchId={matchId} /> :
+       pathname === '/leaderboard'                         ? <LeaderboardPage /> :
        pathname === '/results'                            ? <ResultsPage data={prepareResultsData(results.predictions)} /> :
        pathname === '/forms'                              ? <FormsPage /> :
        pathname === '/form'                               ? <FormPage /> :

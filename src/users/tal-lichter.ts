@@ -119,5 +119,5 @@ export const predictions: PredictionsState = {
   '104': { home: 1, away: 2 },
 }
 
-export const topGoalscorer = 'וירץ (גרמניה)'
+export const topGoalscorer = 'פלוריאן וירץ'
 export const label = 'טל ליכטר'
