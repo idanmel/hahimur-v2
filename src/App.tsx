@@ -3,6 +3,7 @@ import FormsPage from './pages/forms/FormsPage'
 import HomePage from './pages/home/HomePage'
 import LeaderboardPage from './leaderboard/LeaderboardPage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
+import PlaygroundPage from './pages/playground/PlaygroundPage'
 import ResultsPage from './pages/results/ResultsPage'
 import { prepareResultsData } from './pages/results/prepareResultsData'
 import * as results from './results'
@@ -24,6 +25,7 @@ export default function App() {
       {matchId                                            ? <MatchPredictionsPage matchId={matchId} /> :
        pathname === '/leaderboard'                         ? <LeaderboardPage /> :
        pathname === '/results'                            ? <ResultsPage data={prepareResultsData(results.predictions)} /> :
+       pathname === '/playground'                         ? <PlaygroundPage /> :
        pathname === '/forms'                              ? <FormsPage /> :
        pathname === '/form'                               ? <FormPage /> :
        <HomePage />}

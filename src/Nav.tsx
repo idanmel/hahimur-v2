@@ -8,6 +8,7 @@ const ADMIN_LINKS = [
   { href: '/forms', label: 'טפסים' },
   { href: '/results', label: 'תוצאות' },
   { href: '/leaderboard', label: 'הטבלה' },
+  { href: '/playground', label: 'פלייגראונד' },
 ]
 
 const ADMIN_USERS = ['ליכטטור']
