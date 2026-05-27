@@ -1,5 +1,5 @@
 import type { MatchScores, PredictionsState, KnockoutMatch } from '../shared/types'
-import { isPlayerParticipatingInKOMatch, buildKnockoutBracket } from '../formView/knockout/knockout'
+import { isPlayerParticipatingInKOMatch, buildKnockoutBracket, getQualifiedThirdPlaceTeams } from '../formView/knockout/knockout'
 import { GROUPS } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
 
@@ -264,11 +264,16 @@ export function calculatePointsBreakdown(
       .map(m => m.matchNum)
   )
 
+  const actualThirdQual = getQualifiedThirdPlaceTeams(results)
+  const thirdPlaceQualPts = actualThirdQual
+    ? advPts(getQualifiedThirdPlaceTeams(userPredictions) ?? [], actualThirdQual, 5)
+    : 0
+
   const group = Object.keys(GROUPS).reduce((total, groupId) => {
     return total
       + calculateGroupMatchPoints(groupId, userPredictions, results)
       + calculateGroupAdvancementPoints(groupId, userPredictions, results)
-  }, 0)
+  }, 0) + thirdPlaceQualPts
   const r32 = calculateRoundMatchPoints(R32_IDS, userPredictions, results, participating)
             + (roundComplete(R32_IDS, results) ? advPts(teamsIn(userBracket, R16_IDS), teamsIn(actualBracket, R16_IDS), KNOCKOUT_OLEH_POINTS.r32) : 0)
   const r16 = calculateRoundMatchPoints(R16_IDS, userPredictions, results, participating)

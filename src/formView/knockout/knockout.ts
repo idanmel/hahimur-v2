@@ -210,3 +210,18 @@ export function buildKnockoutBracket(predictions: PredictionsState): KnockoutMat
   const { r16, qf, sf, thirdPlace, final } = resolveKnockout(round32, predictions)
   return [...round32, ...r16, ...qf, ...sf, thirdPlace, final]
 }
+
+export function getQualifiedThirdPlaceTeams(predictions: PredictionsState): string[] | null {
+  const allGroupData = ALL_GROUP_LETTERS.map(letter => {
+    const matches = GROUP_MATCHES[letter] ?? []
+    const { standings } = calculateStandings(matches, predictions)
+    const allFilled = matches.length > 0 && matches.every(m => {
+      const s = predictions[m.id]
+      return s && s.home !== null && s.away !== null
+    })
+    return { group: letter as string, standings, allFilled }
+  })
+  if (!allGroupData.every(g => g.allFilled)) return null
+  const qual = qualifyBestThirdPlace(getThirdPlaceTeams(allGroupData))
+  return qual.resolved ? qual.qualifiers.map(t => t.team) : null
+}
