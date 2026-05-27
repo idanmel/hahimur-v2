@@ -6,7 +6,7 @@ import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
 import { USERS_SORTED } from '../../users/index'
 import { calculatePointsBreakdown } from '../../leaderboard/points'
-import type { PointsBreakdown } from '../../leaderboard/points'
+import LeaderboardTable from '../../leaderboard/LeaderboardTable'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
@@ -22,8 +22,6 @@ const GROUP_MATCH_TEAMS: Record<string, { homeTeam: string; awayTeam: string }> 
 Object.values(GROUPS).forEach(group =>
   group.matches.forEach(m => { GROUP_MATCH_TEAMS[m.id] = { homeTeam: m.homeTeam, awayTeam: m.awayTeam } })
 )
-
-interface Row extends PointsBreakdown { label: string }
 
 export default function SimPage() {
   const [editedResults, setEditedResults] = useState<PredictionsState>({ ...results.predictions })
@@ -74,7 +72,7 @@ export default function SimPage() {
     if (cleaned !== editedResults) setEditedResults(cleaned)
   }, [round32Matches, knockout])
 
-  const rows: Row[] = USERS_SORTED.map(user => ({
+  const rows = USERS_SORTED.map(user => ({
     label: user.label,
     ...calculatePointsBreakdown(user.predictions, editedResults),
   })).sort((a, b) => b.total - a.total)
@@ -155,42 +153,7 @@ export default function SimPage() {
         </section>
 
         <div className="pg-lb-section">
-          <div className="lb-scroll">
-            <table className="lb-table">
-              <thead>
-                <tr>
-                  <th className="lb-th lb-th--rank">#</th>
-                  <th className="lb-th lb-th--name">מהמר</th>
-                  <th className="lb-th">בתים</th>
-                  <th className="lb-th">שלב 32</th>
-                  <th className="lb-th">שמינית</th>
-                  <th className="lb-th">רבע</th>
-                  <th className="lb-th">חצי</th>
-                  <th className="lb-th">ארד</th>
-                  <th className="lb-th">גמר</th>
-                  <th className="lb-th">מלך שערים</th>
-                  <th className="lb-th lb-th--total">סה"כ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={row.label} className="lb-row lb-row--other">
-                    <td className="lb-td lb-td--rank">{i + 1}</td>
-                    <td className="lb-td lb-td--name">{row.label}</td>
-                    <td className="lb-td">{row.group || '—'}</td>
-                    <td className="lb-td">{row.r32 || '—'}</td>
-                    <td className="lb-td">{row.r16 || '—'}</td>
-                    <td className="lb-td">{row.qf || '—'}</td>
-                    <td className="lb-td">{row.sf || '—'}</td>
-                    <td className="lb-td">{row.third || '—'}</td>
-                    <td className="lb-td">{row.final || '—'}</td>
-                    <td className="lb-td">{row.goldenBoot || '—'}</td>
-                    <td className="lb-td lb-td--total">{row.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LeaderboardTable rows={rows} />
         </div>
 
       </div>
