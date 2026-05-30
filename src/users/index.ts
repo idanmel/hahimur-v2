@@ -4,6 +4,7 @@ import * as eldad_levi from './eldad-levi'
 import * as elrad_gome from './elrad-gome'
 import * as idan_melamed from './idan-melamed'
 import * as oren_laniado from './oren-laniado'
+import * as roi_reisfeld from './roi-reisfeld'
 import * as tal_lichter from './tal-lichter'
 
 export interface User {
@@ -24,7 +25,7 @@ function derivePredictions(groupMatches: Record<string, GroupMatch[]>, knockoutS
       if (match.scores) result[match.id] = match.scores
     }
   }
-  const allKO = [...knockoutStages.r32, ...knockoutStages.r16, ...knockoutStages.qf, ...knockoutStages.sf, ...knockoutStages.thirdPlace, ...knockoutStages.final]
+  const allKO = (['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const).flatMap(k => knockoutStages[k])
   for (const match of allKO) {
     if (match.scores) result[String(match.matchNum)] = match.scores
   }
@@ -40,6 +41,7 @@ export const USERS: User[] = [
   toUser(elrad_gome),
   toUser(idan_melamed),
   toUser(oren_laniado),
+  toUser(roi_reisfeld),
   toUser(tal_lichter),
 ]
 

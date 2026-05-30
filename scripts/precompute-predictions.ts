@@ -15,18 +15,19 @@ if (!inputPath || !outputSlug) {
 }
 
 const raw = JSON.parse(readFileSync(resolve(inputPath), 'utf8'))
+if (!raw.predictions) {
+  console.error(`Error: JSON file has no top-level "predictions" key. Found keys: ${Object.keys(raw).join(', ')}`)
+  process.exit(1)
+}
 const predictions: PredictionsState = raw.predictions
 
 // --- compute ---
 
 const groupTables: Record<string, Standing[]> = {}
+const groupMatches: Record<string, GroupMatch[]> = {}
 for (const [letter, { matches }] of Object.entries(GROUPS)) {
   const { standings } = calculateStandings(matches, predictions)
   groupTables[letter] = standings
-}
-
-const groupMatches: Record<string, GroupMatch[]> = {}
-for (const [letter, { matches }] of Object.entries(GROUPS)) {
   groupMatches[letter] = matches.map(m => {
     const pred = predictions[m.id]
     const gm: GroupMatch = { ...m }
@@ -95,34 +96,9 @@ function serializeKOMatch(m: KnockoutMatch): string {
 // --- build file ---
 
 const lines: string[] = [
-  `import type { PredictionsState, Standing, ThirdPlaceStanding, ThirdPlaceQualification, KnockoutMatch, KnockoutStages, GroupMatch } from '../shared/types'`,
+  `import type { Standing, ThirdPlaceStanding, ThirdPlaceQualification, KnockoutMatch, KnockoutStages, GroupMatch } from '../shared/types'`,
   ``,
-  `export const predictions: PredictionsState = {`,
 ]
-
-const koIds = [
-  ...Array.from({ length: 16 }, (_, i) => String(73 + i)),
-  ...Array.from({ length: 8 },  (_, i) => String(89 + i)),
-  ...Array.from({ length: 4 },  (_, i) => String(97 + i)),
-  '101', '102', '103', '104',
-]
-
-for (const [, { matches }] of Object.entries(GROUPS)) {
-  for (const { id } of matches) {
-    const s = predictions[id]
-    if (!s) throw new Error(`Missing prediction for group match ${id}`)
-    lines.push(`  ${id}: { home: ${s.home}, away: ${s.away} },`)
-  }
-  lines.push(``)
-}
-for (const id of koIds) {
-  const s = predictions[id]
-  if (!s) throw new Error(`Missing prediction for knockout match ${id}`)
-  const parts = [`home: ${s.home}, away: ${s.away}`]
-  if (s.drawWinner) parts.push(`drawWinner: '${s.drawWinner}'`)
-  lines.push(`  '${id}': { ${parts.join(', ')} },`)
-}
-lines.push(`}`, ``)
 
 lines.push(`export const topGoalscorer = '${raw.topGoalscorer ?? ''}'`)
 lines.push(`export const label = '${userName ?? ''}'`)
@@ -177,24 +153,11 @@ function serializeKOStage(matches: KnockoutMatch[]): string[] {
 }
 
 lines.push(`export const knockoutStages: KnockoutStages = {`)
-lines.push(`  r32: [`)
-lines.push(...serializeKOStage(knockoutStages.r32))
-lines.push(`  ],`)
-lines.push(`  r16: [`)
-lines.push(...serializeKOStage(knockoutStages.r16))
-lines.push(`  ],`)
-lines.push(`  qf: [`)
-lines.push(...serializeKOStage(knockoutStages.qf))
-lines.push(`  ],`)
-lines.push(`  sf: [`)
-lines.push(...serializeKOStage(knockoutStages.sf))
-lines.push(`  ],`)
-lines.push(`  thirdPlace: [`)
-lines.push(...serializeKOStage(knockoutStages.thirdPlace))
-lines.push(`  ],`)
-lines.push(`  final: [`)
-lines.push(...serializeKOStage(knockoutStages.final))
-lines.push(`  ],`)
+for (const key of ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const) {
+  lines.push(`  ${key}: [`)
+  lines.push(...serializeKOStage(knockoutStages[key]))
+  lines.push(`  ],`)
+}
 lines.push(`}`, ``)
 
 if (predictedChampion !== undefined) lines.push(`export const predictedChampion = '${predictedChampion}'`)
