@@ -3,7 +3,7 @@ import ScoreFrequencyTable from './ScoreFrequencyTable'
 import type { User } from '../../users/index'
 
 function u(label: string, home: number | null, away: number | null): User {
-  return { label, predictions: { M1: { home, away } }, topGoalscorer: '', groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutBracket: [] }
+  return { label, predictions: { M1: { home, away } }, topGoalscorer: '', groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] } }
 }
 
 test('renders nothing when no users', () => {

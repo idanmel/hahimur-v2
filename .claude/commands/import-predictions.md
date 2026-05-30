@@ -13,14 +13,18 @@ You need three values:
 
 If any are missing, ask the user before continuing.
 
-### 2. Run the import script
+### 2. Run the precompute script in import mode
 
 ```bash
-node --experimental-strip-types scripts/import-predictions.ts <input-json> <output-slug> "<name>"
+node --experimental-strip-types scripts/precompute-predictions.ts <input-json> <output-slug> "<name>"
 ```
 
-This writes `src/users/<output-slug>.ts` and regenerates `src/users/index.ts`.
+This creates `src/users/<output-slug>.ts` with predictions and all precomputed data in one step.
 
-### 3. Report
+### 3. Add the user to the index
+
+Open `src/users/index.ts` and add an import and entry for the new user (follow the existing pattern).
+
+### 4. Report
 
 Confirm which files were written.

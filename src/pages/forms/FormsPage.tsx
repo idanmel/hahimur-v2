@@ -71,7 +71,7 @@ export default function FormsPage({ users, usersSorted }: Props) {
               topGoalscorer={selected.topGoalscorer}
               groupTables={selected.groupTables}
               thirdPlaceQualification={selected.thirdPlaceQualification}
-              knockoutBracket={selected.knockoutBracket}
+              knockoutStages={selected.knockoutStages}
               predictedChampion={selected.predictedChampion}
             />
           </section>

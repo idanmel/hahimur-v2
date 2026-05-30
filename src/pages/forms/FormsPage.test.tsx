@@ -6,9 +6,9 @@ import type { User } from '../../users/index'
 vi.mock('../../Nav', () => ({ default: () => null }))
 
 const USERS: User[] = [
-  { label: 'טל ליכטר',  predictions: {}, topGoalscorer: 'מבאפה', groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutBracket: [] },
-  { label: 'עידן מלמד', predictions: {}, topGoalscorer: 'מסי',   groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutBracket: [] },
-  { label: 'אלרד גומא', predictions: {}, topGoalscorer: '',      groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutBracket: [] },
+  { label: 'טל ליכטר',  predictions: {}, topGoalscorer: 'מבאפה', groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] } },
+  { label: 'עידן מלמד', predictions: {}, topGoalscorer: 'מסי',   groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] } },
+  { label: 'אלרד גומא', predictions: {}, topGoalscorer: '',      groupMatches: {}, groupTables: {}, thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] }, knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] } },
 ]
 const USERS_SORTED = [...USERS].sort((a, b) => a.label.localeCompare(b.label, 'he'))
 

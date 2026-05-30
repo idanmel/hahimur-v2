@@ -1,11 +1,11 @@
 import { computeGroupVotes } from './groupVotes'
 import type { User } from '../../users'
 
-const BASE: Pick<User, 'groupMatches' | 'groupTables' | 'thirdPlaceQualification' | 'knockoutBracket'> = {
+const BASE: Pick<User, 'groupMatches' | 'groupTables' | 'thirdPlaceQualification' | 'knockoutStages'> = {
   groupMatches: {},
   groupTables: {},
   thirdPlaceQualification: { resolved: true, all: [], qualifiers: [] },
-  knockoutBracket: [],
+  knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] },
 }
 
 const southAfricaFirst: User = {

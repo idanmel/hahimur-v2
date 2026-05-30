@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { PredictionsState, Standing, ThirdPlaceQualification, KnockoutMatch } from '../shared/types'
+import type { PredictionsState, Standing, ThirdPlaceQualification, KnockoutStages } from '../shared/types'
 import { GROUP_MATCHES, GROUP_HEBREW, ALL_GROUP_LETTERS, type GroupLetter } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
 import { useTournament } from '../shared/useTournament'
@@ -14,7 +14,7 @@ interface Props {
   topGoalscorer: string
   groupTables?: Record<string, Standing[]>
   thirdPlaceQualification?: ThirdPlaceQualification
-  knockoutBracket?: KnockoutMatch[]
+  knockoutStages?: KnockoutStages
   predictedChampion?: string
 }
 
@@ -25,7 +25,7 @@ export default function FormView({
   topGoalscorer,
   groupTables,
   thirdPlaceQualification,
-  knockoutBracket,
+  knockoutStages,
   predictedChampion,
 }: Props) {
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
@@ -42,12 +42,12 @@ export default function FormView({
   const allGroupsFilled = thirdPlaceQualification != null ? true : tournament.allGroupsFilled
   const finalWinner = predictedChampion ?? tournament.finalWinner
 
-  const r32   = knockoutBracket?.filter(m => m.matchNum >= 73  && m.matchNum <= 88)  ?? tournament.round32Matches
-  const r16   = knockoutBracket?.filter(m => m.matchNum >= 89  && m.matchNum <= 96)  ?? tournament.knockout.r16
-  const qf    = knockoutBracket?.filter(m => m.matchNum >= 97  && m.matchNum <= 100) ?? tournament.knockout.qf
-  const sf    = knockoutBracket?.filter(m => m.matchNum >= 101 && m.matchNum <= 102) ?? tournament.knockout.sf
-  const third = knockoutBracket?.filter(m => m.matchNum === 103) ?? [tournament.knockout.thirdPlace]
-  const fin   = knockoutBracket?.filter(m => m.matchNum === 104) ?? [tournament.knockout.final]
+  const r32   = knockoutStages?.r32        ?? tournament.round32Matches
+  const r16   = knockoutStages?.r16        ?? tournament.knockout.r16
+  const qf    = knockoutStages?.qf         ?? tournament.knockout.qf
+  const sf    = knockoutStages?.sf         ?? tournament.knockout.sf
+  const third = knockoutStages?.thirdPlace ?? [tournament.knockout.thirdPlace]
+  const fin   = knockoutStages?.final      ?? [tournament.knockout.final]
 
   return (
     <>

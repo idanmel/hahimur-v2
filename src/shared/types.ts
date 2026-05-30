@@ -47,6 +47,15 @@ export interface KnockoutMatch {
   kickoffIST?: string
 }
 
+export interface KnockoutStages {
+  r32: KnockoutMatch[]
+  r16: KnockoutMatch[]
+  qf: KnockoutMatch[]
+  sf: KnockoutMatch[]
+  thirdPlace: KnockoutMatch[]
+  final: KnockoutMatch[]
+}
+
 export type PredictionsState = Record<string, MatchScores>
 
 export function isUnpredicted(scores: MatchScores): boolean {
