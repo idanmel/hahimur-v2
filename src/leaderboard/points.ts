@@ -63,7 +63,6 @@ const KNOCKOUT_OLEH_POINTS: Record<'r32' | 'r16' | 'qf' | 'sf' | 'thirdPlaceWinn
 export interface GroupBreakdown {
   matchPoints: number
   advancementPoints: number
-  thirdPlaceQualification: number
   total: number
 }
 
@@ -131,8 +130,16 @@ function roundReady(matches: KnockoutMatch[]): boolean {
 
 export function computeGroupBreakdown(user: User, results: TournamentResults): GroupBreakdown {
   let matchPoints = 0
-  let advancementPoints = 0
 
+  const userR32Set = new Set<string>()
+  for (const groupId of Object.keys(user.groupTables)) {
+    (user.groupTables[groupId] ?? []).slice(0, 2).forEach(s => userR32Set.add(s.team))
+  }
+  if (user.thirdPlaceQualification.resolved) {
+    user.thirdPlaceQualification.qualifiers.forEach(t => userR32Set.add(t.team))
+  }
+
+  const actualR32Set = new Set<string>()
   const allGroupIds = new Set([...Object.keys(user.groupMatches), ...Object.keys(user.groupTables)])
   for (const groupId of allGroupIds) {
     const userMatches   = user.groupMatches[groupId]  ?? []
@@ -146,21 +153,19 @@ export function computeGroupBreakdown(user: User, results: TournamentResults): G
     const actualTable = results.groupTables[groupId]
     const groupComplete = actualTable?.length >= 2 && actualTable.every(s => s.played === actualTable.length - 1)
     if (groupComplete) {
-      const userTop2   = (user.groupTables[groupId] ?? []).slice(0, 2).map(s => s.team)
-      const actualTop2 = actualTable.slice(0, 2).map(s => s.team)
-      advancementPoints += advPts(userTop2, actualTop2, 5)
+      actualTable.slice(0, 2).forEach(s => actualR32Set.add(s.team))
     }
   }
-
-  let thirdPlaceQualification = 0
-  if (user.thirdPlaceQualification.resolved && results.thirdPlaceQualification.resolved) {
-    const userQual   = user.thirdPlaceQualification.qualifiers.map(t => t.team)
-    const actualQual = results.thirdPlaceQualification.qualifiers.map(t => t.team)
-    thirdPlaceQualification = advPts(userQual, actualQual, 5)
+  if (results.thirdPlaceQualification.resolved) {
+    results.thirdPlaceQualification.qualifiers.forEach(t => actualR32Set.add(t.team))
   }
 
-  const total = matchPoints + advancementPoints + thirdPlaceQualification
-  return { matchPoints, advancementPoints, thirdPlaceQualification, total }
+  let advancementPoints = 0
+  for (const team of userR32Set) {
+    if (actualR32Set.has(team)) advancementPoints += 5
+  }
+
+  return { matchPoints, advancementPoints, total: matchPoints + advancementPoints }
 }
 
 export function computeRoundBreakdown(

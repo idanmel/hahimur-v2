@@ -26,7 +26,7 @@ function makeUser(overrides: Partial<User> = {}): User {
 test('returns all-zero breakdown with empty results', () => {
   const user = makeUser({ groupMatches: { A: [{ id: 'A1', homeTeam: 'X', awayTeam: 'Y', scores: { home: 2, away: 1 } }] } })
   expect(computeUserPoints(user, EMPTY_RESULTS)).toEqual({
-    group:      { matchPoints: 0, advancementPoints: 0, thirdPlaceQualification: 0, total: 0 },
+    group:      { matchPoints: 0, advancementPoints: 0, total: 0 },
     r32:        { matchPoints: 0, advancementPoints: 0, total: 0 },
     r16:        { matchPoints: 0, advancementPoints: 0, total: 0 },
     qf:         { matchPoints: 0, advancementPoints: 0, total: 0 },
@@ -73,81 +73,69 @@ describe('group match points', () => {
   })
 })
 
-describe('group top-2 advancement', () => {
+const grpRow = (team: string, played: number, won: number, drawn: number, lost: number, gf: number, ga: number, pts: number) =>
+  ({ team, played, won, drawn, lost, goalsFor: gf, goalsAgainst: ga, points: pts })
+
+describe('R32 qualification points', () => {
   test('both top-2 teams correct → 10 pts', () => {
     const user = makeUser({
       groupTables: { A: [
-        { team: 'Brazil', played: 3, won: 3, drawn: 0, lost: 0, goalsFor: 6, goalsAgainst: 0, points: 9 },
-        { team: 'France', played: 3, won: 2, drawn: 0, lost: 1, goalsFor: 4, goalsAgainst: 2, points: 6 },
-        { team: 'Germany', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3 },
-        { team: 'Spain', played: 3, won: 0, drawn: 0, lost: 3, goalsFor: 0, goalsAgainst: 6, points: 0 },
+        grpRow('Brazil',  3, 3, 0, 0, 6, 0, 9),
+        grpRow('France',  3, 2, 0, 1, 4, 2, 6),
+        grpRow('Germany', 3, 1, 0, 2, 2, 4, 3),
+        grpRow('Spain',   3, 0, 0, 3, 0, 6, 0),
       ]},
     })
     const results: TournamentResults = {
       ...EMPTY_RESULTS,
       groupTables: { A: [
-        { team: 'Brazil', played: 3, won: 3, drawn: 0, lost: 0, goalsFor: 6, goalsAgainst: 0, points: 9 },
-        { team: 'France', played: 3, won: 2, drawn: 0, lost: 1, goalsFor: 4, goalsAgainst: 2, points: 6 },
-        { team: 'Germany', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3 },
-        { team: 'Spain', played: 3, won: 0, drawn: 0, lost: 3, goalsFor: 0, goalsAgainst: 6, points: 0 },
+        grpRow('Brazil',  3, 3, 0, 0, 6, 0, 9),
+        grpRow('France',  3, 2, 0, 1, 4, 2, 6),
+        grpRow('Germany', 3, 1, 0, 2, 2, 4, 3),
+        grpRow('Spain',   3, 0, 0, 3, 0, 6, 0),
       ]},
     }
-    expect(computeUserPoints(user, results).group.total).toBe(10)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(10)
   })
 
   test('one top-2 team correct → 5 pts', () => {
     const user = makeUser({
       groupTables: { A: [
-        { team: 'Brazil', played: 3, won: 3, drawn: 0, lost: 0, goalsFor: 6, goalsAgainst: 0, points: 9 },
-        { team: 'France', played: 3, won: 2, drawn: 0, lost: 1, goalsFor: 4, goalsAgainst: 2, points: 6 },
-        { team: 'Germany', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3 },
-        { team: 'Spain', played: 3, won: 0, drawn: 0, lost: 3, goalsFor: 0, goalsAgainst: 6, points: 0 },
+        grpRow('Brazil',  3, 3, 0, 0, 6, 0, 9),
+        grpRow('France',  3, 2, 0, 1, 4, 2, 6),
+        grpRow('Germany', 3, 1, 0, 2, 2, 4, 3),
+        grpRow('Spain',   3, 0, 0, 3, 0, 6, 0),
       ]},
     })
     const results: TournamentResults = {
       ...EMPTY_RESULTS,
       groupTables: { A: [
-        { team: 'Brazil', played: 3, won: 3, drawn: 0, lost: 0, goalsFor: 6, goalsAgainst: 0, points: 9 },
-        { team: 'Germany', played: 3, won: 2, drawn: 0, lost: 1, goalsFor: 4, goalsAgainst: 2, points: 6 },
-        { team: 'France', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3 },
-        { team: 'Spain', played: 3, won: 0, drawn: 0, lost: 3, goalsFor: 0, goalsAgainst: 6, points: 0 },
+        grpRow('Brazil',  3, 3, 0, 0, 6, 0, 9),
+        grpRow('Germany', 3, 2, 0, 1, 4, 2, 6),
+        grpRow('France',  3, 1, 0, 2, 2, 4, 3),
+        grpRow('Spain',   3, 0, 0, 3, 0, 6, 0),
       ]},
     }
-    expect(computeUserPoints(user, results).group.total).toBe(5)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(5)
   })
 
-  test('no advancement points when group table not in results', () => {
-    const user = makeUser({
-      groupTables: { A: [
-        { team: 'Brazil', played: 3, won: 3, drawn: 0, lost: 0, goalsFor: 6, goalsAgainst: 0, points: 9 },
-        { team: 'France', played: 3, won: 2, drawn: 0, lost: 1, goalsFor: 4, goalsAgainst: 2, points: 6 },
-      ]},
+  test('predicted top-2, team qualified via third place → 5 pts', () => {
+    const s = (team: string, pos: number) => ({
+      team, played: 3, won: 3 - pos, drawn: 0, lost: pos, goalsFor: 6 - pos * 2, goalsAgainst: pos * 2, points: 9 - pos * 3, group: 'A',
     })
-    expect(computeUserPoints(user, EMPTY_RESULTS).group.total).toBe(0)
-  })
-
-  test('no advancement points when group table has unplayed standings (all played=0)', () => {
     const user = makeUser({
-      groupTables: { A: [
-        { team: 'Brazil', played: 3, won: 3, drawn: 0, lost: 0, goalsFor: 6, goalsAgainst: 0, points: 9 },
-        { team: 'France', played: 3, won: 2, drawn: 0, lost: 1, goalsFor: 4, goalsAgainst: 2, points: 6 },
-      ]},
+      groupTables: { A: [s('Brazil', 0), s('France', 1), s('Germany', 2), s('Spain', 3)] },
     })
     const results: TournamentResults = {
       ...EMPTY_RESULTS,
-      groupTables: { A: [
-        { team: 'Brazil', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 },
-        { team: 'France', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 },
-        { team: 'Germany', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 },
-        { team: 'Spain', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 },
-      ]},
+      groupTables: { A: [s('France', 0), s('Germany', 1), s('Brazil', 2), s('Spain', 3)] },
+      thirdPlaceQualification: { resolved: true, all: [s('Brazil', 2)], qualifiers: [s('Brazil', 2)] },
     }
-    expect(computeUserPoints(user, results).group.total).toBe(0)
+    // France: predicted top-2, finished top-2 (+5); Brazil: predicted top-2, qualified via third place (+5)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(10)
   })
-})
 
-describe('third-place qualification', () => {
-  test('all 8 qualifiers correct → 40 pts', () => {
+  test('all 8 third-place qualifiers correct → 40 pts', () => {
     const teams = ['T1','T2','T3','T4','T5','T6','T7','T8'].map(team => ({
       team, played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3, group: 'A',
     }))
@@ -158,18 +146,42 @@ describe('third-place qualification', () => {
       ...EMPTY_RESULTS,
       thirdPlaceQualification: { resolved: true, all: teams, qualifiers: teams },
     }
-    expect(computeUserPoints(user, results).group.total).toBe(40)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(40)
   })
 
-  test('no qualifier points when results not resolved', () => {
+  test('no points when group table not in results', () => {
+    const user = makeUser({
+      groupTables: { A: [grpRow('Brazil', 3, 3, 0, 0, 6, 0, 9), grpRow('France', 3, 2, 0, 1, 4, 2, 6)] },
+    })
+    expect(computeUserPoints(user, EMPTY_RESULTS).group.advancementPoints).toBe(0)
+  })
+
+  test('no points when group not yet complete (played=0)', () => {
+    const user = makeUser({
+      groupTables: { A: [grpRow('Brazil', 3, 3, 0, 0, 6, 0, 9), grpRow('France', 3, 2, 0, 1, 4, 2, 6)] },
+    })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: [
+        grpRow('Brazil', 0, 0, 0, 0, 0, 0, 0),
+        grpRow('France', 0, 0, 0, 0, 0, 0, 0),
+        grpRow('Germany', 0, 0, 0, 0, 0, 0, 0),
+        grpRow('Spain', 0, 0, 0, 0, 0, 0, 0),
+      ]},
+    }
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(0)
+  })
+
+  test('no points for third-place qualifier when results not resolved', () => {
     const teams = ['T1','T2'].map(team => ({
       team, played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3, group: 'A',
     }))
     const user = makeUser({
       thirdPlaceQualification: { resolved: true, all: teams, qualifiers: teams },
     })
-    expect(computeUserPoints(user, EMPTY_RESULTS).group.total).toBe(0)
+    expect(computeUserPoints(user, EMPTY_RESULTS).group.advancementPoints).toBe(0)
   })
+
 })
 
 describe('knockout match points', () => {
