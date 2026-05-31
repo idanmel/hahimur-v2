@@ -122,6 +122,12 @@ export default function FormPage() {
       allGroupData.map(({ group, standings }) => [group, standings])
     )
 
+    const withScores = (matches: KnockoutMatch[]) =>
+      matches.map(m => {
+        const pred = predictions[String(m.matchNum)]
+        return pred && (pred.home !== null || pred.away !== null) ? { ...m, scores: pred } : m
+      })
+
     const resolvedTeams = (matches: KnockoutMatch[]) =>
       matches.filter(m => m.resolved).flatMap(m => [m.home, m.away])
 
@@ -142,12 +148,12 @@ export default function FormPage() {
       groupTables,
       thirdPlaceQualification: thirdPlaceQual,
       knockoutStages: {
-        r32: round32Matches,
-        r16: knockout.r16,
-        qf: knockout.qf,
-        sf: knockout.sf,
-        thirdPlace: [knockout.thirdPlace],
-        final: [knockout.final],
+        r32: withScores(round32Matches),
+        r16: withScores(knockout.r16),
+        qf: withScores(knockout.qf),
+        sf: withScores(knockout.sf),
+        thirdPlace: withScores([knockout.thirdPlace]),
+        final: withScores([knockout.final]),
       },
       ...(finalWinner && { predictedChampion: finalWinner }),
       ...(predictedThirdPlaceWinner && { predictedThirdPlaceWinner }),

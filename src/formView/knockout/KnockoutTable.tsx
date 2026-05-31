@@ -23,7 +23,7 @@ export default function KnockoutTable({ matches, predictions, onChange, readOnly
     <div className="ko-grid">
       {matches.map(m => {
         const id = String(m.matchNum)
-        const pred = m.resolved ? (m.scores ?? predictions[id] ?? { home: null, away: null }) : { home: null, away: null }
+        const pred = (readOnly || m.resolved) ? (m.scores ?? predictions[id] ?? { home: null, away: null }) : { home: null, away: null }
         const isDraw = m.resolved && pred.home !== null && pred.away !== null && pred.home === pred.away
         const needsDrawWinner = isDraw && !pred.drawWinner
         return (
