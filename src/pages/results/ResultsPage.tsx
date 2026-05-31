@@ -12,7 +12,7 @@ import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
-import * as results from '../../results'
+import { tournamentResults as realTournamentResults } from '../../tournament-results'
 import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
 import '../../pages/form/FormPage.css'
@@ -22,6 +22,27 @@ const GROUP_MATCH_TEAMS: Record<string, { homeTeam: string; awayTeam: string }> 
 Object.values(GROUPS).forEach(group =>
   group.matches.forEach(m => { GROUP_MATCH_TEAMS[m.id] = { homeTeam: m.homeTeam, awayTeam: m.awayTeam } })
 )
+
+const LOCKED_MATCH_IDS = new Set<string>([
+  ...Object.values(realTournamentResults.groupMatches).flat()
+    .filter(m => m.scores?.home != null && m.scores?.away != null)
+    .map(m => m.id),
+  ...Object.values(realTournamentResults.knockoutStages).flat()
+    .filter(m => m.scores?.home != null && m.scores?.away != null)
+    .map(m => String(m.matchNum)),
+])
+
+function getInitialState(): PredictionsState {
+  const state: PredictionsState = {}
+  Object.values(realTournamentResults.groupMatches).flat().forEach(m => {
+    state[m.id] = m.scores ?? { home: null, away: null }
+  })
+  for (let i = 73; i <= 104; i++) state[String(i)] = { home: null, away: null }
+  Object.values(realTournamentResults.knockoutStages).flat().forEach(m => {
+    if (m.scores?.home != null && m.scores?.away != null) state[String(m.matchNum)] = m.scores
+  })
+  return state
+}
 
 interface CollapsibleSectionProps {
   label: string
@@ -53,7 +74,7 @@ function CollapsibleSection({ label, children }: CollapsibleSectionProps) {
 }
 
 export default function ResultsPage({ users }: { users: User[] }) {
-  const [editedResults, setEditedResults] = useState<PredictionsState>({ ...results.predictions })
+  const [editedResults, setEditedResults] = useState<PredictionsState>(getInitialState)
   const [activeGroup, setActiveGroup] = useState('A')
 
   const updateMatch = (matchId: string, scores: MatchScores) => {
@@ -70,6 +91,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
     const BASE = 1.3
     setEditedResults(prev =>
       Object.fromEntries(Object.keys(prev).map(id => {
+        if (LOCKED_MATCH_IDS.has(id)) return [id, prev[id]]
         const teams = GROUP_MATCH_TEAMS[id]
         const avg = { att: 1.0, def: 1.0 }
         const homeStr = (teams && TEAM_STRENGTH[teams.homeTeam]) ?? avg
@@ -86,7 +108,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }
 
   const reset = () => {
-    setEditedResults({ ...results.predictions })
+    setEditedResults(getInitialState())
   }
 
   const { thirdPlaceQual, allGroupsFilled, allGroupData, groupsWithTies, round32Matches, knockout, finalWinner } = useTournament(editedResults)
@@ -200,6 +222,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
                   match={match}
                   scores={editedResults[match.id] ?? { home: null, away: null }}
                   onChange={scores => updateMatch(match.id, scores)}
+                  readOnly={LOCKED_MATCH_IDS.has(match.id)}
                   href={`/matches/${match.id.toLowerCase()}`}
                 />
               ))}
@@ -213,22 +236,22 @@ export default function ResultsPage({ users }: { users: User[] }) {
             <ThirdPlaceTable qualification={thirdPlaceQual} allGroupsFilled={allGroupsFilled} />
           </CollapsibleSection>
           <CollapsibleSection label="שלב ה-32">
-            <KnockoutTable matches={round32Matches} predictions={editedResults} onChange={updateMatch} />
+            <KnockoutTable matches={round32Matches} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
           <CollapsibleSection label="שמינית גמר">
-            <KnockoutTable matches={knockout.r16} predictions={editedResults} onChange={updateMatch} />
+            <KnockoutTable matches={knockout.r16} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
           <CollapsibleSection label="רבע גמר">
-            <KnockoutTable matches={knockout.qf} predictions={editedResults} onChange={updateMatch} />
+            <KnockoutTable matches={knockout.qf} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
           <CollapsibleSection label="חצי גמר">
-            <KnockoutTable matches={knockout.sf} predictions={editedResults} onChange={updateMatch} />
+            <KnockoutTable matches={knockout.sf} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
           <CollapsibleSection label="מקום שלישי">
-            <KnockoutTable matches={[knockout.thirdPlace]} predictions={editedResults} onChange={updateMatch} />
+            <KnockoutTable matches={[knockout.thirdPlace]} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
           <CollapsibleSection label="גמר">
-            <KnockoutTable matches={[knockout.final]} predictions={editedResults} onChange={updateMatch} />
+            <KnockoutTable matches={[knockout.final]} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
         </div>
 

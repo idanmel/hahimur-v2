@@ -16,14 +16,16 @@ interface Props {
   predictions: Record<string, MatchScores>
   onChange: (matchId: string, scores: MatchScores) => void
   readOnly?: boolean
+  lockedMatchIds?: Set<string>
 }
 
-export default function KnockoutTable({ matches, predictions, onChange, readOnly = false }: Props) {
+export default function KnockoutTable({ matches, predictions, onChange, readOnly = false, lockedMatchIds }: Props) {
   return (
     <div className="ko-grid">
       {matches.map(m => {
         const id = String(m.matchNum)
-        const pred = (readOnly || m.resolved) ? (m.scores ?? predictions[id] ?? { home: null, away: null }) : { home: null, away: null }
+        const isLocked = readOnly || (lockedMatchIds?.has(id) ?? false)
+        const pred = (isLocked || m.resolved) ? (m.scores ?? predictions[id] ?? { home: null, away: null }) : { home: null, away: null }
         const isDraw = m.resolved && pred.home !== null && pred.away !== null && pred.home === pred.away
         const needsDrawWinner = isDraw && !pred.drawWinner
         return (
@@ -46,19 +48,19 @@ export default function KnockoutTable({ matches, predictions, onChange, readOnly
             <div className="ko-team-row">
               <div
                 className={`ko-team-click${
-                  !readOnly && isDraw
+                  !isLocked && isDraw
                     ? ` ko-team-click--selectable${pred.drawWinner === 'home' ? ' ko-team-click--selected' : pred.drawWinner === 'away' ? ' ko-team-click--unselected' : ''}`
                     : isDraw && pred.drawWinner
                       ? pred.drawWinner === 'home' ? ' ko-team-click--selected' : ' ko-team-click--unselected'
                       : ''
                 }`}
-                onClick={!readOnly && isDraw ? () => onChange(id, { ...pred, drawWinner: 'home' }) : undefined}
-                role={!readOnly && isDraw ? 'button' : undefined}
-                tabIndex={!readOnly && isDraw ? 0 : undefined}
+                onClick={!isLocked && isDraw ? () => onChange(id, { ...pred, drawWinner: 'home' }) : undefined}
+                role={!isLocked && isDraw ? 'button' : undefined}
+                tabIndex={!isLocked && isDraw ? 0 : undefined}
               >
                 <TeamSlot name={m.home} />
               </div>
-              {readOnly
+              {isLocked
                 ? <span className="match-score-static">{pred.home ?? '–'}</span>
                 : <ScoreInput label={m.home} value={pred.home} disabled={!m.resolved} onChange={v => onChange(id, { home: v, away: pred.away })} />
               }
@@ -67,19 +69,19 @@ export default function KnockoutTable({ matches, predictions, onChange, readOnly
             <div className="ko-team-row">
               <div
                 className={`ko-team-click${
-                  !readOnly && isDraw
+                  !isLocked && isDraw
                     ? ` ko-team-click--selectable${pred.drawWinner === 'away' ? ' ko-team-click--selected' : pred.drawWinner === 'home' ? ' ko-team-click--unselected' : ''}`
                     : isDraw && pred.drawWinner
                       ? pred.drawWinner === 'away' ? ' ko-team-click--selected' : ' ko-team-click--unselected'
                       : ''
                 }`}
-                onClick={!readOnly && isDraw ? () => onChange(id, { ...pred, drawWinner: 'away' }) : undefined}
-                role={!readOnly && isDraw ? 'button' : undefined}
-                tabIndex={!readOnly && isDraw ? 0 : undefined}
+                onClick={!isLocked && isDraw ? () => onChange(id, { ...pred, drawWinner: 'away' }) : undefined}
+                role={!isLocked && isDraw ? 'button' : undefined}
+                tabIndex={!isLocked && isDraw ? 0 : undefined}
               >
                 <TeamSlot name={m.away} />
               </div>
-              {readOnly
+              {isLocked
                 ? <span className="match-score-static">{pred.away ?? '–'}</span>
                 : <ScoreInput label={m.away} value={pred.away} disabled={!m.resolved} onChange={v => onChange(id, { home: pred.home, away: v })} />
               }
