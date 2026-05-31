@@ -23,7 +23,7 @@ export interface User {
   predictedFinalTeams?: string[]
 }
 
-function derivePredictions(groupMatches: Record<string, GroupMatch[]>, knockoutStages: KnockoutStages): PredictionsState {
+export function derivePredictions(groupMatches: Record<string, GroupMatch[]>, knockoutStages: KnockoutStages): PredictionsState {
   const result: PredictionsState = {}
   for (const matches of Object.values(groupMatches)) {
     for (const match of matches) {

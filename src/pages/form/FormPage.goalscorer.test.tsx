@@ -49,11 +49,11 @@ describe('Top Goalscorer (מלך השערים)', () => {
     expect(inputAfterRemount.value).toBe('Kylian Mbappe')
   })
 
-  test('player name is stored in localStorage under correct key', () => {
+  test('player name is stored in localStorage', () => {
     render(<FormPage />)
     const input = screen.getByPlaceholderText('שם השחקן...')
     fireEvent.change(input, { target: { value: 'Erling Haaland' } })
-    expect(localStorage.getItem('topGoalscorer')).toBe('Erling Haaland')
+    expect(JSON.parse(localStorage.getItem('user')!).topGoalscorer).toBe('Erling Haaland')
   })
 
   test('empty string is persisted when input is cleared', () => {
@@ -61,7 +61,7 @@ describe('Top Goalscorer (מלך השערים)', () => {
     const input = screen.getByPlaceholderText('שם השחקן...')
     fireEvent.change(input, { target: { value: 'Harry Kane' } })
     fireEvent.change(input, { target: { value: '' } })
-    expect(localStorage.getItem('topGoalscorer')).toBe('')
+    expect(JSON.parse(localStorage.getItem('user')!).topGoalscorer).toBe('')
   })
 
   test('player name is loaded from localStorage on mount', () => {
@@ -79,7 +79,9 @@ describe('Top Goalscorer (מלך השערים)', () => {
     fireEvent.change(goalscorInput, { target: { value: 'Vinicius Jr' } })
     expect((mexicoInput as HTMLInputElement).value).toBe('2')
     expect((goalscorInput as HTMLInputElement).value).toBe('Vinicius Jr')
-    expect(localStorage.getItem('predictions')).not.toContain('Vinicius')
+    const stored = JSON.parse(localStorage.getItem('user')!)
+    expect(stored.topGoalscorer).toBe('Vinicius Jr')
+    expect(JSON.stringify(stored.groupMatches)).not.toContain('Vinicius')
   })
 
   test('input has correct CSS class for styling', () => {
