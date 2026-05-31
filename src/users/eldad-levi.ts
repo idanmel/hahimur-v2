@@ -1,4 +1,4 @@
-import type { Standing, ThirdPlaceStanding, ThirdPlaceQualification, KnockoutStages, GroupMatch } from '../shared/types'
+import type { Standing, ThirdPlaceQualification, KnockoutStages, GroupMatch } from '../shared/types'
 
 export const topGoalscorer = 'קיליאן אמפבה '
 export const label = 'אלדד לוי'
@@ -176,21 +176,6 @@ export const groupTables: Record<string, Standing[]> = {
     { team: 'Panama', played: 3, won: 0, drawn: 0, lost: 3, goalsFor: 0, goalsAgainst: 6, points: 0 },
   ],
 }
-
-export const thirdPlaceTeams: ThirdPlaceStanding[] = [
-    { team: 'South Africa', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 1, group: 'A' },
-    { team: 'Bosnia and Herzegovina', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 1, goalsAgainst: 5, points: 1, group: 'B' },
-    { team: 'Morocco', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 3, goalsAgainst: 4, points: 4, group: 'C' },
-    { team: 'Turkey', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 3, goalsAgainst: 3, points: 4, group: 'D' },
-    { team: 'Ecuador', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 4, goalsAgainst: 5, points: 3, group: 'E' },
-    { team: 'Japan', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 3, goalsAgainst: 4, points: 4, group: 'F' },
-    { team: 'New Zealand', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 6, points: 3, group: 'G' },
-    { team: 'Saudi Arabia', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 3, goalsAgainst: 6, points: 3, group: 'H' },
-    { team: 'Norway', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 3, goalsAgainst: 4, points: 3, group: 'I' },
-    { team: 'Algeria', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 5, points: 3, group: 'J' },
-    { team: 'DR Congo', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3, group: 'K' },
-    { team: 'Ghana', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3, group: 'L' },
-]
 
 export const thirdPlaceQualification: ThirdPlaceQualification = {
   resolved: true,

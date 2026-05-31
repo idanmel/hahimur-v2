@@ -4,7 +4,6 @@ import type { Match, MatchScores, PredictionsState, KnockoutMatch } from '../../
 import { GROUP_MATCHES, GROUP_HEBREW, TEAMS, ALL_GROUP_LETTERS, type GroupLetter } from '../../shared/groups'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
-import { getThirdPlaceTeams } from '../../formView/thirdPlace/thirdPlace'
 import { useTournament } from '../../shared/useTournament'
 import PageLayout from '../../shared/PageLayout'
 import Countdown from '../../shared/Countdown'
@@ -183,7 +182,7 @@ export default function FormPage() {
 
   function saveToFile() {
     const { predictions: _, ...storable } = user
-    const data = { ...storable, thirdPlaceTeams: getThirdPlaceTeams(allGroupData) }
+    const data = { ...storable }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

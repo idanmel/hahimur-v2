@@ -1,4 +1,4 @@
-import type { Standing, ThirdPlaceStanding, ThirdPlaceQualification, KnockoutStages, GroupMatch } from '../shared/types'
+import type { Standing, ThirdPlaceQualification, KnockoutStages, GroupMatch } from '../shared/types'
 
 export const topGoalscorer = 'פראן טורס'
 export const label = 'רועי רייספלד'
@@ -176,21 +176,6 @@ export const groupTables: Record<string, Standing[]> = {
     { team: 'Panama', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 1, goalsAgainst: 7, points: 1 },
   ],
 }
-
-export const thirdPlaceTeams: ThirdPlaceStanding[] = [
-    { team: 'Czech Republic', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 3, points: 3, group: 'A' },
-    { team: 'Bosnia and Herzegovina', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 5, goalsAgainst: 4, points: 4, group: 'B' },
-    { team: 'Scotland', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 4, goalsAgainst: 4, points: 3, group: 'C' },
-    { team: 'Australia', played: 3, won: 0, drawn: 2, lost: 1, goalsFor: 3, goalsAgainst: 4, points: 2, group: 'D' },
-    { team: 'Ecuador', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 5, goalsAgainst: 3, points: 4, group: 'E' },
-    { team: 'Japan', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 5, points: 1, group: 'F' },
-    { team: 'Egypt', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 6, points: 1, group: 'G' },
-    { team: 'Saudi Arabia', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 6, points: 1, group: 'H' },
-    { team: 'Senegal', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 4, goalsAgainst: 3, points: 4, group: 'I' },
-    { team: 'Algeria', played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 4, goalsAgainst: 4, points: 3, group: 'J' },
-    { team: 'DR Congo', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 6, points: 1, group: 'K' },
-    { team: 'Ghana', played: 3, won: 0, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 6, points: 1, group: 'L' },
-]
 
 export const thirdPlaceQualification: ThirdPlaceQualification = {
   resolved: true,
