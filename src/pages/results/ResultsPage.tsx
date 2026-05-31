@@ -5,13 +5,13 @@ import StandingsTable from '../../formView/groupStage/StandingsTable'
 import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
 import { USERS_SORTED } from '../../users/index'
-import { calculatePointsBreakdown } from '../../leaderboard/points'
+import { computeUserPoints } from '../../leaderboard/points'
 import LeaderboardTable from '../../leaderboard/LeaderboardTable'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
 import { GROUPS, ALL_GROUP_LETTERS } from '../../shared/groups'
-import type { PredictionsState, MatchScores } from '../../shared/types'
+import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import * as results from '../../results'
 import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
@@ -89,7 +89,7 @@ export default function ResultsPage() {
     setEditedResults({ ...results.predictions })
   }
 
-  const { thirdPlaceQual, allGroupsFilled, round32Matches, knockout } = useTournament(editedResults)
+  const { thirdPlaceQual, allGroupsFilled, allGroupData, round32Matches, knockout, finalWinner } = useTournament(editedResults)
 
   useEffect(() => {
     const allKOMatches = [
@@ -101,9 +101,39 @@ export default function ResultsPage() {
     if (cleaned !== editedResults) setEditedResults(cleaned)
   }, [round32Matches, knockout])
 
+  const thirdPred = editedResults['103']
+  const thirdPlaceWinner: string | undefined =
+    knockout.thirdPlace.resolved && thirdPred?.home != null && thirdPred?.away != null
+      ? thirdPred.home > thirdPred.away ? knockout.thirdPlace.home
+      : thirdPred.away > thirdPred.home ? knockout.thirdPlace.away
+      : thirdPred.drawWinner === 'home' ? knockout.thirdPlace.home
+      : thirdPred.drawWinner === 'away' ? knockout.thirdPlace.away
+      : undefined
+    : undefined
+
+  const tournamentResults: TournamentResults = {
+    groupMatches: Object.fromEntries(
+      ALL_GROUP_LETTERS
+        .filter(l => l in GROUPS)
+        .map(l => [l, (GROUPS[l]?.matches ?? []).map(m => ({ ...m, scores: editedResults[m.id] }))])
+    ),
+    groupTables: Object.fromEntries(allGroupData.map(d => [d.group, d.standings])),
+    thirdPlaceQualification: thirdPlaceQual,
+    knockoutStages: {
+      r32:        round32Matches.map(m => ({ ...m, scores: editedResults[String(m.matchNum)] })),
+      r16:        knockout.r16.map(m => ({ ...m, scores: editedResults[String(m.matchNum)] })),
+      qf:         knockout.qf.map(m => ({ ...m, scores: editedResults[String(m.matchNum)] })),
+      sf:         knockout.sf.map(m => ({ ...m, scores: editedResults[String(m.matchNum)] })),
+      thirdPlace: [{ ...knockout.thirdPlace, scores: thirdPred }],
+      final:      [{ ...knockout.final,      scores: editedResults['104'] }],
+    },
+    champion: finalWinner ?? undefined,
+    thirdPlaceWinner,
+  }
+
   const rows = USERS_SORTED.map(user => ({
     label: user.label,
-    ...calculatePointsBreakdown(user.predictions, editedResults),
+    ...computeUserPoints(user, tournamentResults),
   })).sort((a, b) => b.total - a.total)
 
   return (
