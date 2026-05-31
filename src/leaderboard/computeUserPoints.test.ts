@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import type { TournamentResults } from '../shared/types'
+import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import type { User } from '../users'
 import { computeUserPoints } from './points'
 
@@ -73,7 +73,7 @@ describe('group match points', () => {
   })
 })
 
-const grpRow = (team: string, played: number, won: number, drawn: number, lost: number, gf: number, ga: number, pts: number) =>
+const grpRow = (team: string, played: number, won: number, drawn: number, lost: number, gf: number, ga: number, pts: number): Standing =>
   ({ team, played, won, drawn, lost, goalsFor: gf, goalsAgainst: ga, points: pts })
 
 describe('R32 qualification points', () => {
@@ -120,7 +120,7 @@ describe('R32 qualification points', () => {
   })
 
   test('predicted top-2, team qualified via third place → 5 pts', () => {
-    const s = (team: string, pos: number) => ({
+    const s = (team: string, pos: number): ThirdPlaceStanding => ({
       team, played: 3, won: 3 - pos, drawn: 0, lost: pos, goalsFor: 6 - pos * 2, goalsAgainst: pos * 2, points: 9 - pos * 3, group: 'A',
     })
     const user = makeUser({
