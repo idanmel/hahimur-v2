@@ -4,8 +4,8 @@ import MatchRow from '../../formView/groupStage/MatchRow'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
 import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
-import { USERS_SORTED } from '../../users/index'
 import { computeUserPoints } from '../../leaderboard/points'
+import type { User } from '../../users/index'
 import LeaderboardTable from '../../leaderboard/LeaderboardTable'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
@@ -52,7 +52,7 @@ function CollapsibleSection({ label, children }: CollapsibleSectionProps) {
   )
 }
 
-export default function ResultsPage() {
+export default function ResultsPage({ users }: { users: User[] }) {
   const [editedResults, setEditedResults] = useState<PredictionsState>({ ...results.predictions })
   const [activeGroup, setActiveGroup] = useState('A')
 
@@ -131,7 +131,7 @@ export default function ResultsPage() {
     thirdPlaceWinner,
   }
 
-  const rows = USERS_SORTED.map(user => ({
+  const rows = users.map(user => ({
     label: user.label,
     ...computeUserPoints(user, tournamentResults),
   })).sort((a, b) => b.total - a.total)

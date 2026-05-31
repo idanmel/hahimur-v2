@@ -32,7 +32,7 @@ export default function App() {
       {matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/leaderboard'                         ? <LeaderboardPage /> :
-       pathname === '/results'                            ? <ResultsPage /> :
+       pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :
        pathname === '/stats'                             ? <StatsPage /> :
        pathname === '/forms'                              ? <FormsPage users={USERS} usersSorted={USERS_SORTED} /> :
        pathname === '/form'                               ? <FormPage /> :
