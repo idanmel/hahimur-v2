@@ -17,6 +17,10 @@ export interface User {
   knockoutStages: KnockoutStages
   predictedChampion?: string
   predictedThirdPlaceWinner?: string
+  predictedR16Teams?: string[]
+  predictedQFTeams?: string[]
+  predictedSFTeams?: string[]
+  predictedFinalTeams?: string[]
 }
 
 function derivePredictions(groupMatches: Record<string, GroupMatch[]>, knockoutStages: KnockoutStages): PredictionsState {

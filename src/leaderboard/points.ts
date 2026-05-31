@@ -347,16 +347,16 @@ export function computeUserPoints(user: User, results: TournamentResults): Point
   const uko = user.knockoutStages
 
   const r32 = koMatchPoints(uko.r32, ko.r32)
-    + (roundReady(ko.r16) ? advPts(roundTeams(uko.r16), roundTeams(ko.r16), KNOCKOUT_OLEH_POINTS.r32) : 0)
+    + (roundReady(ko.r16) ? advPts(user.predictedR16Teams ?? roundTeams(uko.r16), roundTeams(ko.r16), KNOCKOUT_OLEH_POINTS.r32) : 0)
 
   const r16 = koMatchPoints(uko.r16, ko.r16)
-    + (roundReady(ko.qf) ? advPts(roundTeams(uko.qf), roundTeams(ko.qf), KNOCKOUT_OLEH_POINTS.r16) : 0)
+    + (roundReady(ko.qf) ? advPts(user.predictedQFTeams ?? roundTeams(uko.qf), roundTeams(ko.qf), KNOCKOUT_OLEH_POINTS.r16) : 0)
 
   const qf = koMatchPoints(uko.qf, ko.qf)
-    + (roundReady(ko.sf) ? advPts(roundTeams(uko.sf), roundTeams(ko.sf), KNOCKOUT_OLEH_POINTS.qf) : 0)
+    + (roundReady(ko.sf) ? advPts(user.predictedSFTeams ?? roundTeams(uko.sf), roundTeams(ko.sf), KNOCKOUT_OLEH_POINTS.qf) : 0)
 
   const sf = koMatchPoints(uko.sf, ko.sf)
-    + (roundReady(ko.final) ? advPts(roundTeams(uko.final), roundTeams(ko.final), KNOCKOUT_OLEH_POINTS.sf) : 0)
+    + (roundReady(ko.final) ? advPts(user.predictedFinalTeams ?? roundTeams(uko.final), roundTeams(ko.final), KNOCKOUT_OLEH_POINTS.sf) : 0)
 
   const third = koMatchPoints(uko.thirdPlace, ko.thirdPlace)
     + (results.thirdPlaceWinner && user.predictedThirdPlaceWinner === results.thirdPlaceWinner

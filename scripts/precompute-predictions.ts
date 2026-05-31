@@ -56,6 +56,18 @@ function bracketWinner(matchNum: number): string | undefined {
 const predictedChampion = bracketWinner(104)
 const predictedThirdPlaceWinner = bracketWinner(103)
 
+function bracketTeams(from: number, to: number): string[] {
+  return knockoutBracket
+    .filter(m => m.matchNum >= from && m.matchNum <= to)
+    .flatMap(m => [m.home, m.away])
+    .filter(Boolean) as string[]
+}
+
+const predictedR16Teams   = bracketTeams(89, 96)
+const predictedQFTeams    = bracketTeams(97, 100)
+const predictedSFTeams    = bracketTeams(101, 102)
+const predictedFinalTeams = bracketTeams(104, 104)
+
 // --- serialize ---
 
 function serializeStanding(s: Standing): string {
@@ -162,7 +174,11 @@ lines.push(`}`, ``)
 
 if (predictedChampion !== undefined) lines.push(`export const predictedChampion = '${predictedChampion}'`)
 if (predictedThirdPlaceWinner !== undefined) lines.push(`export const predictedThirdPlaceWinner = '${predictedThirdPlaceWinner}'`)
-if (predictedChampion !== undefined || predictedThirdPlaceWinner !== undefined) lines.push(``)
+if (predictedR16Teams.length > 0) lines.push(`export const predictedR16Teams = [${predictedR16Teams.map(t => `'${t}'`).join(', ')}]`)
+if (predictedQFTeams.length > 0) lines.push(`export const predictedQFTeams = [${predictedQFTeams.map(t => `'${t}'`).join(', ')}]`)
+if (predictedSFTeams.length > 0) lines.push(`export const predictedSFTeams = [${predictedSFTeams.map(t => `'${t}'`).join(', ')}]`)
+if (predictedFinalTeams.length > 0) lines.push(`export const predictedFinalTeams = [${predictedFinalTeams.map(t => `'${t}'`).join(', ')}]`)
+lines.push(``)
 
 const outputPath = resolve(`src/users/${outputSlug}.ts`)
 writeFileSync(outputPath, lines.join('\n'))
