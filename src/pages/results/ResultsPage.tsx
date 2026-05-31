@@ -10,7 +10,7 @@ import LeaderboardTable from '../../leaderboard/LeaderboardTable'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
-import { GROUPS, ALL_GROUP_LETTERS } from '../../shared/groups'
+import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import * as results from '../../results'
 import { TEAM_STRENGTH } from './teamStrength'
@@ -89,7 +89,11 @@ export default function ResultsPage({ users }: { users: User[] }) {
     setEditedResults({ ...results.predictions })
   }
 
-  const { thirdPlaceQual, allGroupsFilled, allGroupData, round32Matches, knockout, finalWinner } = useTournament(editedResults)
+  const { thirdPlaceQual, allGroupsFilled, allGroupData, groupsWithTies, round32Matches, knockout, finalWinner } = useTournament(editedResults)
+
+  const activeTournamentData = allGroupData.find(d => d.group === activeGroup)
+  const activeTiedTeams = activeTournamentData?.tiedTeams ?? new Set<string>()
+  const activeAllFilled = activeTournamentData?.allFilled ?? false
 
   useEffect(() => {
     const allKOMatches = [
@@ -174,7 +178,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
                   <button
                     key={letter}
                     type="button"
-                    className={`pg-group-btn${activeGroup === letter ? ' pg-group-btn--active' : ''}`}
+                    className={`pg-group-btn${activeGroup === letter ? ' pg-group-btn--active' : ''}${groupsWithTies.has(letter) ? ' pg-group-btn--error' : ''}`}
                     onClick={() => setActiveGroup(letter)}
                   >
                     {GROUPS[letter].he}
@@ -182,6 +186,12 @@ export default function ResultsPage({ users }: { users: User[] }) {
                 ))}
               </div>
             </div>
+
+            {activeAllFilled && activeTiedTeams.size > 0 && (
+              <div role="alert" className="tie-warning">
+                {[...activeTiedTeams].map(t => TEAMS[t].he).join(' · ')} — שוות בכל הקריטריונים
+              </div>
+            )}
 
             <div className="pg-matches">
               {GROUPS[activeGroup].matches.map(match => (
