@@ -9,6 +9,7 @@ import * as tal_lichter from './tal-lichter'
 import * as tomer_agafim_friedler from './tomer-agafim-friedler'
 import * as oded_livnat from './oded-livnat'
 import * as yaniv_klein from './yaniv-klein'
+import * as lior_moldovan from './lior-moldovan'
 
 export interface User {
   label: string
@@ -54,6 +55,7 @@ export const USERS: User[] = [
   toUser(tomer_agafim_friedler),
   toUser(oded_livnat),
   toUser(yaniv_klein),
+  toUser(lior_moldovan),
 ]
 
 export const USERS_SORTED = [...USERS].sort((a, b) => a.label.localeCompare(b.label, 'he'))
