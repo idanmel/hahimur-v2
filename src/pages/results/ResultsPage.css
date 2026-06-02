@@ -344,6 +344,14 @@
   color: var(--navy);
 }
 
+.pg-scorer-checkbox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--navy);
+}
+
 .pg-scorer-row--winner .pg-scorer-name {
   font-weight: 700;
 }

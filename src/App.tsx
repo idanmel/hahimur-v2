@@ -33,7 +33,7 @@ export default function App() {
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/leaderboard'                         ? <LeaderboardPage /> :
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :
-       pathname === '/stats'                             ? <StatsPage /> :
+       pathname === '/stats'                             ? <StatsPage users={USERS} /> :
        pathname === '/forms'                              ? <FormsPage users={USERS} usersSorted={USERS_SORTED} /> :
        pathname === '/form'                               ? <FormPage /> :
        <HomePage />}

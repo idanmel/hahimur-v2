@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import GoalScorerSection from './GoalScorerSection'
 import PageLayout from '../../shared/PageLayout'
 import MatchRow from '../../formView/groupStage/MatchRow'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
@@ -87,15 +88,15 @@ const predictedPlayers = (users: User[]) =>
 export default function ResultsPage({ users }: { users: User[] }) {
   const [editedResults, setEditedResults] = useState<PredictionsState>(getInitialState)
   const [activeGroup, setActiveGroup] = useState('A')
-  const [playerGoals, setPlayerGoals] = useState<Record<string, number>>(
-    () => realTournamentResults.playerGoals ?? {}
-  )
+  const [goalScorerState, setGoalScorerState] = useState(() => ({
+    playerGoals: realTournamentResults.playerGoals ?? {} as Record<string, number>,
+    goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
+      ? realTournamentResults.goldenBootWinner[0]
+      : realTournamentResults.goldenBootWinner,
+  }))
+  const [goalScorerResetKey, setGoalScorerResetKey] = useState(0)
 
   const players = predictedPlayers(users)
-  const maxGoals = Math.max(0, ...players.map(p => playerGoals[p] ?? 0))
-  const goldenBootWinner = maxGoals > 0
-    ? players.filter(p => (playerGoals[p] ?? 0) === maxGoals)
-    : undefined
 
   const updateMatch = (matchId: string, scores: MatchScores) => {
     setEditedResults(prev => ({ ...prev, [matchId]: scores }))
@@ -129,7 +130,13 @@ export default function ResultsPage({ users }: { users: User[] }) {
 
   const reset = () => {
     setEditedResults(getInitialState())
-    setPlayerGoals(realTournamentResults.playerGoals ?? {})
+    setGoalScorerState({
+      playerGoals: realTournamentResults.playerGoals ?? {},
+      goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
+        ? realTournamentResults.goldenBootWinner[0]
+        : realTournamentResults.goldenBootWinner,
+    })
+    setGoalScorerResetKey(k => k + 1)
   }
 
   const { thirdPlaceQual, allGroupsFilled, allGroupData, groupsWithTies, round32Matches, knockout, finalWinner } = useTournament(editedResults)
@@ -176,8 +183,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
     },
     champion: finalWinner ?? undefined,
     thirdPlaceWinner,
-    goldenBootWinner,
-    playerGoals,
+    goldenBootWinner: goalScorerState.goldenBootWinner,
+    playerGoals: goalScorerState.playerGoals,
   }
 
   const rows = users.map(user => ({
@@ -277,20 +284,13 @@ export default function ResultsPage({ users }: { users: User[] }) {
             <KnockoutTable matches={[knockout.final]} predictions={editedResults} onChange={updateMatch} lockedMatchIds={LOCKED_MATCH_IDS} />
           </CollapsibleSection>
           <CollapsibleSection label="מלך השערים">
-            <div className="pg-scorer-list">
-              {players.map(player => (
-                <div key={player} className={`pg-scorer-row${goldenBootWinner?.includes(player) ? ' pg-scorer-row--winner' : ''}`}>
-                  <span className="pg-scorer-name">{player}</span>
-                  <input
-                    type="number"
-                    min={realTournamentResults.playerGoals?.[player] ?? 0}
-                    className="pg-scorer-input"
-                    value={playerGoals[player] ?? 0}
-                    onChange={e => setPlayerGoals(prev => ({ ...prev, [player]: clampGoals(realTournamentResults.playerGoals?.[player] ?? 0, Number(e.target.value)) }))}
-                  />
-                </div>
-              ))}
-            </div>
+            <GoalScorerSection
+              key={goalScorerResetKey}
+              players={players}
+              realGoals={realTournamentResults.playerGoals ?? {}}
+              defaultWinner={goalScorerState.goldenBootWinner}
+              onChange={(goals, winner) => setGoalScorerState({ playerGoals: goals, goldenBootWinner: winner })}
+            />
           </CollapsibleSection>
         </div>
 
