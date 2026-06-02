@@ -19,7 +19,7 @@
 
 @media (max-width: 639px) {
   .lb-desktop { display: none; }
-  .lb-mobile  { display: block; padding: 0 0.875rem; }
+  .lb-mobile  { display: block; padding: 0; }
 }
 
 /* ── Mobile Cards ── */
@@ -223,6 +223,68 @@
 .lb-th--total {
   color: var(--gold);
   border-right: 1px solid rgba(212, 160, 22, 0.18);
+}
+
+/* ── Phase group header row ── */
+
+.lb-th-phase-row th {
+  border-top: 3px solid var(--gold);
+}
+
+.lb-th--phase {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  padding: 6px 8px 4px;
+  border-bottom: 1px solid rgba(212, 160, 22, 0.35);
+  text-transform: uppercase;
+}
+
+.lb-th--phase-group {
+  background: rgba(212, 160, 22, 0.12);
+  color: var(--gold);
+  border-left: 1px solid rgba(212, 160, 22, 0.2);
+}
+
+.lb-th--phase-ko {
+  background: rgba(30, 50, 90, 0.95);
+  color: rgba(200, 210, 230, 0.85);
+  border-left: 1px solid rgba(100, 130, 180, 0.2);
+}
+
+.lb-th--phase-golden {
+  background: rgba(180, 100, 20, 0.12);
+  color: rgba(210, 140, 50, 0.9);
+  border-left: 1px solid rgba(200, 130, 40, 0.2);
+}
+
+.lb-th--round {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  padding: 5px 8px 7px;
+  border-top: none;
+}
+
+/* ── Empty state ── */
+
+.lb-empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem 3rem;
+  color: var(--muted);
+}
+
+.lb-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
+}
+
+.lb-empty-text {
+  font-family: 'Heebo', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 320px;
+  margin: 0 auto;
 }
 
 /* ── Rows ── */
@@ -461,4 +523,26 @@
 
 .lb-card--rank-1.lb-card--flat:active {
   background: linear-gradient(to left, rgba(212, 160, 22, 0.07) 0%, var(--paper) 65%);
+}
+
+/* ── Mobile totals table (must come after .lb-table to override min-width) ── */
+
+.lb-table--mobile {
+  min-width: 0;
+  width: 100%;
+}
+
+.lb-table--mobile .lb-th--name,
+.lb-table--mobile .lb-td--name {
+  width: 100%;
+}
+
+.lb-table--mobile .lb-td--total {
+  font-size: 20px;
+  padding-left: 16px;
+}
+
+.lb-table--mobile .lb-td--rank {
+  padding-right: 10px;
+  padding-left: 4px;
 }
