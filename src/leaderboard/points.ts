@@ -207,9 +207,9 @@ export function computeFinalBreakdown(
 }
 
 export function computeGoldenBootBreakdown(user: User, results: TournamentResults): GoldenBootBreakdown {
-  if (!results.goldenBootWinner) return { goalsPoints: 0, winnerBonus: 0, total: 0 }
-  const winners = Array.isArray(results.goldenBootWinner) ? results.goldenBootWinner : [results.goldenBootWinner]
   const goalsPoints = (results.playerGoals?.[user.topGoalscorer] ?? 0) * 3
+  if (!results.goldenBootWinner) return { goalsPoints, winnerBonus: 0, total: goalsPoints }
+  const winners = Array.isArray(results.goldenBootWinner) ? results.goldenBootWinner : [results.goldenBootWinner]
   const winnerBonus = winners.includes(user.topGoalscorer) ? 10 : 0
   return { goalsPoints, winnerBonus, total: goalsPoints + winnerBonus }
 }

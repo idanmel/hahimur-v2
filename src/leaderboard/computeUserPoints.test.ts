@@ -390,9 +390,18 @@ describe('golden boot (מלך שערים)', () => {
     expect(computeUserPoints(user, results).goldenBoot.total).toBe(28) // 6×3 + 10
   })
 
-  test('0 pts when no golden boot winner yet', () => {
+  test('0 pts when no goals and no winner yet', () => {
     const user = makeUser({ topGoalscorer: 'Messi' })
     expect(computeUserPoints(user, EMPTY_RESULTS).goldenBoot.total).toBe(0)
+  })
+
+  test('goals points awarded even when no golden boot winner selected yet', () => {
+    const user = makeUser({ topGoalscorer: 'Messi' })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      playerGoals: { Messi: 4 },
+    }
+    expect(computeUserPoints(user, results).goldenBoot).toEqual({ goalsPoints: 12, winnerBonus: 0, total: 12 })
   })
 
   test('multiple tied golden boot winners each earn +10 bonus', () => {
