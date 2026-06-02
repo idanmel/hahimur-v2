@@ -6,7 +6,14 @@ import type { ThirdPlaceQualification, KnockoutStages, GroupMatch } from '../../
 const emptyKO: KnockoutStages = { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] }
 const emptyTP: ThirdPlaceQualification = { resolved: false, all: [], tied: [] }
 
-function makeUser(label: string, predictedChampion: string, predictedFinalTeams?: string[]): User {
+function makeUser(
+  label: string,
+  predictedChampion: string,
+  predictedFinalTeams?: string[],
+  predictedSFTeams?: string[],
+  predictedQFTeams?: string[],
+  predictedR16Teams?: string[],
+): User {
   return {
     label,
     predictions: {},
@@ -17,6 +24,9 @@ function makeUser(label: string, predictedChampion: string, predictedFinalTeams?
     knockoutStages: emptyKO,
     predictedChampion,
     predictedFinalTeams,
+    predictedSFTeams,
+    predictedQFTeams,
+    predictedR16Teams,
   }
 }
 
@@ -125,4 +135,76 @@ test('matchup row shows picker names', () => {
   expect(fbRow).toHaveTextContent('עידן')
   expect(fbRow).toHaveTextContent('אורן')
   expect(fbRow).toHaveTextContent('אלדד')
+})
+
+// ── Team stage table section ─────────────────────────────────────
+
+const STAGE_USERS: User[] = [
+  makeUser('א', 'France', ['France', 'Brazil'], ['France', 'Brazil', 'Germany', 'Spain'], ['France', 'Brazil', 'Germany', 'Spain', 'Argentina', 'Portugal', 'England', 'Netherlands'], ['France', 'Brazil', 'Germany', 'Spain', 'Argentina', 'Portugal', 'England', 'Netherlands', 'Belgium', 'Italy', 'Japan', 'Morocco', 'Uruguay', 'Mexico', 'Denmark', 'Australia']),
+  makeUser('ב', 'France', ['France', 'Germany'], ['France', 'Germany', 'Brazil', 'Spain'], ['France', 'Germany', 'Brazil', 'Spain', 'Argentina', 'Portugal', 'England', 'Netherlands'], ['France', 'Germany', 'Brazil', 'Spain', 'Argentina', 'Portugal', 'England', 'Netherlands', 'Belgium', 'Italy', 'Japan', 'Morocco', 'Uruguay', 'Mexico', 'Denmark', 'Australia']),
+  makeUser('ג', 'Brazil', ['France', 'Brazil'], ['France', 'Brazil', 'Germany', 'Argentina'], ['France', 'Brazil', 'Germany', 'Argentina', 'Spain', 'Portugal', 'England', 'Netherlands'], ['France', 'Brazil', 'Germany', 'Argentina', 'Spain', 'Portugal', 'England', 'Netherlands', 'Belgium', 'Italy', 'Japan', 'Morocco', 'Uruguay', 'Mexico', 'Denmark', 'Australia']),
+]
+
+function getStageSection() {
+  return document.querySelector('[data-section="team-stages"]')!
+}
+
+test('team stages section renders', () => {
+  render(<StatsPage users={STAGE_USERS} />)
+  expect(getStageSection()).toBeTruthy()
+})
+
+test('France shows r16 count 3, champion count 2', () => {
+  render(<StatsPage users={STAGE_USERS} />)
+  const table = getStageSection()
+  const franceRow = Array.from(table.querySelectorAll('tr')).find(
+    r => r.textContent?.includes('צרפת')
+  )!
+  expect(franceRow.querySelector('[data-col="r16"]')).toHaveTextContent('3')
+  expect(franceRow.querySelector('[data-col="champion"]')).toHaveTextContent('2')
+})
+
+test('Brazil shows final count 2, champion count 1', () => {
+  render(<StatsPage users={STAGE_USERS} />)
+  const table = getStageSection()
+  const brazilRow = Array.from(table.querySelectorAll('tr')).find(
+    r => r.textContent?.includes('ברזיל')
+  )!
+  expect(brazilRow.querySelector('[data-col="final"]')).toHaveTextContent('2')
+  expect(brazilRow.querySelector('[data-col="champion"]')).toHaveTextContent('1')
+})
+
+test('France row appears before Germany row (higher score)', () => {
+  render(<StatsPage users={STAGE_USERS} />)
+  const table = getStageSection()
+  const rows = Array.from(table.querySelectorAll('tbody tr'))
+  const franceIdx = rows.findIndex(r => r.textContent?.includes('צרפת'))
+  const germanyIdx = rows.findIndex(r => r.textContent?.includes('גרמניה'))
+  expect(franceIdx).toBeLessThan(germanyIdx)
+})
+
+test('r32 count reflects teams from knockoutStages.r32', () => {
+  const userWithR32: User = {
+    label: 'test',
+    predictions: {},
+    topGoalscorer: '',
+    groupTables: {},
+    thirdPlaceQualification: emptyTP,
+    groupMatches: {} as Record<string, GroupMatch[]>,
+    knockoutStages: {
+      ...emptyKO,
+      r32: [
+        { matchNum: 1, home: 'France', away: 'Germany', resolved: false },
+        { matchNum: 2, home: 'Brazil', away: 'Spain', resolved: false },
+      ],
+    },
+    predictedChampion: 'France',
+    predictedFinalTeams: ['France', 'Brazil'],
+  }
+  render(<StatsPage users={[userWithR32]} />)
+  const table = getStageSection()
+  const franceRow = Array.from(table.querySelectorAll('tr')).find(r => r.textContent?.includes('צרפת'))!
+  const germanyRow = Array.from(table.querySelectorAll('tr')).find(r => r.textContent?.includes('גרמניה'))!
+  expect(franceRow.querySelector('[data-col="r32"]')).toHaveTextContent('1')
+  expect(germanyRow.querySelector('[data-col="r32"]')).toHaveTextContent('1')
 })

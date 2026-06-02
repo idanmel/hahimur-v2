@@ -399,3 +399,113 @@
   background: color-mix(in srgb, var(--navy) 7%, transparent);
   border: 1px solid color-mix(in srgb, var(--navy) 18%, transparent);
 }
+
+/* ── Team Stage Table ────────────────────────────────────────── */
+
+.stages-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* No negative-margin trick: it breaks overflow containment */
+}
+
+.stages-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  direction: rtl;
+}
+
+/* Team column: fixed width, sticky to the right in RTL */
+.stages-th--team,
+.stages-td--team {
+  width: 96px;
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  /* Subtle separator shadow */
+  box-shadow: -3px 0 6px color-mix(in srgb, var(--navy) 8%, transparent);
+}
+
+.stages-th {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-weight: 400;
+  color: var(--muted);
+  padding: 0.35rem 0.4rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--paper);
+  white-space: nowrap;
+}
+
+.stages-th--team {
+  text-align: right;
+  padding-right: 0.5rem;
+}
+
+.stages-th--champ {
+  color: var(--gold);
+}
+
+.stages-tr {
+  animation: row-slide-in 0.25s ease both;
+  animation-delay: calc(var(--row-i, 0) * 20ms);
+}
+
+/* Explicit backgrounds on sticky team cell to cover scrolling content */
+.stages-td--team {
+  background: var(--paper);
+}
+
+.stages-tr:nth-child(even) {
+  background: color-mix(in srgb, var(--navy) 3%, transparent);
+}
+
+.stages-tr:nth-child(even) .stages-td--team {
+  background: color-mix(in srgb, var(--navy) 3%, var(--paper));
+}
+
+.stages-td {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  text-align: center;
+  padding: 0.3rem 0.4rem;
+  color: var(--navy);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.stages-td[data-zero] {
+  color: var(--muted);
+  opacity: 0.25;
+}
+
+.stages-td--team {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: right;
+  padding-right: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.stages-td--champ {
+  color: var(--gold);
+}
+
+.stages-td--champ[data-zero] {
+  color: var(--muted);
+  opacity: 0.2;
+}
+
+.stages-flag {
+  width: 1.1rem;
+  height: 0.8rem;
+  border-radius: 2px;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
