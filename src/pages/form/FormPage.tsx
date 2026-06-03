@@ -6,6 +6,7 @@ import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
 import PageLayout from '../../shared/PageLayout'
+import { USER_STORAGE_EVENT } from '../../Nav'
 import Countdown from '../../shared/Countdown'
 import MatchRow from '../../formView/groupStage/MatchRow'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
@@ -166,6 +167,7 @@ export default function FormPage() {
   useEffect(() => {
     const { predictions: _, ...storable } = user
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storable))
+    window.dispatchEvent(new Event(USER_STORAGE_EVENT))
   }, [user])
 
   function updateScores(matchId: string, scores: MatchScores) {

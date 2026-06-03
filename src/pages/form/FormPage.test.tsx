@@ -3,7 +3,7 @@ import { vi, afterEach } from 'vitest'
 import FormPage from './FormPage'
 import { GROUPS } from '../../shared/groups'
 
-vi.mock('../../Nav', () => ({ default: () => null }))
+vi.mock('../../Nav', () => ({ default: () => null, USER_STORAGE_EVENT: 'userStorageUpdated' }))
 vi.mock('../../shared/Countdown', () => ({ default: () => null }))
 vi.mock('../../formView/knockout/KnockoutTable', () => ({ default: () => null }))
 vi.mock('../../formView/thirdPlace/ThirdPlaceTable', () => ({ default: () => null }))
