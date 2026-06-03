@@ -34,6 +34,7 @@ describe('GoalScorerSection', () => {
   test('only the leader checkbox is enabled', async () => {
     setup()
     await userEvent.type(goalInput('Messi'), '5')
+    await userEvent.tab()
     expect(checkbox('Messi')).toBeEnabled()
     expect(checkbox('Ronaldo')).toBeDisabled()
   })
@@ -69,6 +70,7 @@ describe('GoalScorerSection', () => {
     await userEvent.type(goalInput('Messi'), '5')
     await userEvent.click(checkbox('Messi'))
     await userEvent.type(goalInput('Ronaldo'), '5')
+    await userEvent.tab()
     const lastCall = onChange.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['Messi', 'Ronaldo'])
   })
@@ -78,6 +80,7 @@ describe('GoalScorerSection', () => {
     await userEvent.type(goalInput('Messi'), '5')
     await userEvent.click(checkbox('Messi'))
     await userEvent.type(goalInput('Ronaldo'), '7')
+    await userEvent.tab()
     const lastCall = onChange.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual([])
   })
@@ -87,6 +90,7 @@ describe('GoalScorerSection', () => {
     await userEvent.type(goalInput('Messi'), '1')
     await userEvent.click(checkbox('Messi'))
     fireEvent.change(goalInput('Messi'), { target: { value: '0' } })
+    fireEvent.blur(goalInput('Messi'))
     const lastCall = onChange.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual([])
   })
@@ -94,6 +98,7 @@ describe('GoalScorerSection', () => {
   test('goals cannot go below the real floor', () => {
     const { onChange } = setup(['Messi'], { Messi: 3 })
     fireEvent.change(goalInput('Messi'), { target: { value: '1' } })
+    fireEvent.blur(goalInput('Messi'))
     const lastCall = onChange.mock.calls.at(-1)!
     expect(lastCall[0]['Messi']).toBe(3)
   })

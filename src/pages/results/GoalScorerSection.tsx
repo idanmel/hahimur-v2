@@ -9,6 +9,37 @@ interface Props {
   onChange: (goals: Record<string, number>, winners: string[]) => void
 }
 
+function PlayerGoalInput({ player, min, value, onCommit }: {
+  player: string
+  min: number
+  value: number
+  onCommit: (value: number) => void
+}) {
+  const [display, setDisplay] = useState(String(value))
+
+  useEffect(() => {
+    setDisplay(String(value))
+  }, [value])
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      aria-label={player}
+      min={min}
+      className="pg-scorer-input"
+      value={display}
+      onChange={e => setDisplay(e.target.value)}
+      onFocus={e => e.target.select()}
+      onBlur={() => {
+        const clamped = clampGoals(min, Number(display) || 0)
+        setDisplay(String(clamped))
+        onCommit(clamped)
+      }}
+    />
+  )
+}
+
 export default function GoalScorerSection({ players, realGoals, defaultWinner, pickersByPlayer, onChange }: Props) {
   const [playerGoals, setPlayerGoals] = useState<Record<string, number>>(realGoals)
   const [goldenBootWinners, setGoldenBootWinners] = useState<string[]>(defaultWinner)
@@ -54,13 +85,11 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
               </div>
             ) : null}
           </div>
-          <input
-            type="number"
-            aria-label={player}
+          <PlayerGoalInput
+            player={player}
             min={realGoals[player] ?? 0}
-            className="pg-scorer-input"
             value={playerGoals[player] ?? 0}
-            onChange={e => setPlayerGoals(prev => ({ ...prev, [player]: clampGoals(realGoals[player] ?? 0, Number(e.target.value)) }))}
+            onCommit={val => setPlayerGoals(prev => ({ ...prev, [player]: val }))}
           />
         </div>
       ))}

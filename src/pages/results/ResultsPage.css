@@ -381,6 +381,20 @@
   opacity: 1;
 }
 
+@media (max-width: 600px) {
+  .pg-scorer-input::-webkit-inner-spin-button,
+  .pg-scorer-input::-webkit-outer-spin-button {
+    display: none;
+  }
+  .pg-scorer-input {
+    -moz-appearance: textfield;
+  }
+  .pg-scorer-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+}
+
 .pg-scorer-player {
   display: flex;
   flex-direction: column;
