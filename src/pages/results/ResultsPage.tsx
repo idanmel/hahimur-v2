@@ -101,8 +101,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
   const [goalScorerState, setGoalScorerState] = useState(() => ({
     playerGoals: realTournamentResults.playerGoals ?? {} as Record<string, number>,
     goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
-      ? realTournamentResults.goldenBootWinner[0]
-      : realTournamentResults.goldenBootWinner,
+      ? realTournamentResults.goldenBootWinner
+      : realTournamentResults.goldenBootWinner ? [realTournamentResults.goldenBootWinner] : [],
   }))
   const [goalScorerResetKey, setGoalScorerResetKey] = useState(0)
 
@@ -143,8 +143,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
     setGoalScorerState({
       playerGoals: realTournamentResults.playerGoals ?? {},
       goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
-        ? realTournamentResults.goldenBootWinner[0]
-        : realTournamentResults.goldenBootWinner,
+        ? realTournamentResults.goldenBootWinner
+        : realTournamentResults.goldenBootWinner ? [realTournamentResults.goldenBootWinner] : [],
     })
     setGoalScorerResetKey(k => k + 1)
   }
@@ -193,7 +193,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
     },
     champion: finalWinner ?? undefined,
     thirdPlaceWinner,
-    goldenBootWinner: goalScorerState.goldenBootWinner,
+    goldenBootWinner: goalScorerState.goldenBootWinner.length > 0 ? goalScorerState.goldenBootWinner : undefined,
     playerGoals: goalScorerState.playerGoals,
   }
 
@@ -300,7 +300,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
               realGoals={realTournamentResults.playerGoals ?? {}}
               defaultWinner={goalScorerState.goldenBootWinner}
               pickersByPlayer={pickersByPlayer(users)}
-              onChange={(goals, winner) => setGoalScorerState({ playerGoals: goals, goldenBootWinner: winner })}
+              onChange={(goals, winners) => setGoalScorerState({ playerGoals: goals, goldenBootWinner: winners })}
             />
           </CollapsibleSection>
         </div>

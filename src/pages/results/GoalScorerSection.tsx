@@ -4,39 +4,45 @@ import { clampGoals } from './ResultsPage'
 interface Props {
   players: string[]
   realGoals: Record<string, number>
-  defaultWinner: string | undefined
+  defaultWinner: string[]
   pickersByPlayer?: Record<string, string[]>
-  onChange: (goals: Record<string, number>, winner: string | undefined) => void
+  onChange: (goals: Record<string, number>, winners: string[]) => void
 }
 
 export default function GoalScorerSection({ players, realGoals, defaultWinner, pickersByPlayer, onChange }: Props) {
   const [playerGoals, setPlayerGoals] = useState<Record<string, number>>(realGoals)
-  const [goldenBootWinner, setGoldenBootWinner] = useState<string | undefined>(defaultWinner)
+  const [goldenBootWinners, setGoldenBootWinners] = useState<string[]>(defaultWinner)
 
   const maxGoals = Math.max(0, ...players.map(p => playerGoals[p] ?? 0))
 
   useEffect(() => {
-    setGoldenBootWinner(prev => {
-      if (!prev) return prev
-      return maxGoals === 0 || (playerGoals[prev] ?? 0) < maxGoals ? undefined : prev
+    setGoldenBootWinners(prev => {
+      if (prev.length === 0) return prev
+      const stillTied = prev.filter(p => maxGoals > 0 && (playerGoals[p] ?? 0) >= maxGoals)
+      if (stillTied.length === 0) return []
+      return players.filter(p => (playerGoals[p] ?? 0) === maxGoals)
     })
   }, [playerGoals])
 
   useEffect(() => {
-    onChange(playerGoals, goldenBootWinner)
-  }, [playerGoals, goldenBootWinner])
+    onChange(playerGoals, goldenBootWinners)
+  }, [playerGoals, goldenBootWinners])
 
   return (
     <div className="pg-scorer-list">
       {players.map(player => (
-        <div key={player} className={`pg-scorer-row${goldenBootWinner === player ? ' pg-scorer-row--winner' : ''}`}>
+        <div key={player} className={`pg-scorer-row${goldenBootWinners.includes(player) ? ' pg-scorer-row--winner' : ''}`}>
           <input
             type="checkbox"
             aria-label={player}
             className="pg-scorer-checkbox"
-            checked={goldenBootWinner === player}
+            checked={goldenBootWinners.includes(player)}
             disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
-            onChange={() => setGoldenBootWinner(prev => prev === player ? undefined : player)}
+            onChange={() => setGoldenBootWinners(prev =>
+              prev.length > 0
+                ? []
+                : players.filter(p => (playerGoals[p] ?? 0) === maxGoals)
+            )}
           />
           <div className="pg-scorer-player">
             <span className="pg-scorer-name">{player}</span>
