@@ -166,8 +166,8 @@
 }
 
 .finals-total-dots {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(10, 5px);
   gap: 3px;
   direction: rtl;
 }

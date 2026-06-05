@@ -37,8 +37,8 @@ function computeFinalStats(users: User[]): TeamFinalStat[] {
       total: championPickers.length + runnerUpPickers.length,
     }))
     .sort((a, b) => {
-      const diff = b.championPickers.length - a.championPickers.length
-      return diff !== 0 ? diff : b.runnerUpPickers.length - a.runnerUpPickers.length
+      const diff = b.total - a.total
+      return diff !== 0 ? diff : b.championPickers.length - a.championPickers.length
     })
 }
 
@@ -131,7 +131,7 @@ export default function StatsPage({ users = USERS }: Props) {
   const teamStageStats = computeTeamStageStats(users)
 
   return (
-    <PageLayout title="Stats">
+    <PageLayout title="סטטיסטיקה">
       <main className="stats-main">
         <p className="stats-eyebrow">ניחושי הגמר</p>
         <p className="stats-subtitle">כמה מהמשתתפים חזו לכל נבחרת לנצח או להגיע לגמר</p>
