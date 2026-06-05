@@ -11,12 +11,10 @@
       "Bash(ls *)",
       "Bash(find *)",
       "Bash(mkdir *)",
-      "Bash(git -C /home/idanmel/hahimur add scripts/import-user.ts src/users/index.ts src/users/noam-biran.ts \"raw_exports/wc2026-predictions-אבירם-הראובני.json\" \"raw_exports/wc2026-predictions-נעם-בירן.json\")",
-      "Bash(node --experimental-strip-types scripts/import-user.ts dummy-slug)",
-      "Bash(git -C /home/idanmel/hahimur add .claude/settings.json src/users/index.ts src/users/maor-frankel.ts \"raw_exports/wc2026-predictions-מאור-פרנקל.json\")",
-      "Bash(git -C /home/idanmel/hahimur commit -m ' *)",
-      "Bash(sed -i 's/\"label\": \"קרני\"/\"label\": \"יונתן קרני\"/' \"/home/idanmel/hahimur/raw_exports/wc2026-predictions-יונתן-קרני.json\")",
-      "Bash(node --experimental-strip-types scripts/import-user.ts \"raw_exports/wc2026-predictions-יונתן-קרני.json\" yonatan-karni)"
+      "Bash(node --experimental-strip-types scripts/import-user.ts *)",
+      "Bash(cp *)",
+      "Bash(sed -i *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
