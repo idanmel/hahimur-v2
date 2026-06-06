@@ -16,6 +16,10 @@ import * as maor_frankel from './maor-frankel'
 import * as noam_biran from './noam-biran'
 import * as raz_kobi from './raz-kobi'
 import * as noam_yaron from './noam-yaron'
+import * as adam_aronovitch from './adam-aronovitch'
+import * as asaf_ben_zaken from './asaf-ben-zaken'
+import * as chen_inbar from './chen-inbar'
+import * as nir_alfasi from './nir-alfasi'
 
 export interface User {
   label: string
@@ -68,6 +72,10 @@ export const USERS: User[] = [
   toUser(noam_biran),
   toUser(raz_kobi),
   toUser(noam_yaron),
+  toUser(adam_aronovitch),
+  toUser(asaf_ben_zaken),
+  toUser(chen_inbar),
+  toUser(nir_alfasi),
 ]
 
 export const USERS_SORTED = [...USERS].sort((a, b) => a.label.localeCompare(b.label, 'he'))
