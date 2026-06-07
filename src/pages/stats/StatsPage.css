@@ -554,3 +554,145 @@
   margin-left: 0.3rem;
   vertical-align: middle;
 }
+
+/* ── Tap hint ────────────────────────────────────────────────── */
+
+.stages-tap-hint {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin: -0.75rem 0 1rem;
+  direction: rtl;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.stages-tap-hint::before {
+  content: '↓';
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* ── Interactive cells ───────────────────────────────────────── */
+
+.stages-td--interactive {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.stages-td--interactive:hover {
+  background: color-mix(in srgb, var(--navy) 10%, transparent);
+}
+
+.stages-td--champ.stages-td--interactive:hover {
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+
+.stages-cell-count {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: currentColor;
+  text-underline-offset: 3px;
+  opacity: 0.85;
+  transition: opacity 0.1s;
+}
+
+.stages-td--interactive:hover .stages-cell-count {
+  opacity: 1;
+}
+
+/* ── Stage Popup ─────────────────────────────────────────────── */
+
+@keyframes popup-rise {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes popup-drop {
+  from { opacity: 0; transform: translateY(6px)  scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.stage-popup {
+  position: fixed;
+  z-index: 1000;
+  width: 190px;
+  background: var(--navy);
+  border-radius: 6px;
+  padding: 0.65rem 0.8rem 0.75rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(212, 160, 22, 0.25);
+  animation: popup-rise 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+  direction: rtl;
+}
+
+/* Arrow pointing up toward the cell */
+.stage-popup::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: var(--arrow-left, 50%);
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top: none;
+  border-bottom-color: var(--navy);
+}
+
+.stage-popup--above {
+  animation: popup-drop 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Arrow pointing down toward the cell when popup is above */
+.stage-popup--above::before {
+  top: auto;
+  bottom: -6px;
+  border-bottom: none;
+  border-top: 6px solid var(--navy);
+}
+
+.stage-popup-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stage-popup-team {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem;
+  color: var(--paper);
+  line-height: 1;
+  letter-spacing: 0.05em;
+}
+
+.stage-popup-stage {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.stage-popup-pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.stage-popup-picker {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  padding: 0.15em 0.5em;
+  white-space: nowrap;
+  line-height: 1.5;
+}

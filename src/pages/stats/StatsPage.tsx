@@ -1,8 +1,18 @@
+import { useState, useEffect, useRef } from 'react'
 import type { User } from '../../users/index'
 import { USERS } from '../../users/index'
 import { TEAMS } from '../../shared/groups'
 import PageLayout from '../../shared/PageLayout'
 import './StatsPage.css'
+
+const STAGE_LABELS: Record<string, string> = {
+  r32: 'שלב 32',
+  r16: 'שמינית גמר',
+  qf: 'רבע גמר',
+  sf: 'חצי גמר',
+  final: 'גמר',
+  champion: '★ אלופה',
+}
 
 interface TeamFinalStat {
   team: string
@@ -76,19 +86,19 @@ function computeFinalMatchups(users: User[]): FinalMatchup[] {
 
 interface TeamStageStat {
   team: string
-  r32: number
-  r16: number
-  qf: number
-  sf: number
-  final: number
-  champion: number
+  r32: string[]
+  r16: string[]
+  qf: string[]
+  sf: string[]
+  final: string[]
+  champion: string[]
 }
 
 function computeTeamStageStats(users: User[]): TeamStageStat[] {
-  const counts: Record<string, { r32: number; r16: number; qf: number; sf: number; final: number; champion: number }> = {}
+  const counts: Record<string, { r32: string[]; r16: string[]; qf: string[]; sf: string[]; final: string[]; champion: string[] }> = {}
 
   const get = (team: string) => {
-    if (!counts[team]) counts[team] = { r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0 }
+    if (!counts[team]) counts[team] = { r32: [], r16: [], qf: [], sf: [], final: [], champion: [] }
     return counts[team]
   }
 
@@ -96,20 +106,20 @@ function computeTeamStageStats(users: User[]): TeamStageStat[] {
 
   for (const user of users) {
     for (const match of user.knockoutStages.r32) {
-      get(match.home).r32++
-      get(match.away).r32++
+      get(match.home).r32.push(user.label)
+      get(match.away).r32.push(user.label)
     }
-    for (const team of user.predictedR16Teams ?? []) get(team).r16++
-    for (const team of user.predictedQFTeams ?? []) get(team).qf++
-    for (const team of user.predictedSFTeams ?? []) get(team).sf++
-    for (const team of user.predictedFinalTeams ?? []) get(team).final++
-    if (user.predictedChampion) get(user.predictedChampion).champion++
+    for (const team of user.predictedR16Teams ?? []) get(team).r16.push(user.label)
+    for (const team of user.predictedQFTeams ?? []) get(team).qf.push(user.label)
+    for (const team of user.predictedSFTeams ?? []) get(team).sf.push(user.label)
+    for (const team of user.predictedFinalTeams ?? []) get(team).final.push(user.label)
+    if (user.predictedChampion) get(user.predictedChampion).champion.push(user.label)
   }
 
   return Object.entries(counts)
     .map(([team, c]) => ({ team, ...c }))
     .sort((a, b) => {
-      const score = (x: TeamStageStat) => x.champion * 6 + x.final * 5 + x.sf * 4 + x.qf * 3 + x.r16 * 2 + x.r32
+      const score = (x: TeamStageStat) => x.champion.length * 6 + x.final.length * 5 + x.sf.length * 4 + x.qf.length * 3 + x.r16.length * 2 + x.r32.length
       return score(b) - score(a)
     })
 }
@@ -136,11 +146,56 @@ interface Props {
   users?: User[]
 }
 
+interface StagePopup {
+  pickers: string[]
+  stageLabel: string
+  teamName: string
+  left: number
+  top: number
+  above: boolean
+  arrowLeft: number
+}
+
 export default function StatsPage({ users = USERS }: Props) {
   const stats = computeFinalStats(users)
   const matchups = computeFinalMatchups(users)
   const goalScorers = computeGoalScorerStats(users)
   const teamStageStats = computeTeamStageStats(users)
+
+  const [popup, setPopup] = useState<StagePopup | null>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!popup) return
+    const onMouseDown = (e: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setPopup(null)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPopup(null) }
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [popup])
+
+  const openPopup = (e: React.MouseEvent<HTMLTableCellElement>, pickers: string[], teamName: string, col: string) => {
+    if (!pickers.length) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const popupWidth = 190
+    const rawLeft = rect.left + rect.width / 2 - popupWidth / 2
+    const clampedLeft = Math.max(8, Math.min(rawLeft, window.innerWidth - popupWidth - 8))
+    const above = rect.bottom + 160 > window.innerHeight
+    setPopup({
+      pickers,
+      stageLabel: STAGE_LABELS[col] ?? col,
+      teamName,
+      left: clampedLeft,
+      top: above ? rect.top - 8 : rect.bottom + 8,
+      above,
+      arrowLeft: rect.left + rect.width / 2 - clampedLeft,
+    })
+  }
 
   return (
     <PageLayout title="סטטיסטיקה">
@@ -288,6 +343,7 @@ export default function StatsPage({ users = USERS }: Props) {
 
         <p className="stats-eyebrow stats-eyebrow--section">נבחרות לפי שלב</p>
         <p className="stats-subtitle">כמה משתתפים העלו כל נבחרת לכל שלב</p>
+        <p className="stages-tap-hint">לחצו על כל חלק בטבלה כדי לראות מי העלה את הנבחרת לשלב הזה</p>
 
         <div className="stages-wrap">
           <table className="stages-table" dir="rtl" data-section="team-stages">
@@ -305,24 +361,63 @@ export default function StatsPage({ users = USERS }: Props) {
             <tbody>
               {teamStageStats.map(({ team, r32, r16, qf, sf, final, champion }, i) => {
                 const teamInfo = TEAMS[team]
+                const teamName = teamInfo?.he ?? team
+                const cell = (pickers: string[], col: string, extra?: string) => {
+                  const interactive = pickers.length > 0
+                  return (
+                    <td
+                      className={`stages-td${extra ? ` ${extra}` : ''}${interactive ? ' stages-td--interactive' : ''}`}
+                      data-col={col}
+                      data-zero={pickers.length === 0 || undefined}
+                      onClick={interactive ? (e) => openPopup(e, pickers, teamName, col) : undefined}
+                    >
+                      {interactive
+                        ? <span className="stages-cell-count">{pickers.length}</span>
+                        : '–'}
+                    </td>
+                  )
+                }
                 return (
                   <tr key={team} className="stages-tr" style={{ '--row-i': i } as React.CSSProperties}>
                     <td className="stages-td stages-td--team">
                       <span className={`fi fi-${teamInfo?.iso ?? ''} stages-flag`} aria-hidden="true" />
-                      <span>{teamInfo?.he ?? team}</span>
+                      <span>{teamName}</span>
                     </td>
-                    <td className="stages-td" data-col="r32" data-zero={r32 === 0 || undefined}>{r32 || '–'}</td>
-                    <td className="stages-td" data-col="r16" data-zero={r16 === 0 || undefined}>{r16 || '–'}</td>
-                    <td className="stages-td" data-col="qf" data-zero={qf === 0 || undefined}>{qf || '–'}</td>
-                    <td className="stages-td" data-col="sf" data-zero={sf === 0 || undefined}>{sf || '–'}</td>
-                    <td className="stages-td" data-col="final" data-zero={final === 0 || undefined}>{final || '–'}</td>
-                    <td className="stages-td stages-td--champ" data-col="champion" data-zero={champion === 0 || undefined}>{champion || '–'}</td>
+                    {cell(r32, 'r32')}
+                    {cell(r16, 'r16')}
+                    {cell(qf, 'qf')}
+                    {cell(sf, 'sf')}
+                    {cell(final, 'final')}
+                    {cell(champion, 'champion', 'stages-td--champ')}
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
+
+        {popup && (
+          <div
+            ref={popupRef}
+            className={`stage-popup${popup.above ? ' stage-popup--above' : ''}`}
+            style={{
+              left: popup.left,
+              top: popup.above ? undefined : popup.top,
+              bottom: popup.above ? window.innerHeight - popup.top : undefined,
+              '--arrow-left': `${popup.arrowLeft}px`,
+            } as React.CSSProperties}
+          >
+            <div className="stage-popup-header">
+              <span className="stage-popup-team">{popup.teamName}</span>
+              <span className="stage-popup-stage">{popup.stageLabel}</span>
+            </div>
+            <div className="stage-popup-pickers">
+              {popup.pickers.map(name => (
+                <span key={name} className="stage-popup-picker">{name}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </PageLayout>
   )
