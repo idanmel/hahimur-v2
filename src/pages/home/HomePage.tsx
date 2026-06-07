@@ -66,6 +66,33 @@ export default function HomePage() {
             <strong>מלך שערים:</strong> כל שער של השחקן שניחשת — 3 נקודות. זכה בנעל הזהב — בונוס 10 נקודות.
           </div>
         </div>
+
+        <div className="scoring-section">
+          <p className="scoring-section__title">חלוקת הפרסים</p>
+          <div className="scoring-table-wrapper">
+            <table className="scoring-table">
+              <thead>
+                <tr>
+                  <th>מקום</th>
+                  <th>פרס</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { place: '🥇 מקום ראשון', prize: '1,500 ₪' },
+                  { place: '🥈 מקום שני', prize: '700 ₪' },
+                  { place: '🥉 מקום שלישי', prize: '300 ₪' },
+                  { place: '4️⃣ מקום רביעי', prize: '100 ₪' },
+                ].map((row) => (
+                  <tr key={row.place}>
+                    <td>{row.place}</td>
+                    <td>{row.prize}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </main>
     </PageLayout>
   )
