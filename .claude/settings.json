@@ -29,7 +29,9 @@
       "Bash(git -C /home/idanmel/hahimur status --short)",
       "Bash(git -C /home/idanmel/hahimur diff .claude/settings.json)",
       "Bash(git -C /home/idanmel/hahimur add src/pages/updates/updates.ts .claude/settings.json)",
-      "Bash(git -C /home/idanmel/hahimur commit -m ' *)"
+      "Bash(git -C /home/idanmel/hahimur commit -m ' *)",
+      "Bash(npm install *)",
+      "Bash(git pull *)"
     ]
   }
 }
