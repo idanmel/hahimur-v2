@@ -25,7 +25,11 @@
       "Read(//usr/bin/**)",
       "Bash(ls ~/.cache/ms-playwright/chromium*/chrome-linux/chrome 2>/dev/null || echo \"not found\")",
       "Read(//home/idanmel/.cache/ms-playwright/**)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(git -C /home/idanmel/hahimur status --short)",
+      "Bash(git -C /home/idanmel/hahimur diff .claude/settings.json)",
+      "Bash(git -C /home/idanmel/hahimur add src/pages/updates/updates.ts .claude/settings.json)",
+      "Bash(git -C /home/idanmel/hahimur commit -m ' *)"
     ]
   }
 }
