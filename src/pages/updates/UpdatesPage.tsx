@@ -1,12 +1,21 @@
+import { useState, useEffect } from 'react'
 import PageLayout from '../../shared/PageLayout'
-import { UPDATES } from './updates'
+import type { Update } from './updates'
 import './UpdatesPage.css'
 
 export default function UpdatesPage() {
+  const [updates, setUpdates] = useState<Update[]>([])
+
+  useEffect(() => {
+    fetch('/updates.json')
+      .then(r => r.json())
+      .then((data: Update[]) => setUpdates(data.filter(u => !u.draft)))
+  }, [])
+
   return (
     <PageLayout title="עדכונים">
       <main dir="rtl" className="updates-page">
-        {UPDATES.map((update, idx) => (
+        {updates.map((update, idx) => (
           <article
             key={update.id}
             className="update-card"
