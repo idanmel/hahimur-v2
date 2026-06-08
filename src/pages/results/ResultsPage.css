@@ -235,6 +235,62 @@
   padding-inline-start: 6px;
 }
 
+/* ── View toggle (by-group / by-date) ────────────────────────── */
+
+.pg-view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 1rem;
+  margin-top: 4px;
+}
+
+/* ── Date band ───────────────────────────────────────────────── */
+
+.pg-date-band {
+  display: flex;
+  align-items: center;
+  padding: 14px 0 8px;
+  direction: rtl;
+}
+
+.pg-date-band:first-child {
+  padding-top: 0;
+}
+
+.pg-date-band__rule {
+  flex: 1;
+  height: 1px;
+  background: rgba(200, 184, 122, 0.45);
+  display: block;
+}
+
+.pg-date-band__label {
+  padding: 0 14px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.pg-date-band__date {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.28em;
+  color: var(--navy);
+  line-height: 1.1;
+}
+
+.pg-date-band__day {
+  display: block;
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  text-align: center;
+  margin-top: 2px;
+  line-height: 1;
+}
+
 /* ── Matches ─────────────────────────────────────────────────── */
 
 .pg-collapsible-inner .pg-toolbar {

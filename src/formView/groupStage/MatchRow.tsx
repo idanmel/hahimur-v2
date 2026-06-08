@@ -16,20 +16,32 @@ interface Props {
   onChange: (scores: MatchScores) => void
   readOnly?: boolean
   href?: string
+  hideDate?: boolean
+  groupLabel?: string
 }
 
-export default function MatchRow({ match, scores, onChange, readOnly = false, href }: Props) {
+export default function MatchRow({ match, scores, onChange, readOnly = false, href, hideDate = false, groupLabel }: Props) {
   const set = (home: Score, away: Score) => onChange({ home, away })
   const Card = href && readOnly ? 'a' : 'div'
   const cardProps = href && readOnly ? { href, className: 'match-card' } : { className: 'match-card' }
   return (
     <Card {...cardProps}>
-      {(match.matchDate || match.kickoffIST) && (
-        <div className="match-meta">
-          {match.matchDate && <span>{dayOfWeek(match.matchDate)}, {match.matchDate}</span>}
-          {match.matchDate && match.kickoffIST && <span className="match-meta-sep">|</span>}
-          {match.kickoffIST && <span>{match.kickoffIST}</span>}
-        </div>
+      {hideDate ? (
+        (match.kickoffIST || groupLabel) && (
+          <div className="match-meta">
+            {groupLabel && <span className="match-meta-group">{groupLabel}</span>}
+            {groupLabel && match.kickoffIST && <span className="match-meta-sep">|</span>}
+            {match.kickoffIST && <span>{match.kickoffIST}</span>}
+          </div>
+        )
+      ) : (
+        (match.matchDate || match.kickoffIST) && (
+          <div className="match-meta">
+            {match.matchDate && <span>{dayOfWeek(match.matchDate)}, {match.matchDate}</span>}
+            {match.matchDate && match.kickoffIST && <span className="match-meta-sep">|</span>}
+            {match.kickoffIST && <span>{match.kickoffIST}</span>}
+          </div>
+        )
       )}
       <div className="match-team match-team--home">
         <span className={`fi fi-${TEAMS[match.homeTeam].iso} match-team-flag`} />

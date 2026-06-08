@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import GoalScorerSection from './GoalScorerSection'
 import PageLayout from '../../shared/PageLayout'
 import MatchRow from '../../formView/groupStage/MatchRow'
@@ -11,8 +11,8 @@ import LeaderboardTable from '../../leaderboard/LeaderboardTable'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
-import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
-import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
+import { GROUPS, ALL_GROUP_LETTERS, TEAMS, type GroupLetter } from '../../shared/groups'
+import type { PredictionsState, MatchScores, TournamentResults, Match } from '../../shared/types'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
 import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
@@ -95,9 +95,21 @@ const pickersByPlayer = (users: User[]): Record<string, string[]> => {
   return map
 }
 
+const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+type MatchEntry = { match: Match; group: GroupLetter }
+type DateGroup  = { date: string; dayLabel: string; matches: MatchEntry[] }
+
+function matchSortKey(matchDate: string | undefined, kickoffIST: string | undefined): number {
+  const day = matchDate ? parseInt(matchDate, 10) : 99
+  const [hh = 0, mm = 0] = (kickoffIST ?? '').split(':').map(Number)
+  return day * 10000 + hh * 100 + mm
+}
+
 export default function ResultsPage({ users }: { users: User[] }) {
   const [editedResults, setEditedResults] = useState<PredictionsState>(getInitialState)
   const [activeGroup, setActiveGroup] = useState('A')
+  const [groupStageView, setGroupStageView] = useState<'by-group' | 'by-date'>('by-group')
   const [goalScorerState, setGoalScorerState] = useState(() => ({
     playerGoals: realTournamentResults.playerGoals ?? {} as Record<string, number>,
     goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
@@ -150,6 +162,28 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }
 
   const { thirdPlaceQual, allGroupsFilled, allGroupData, groupsWithTies, round32Matches, knockout, finalWinner } = useTournament(editedResults)
+
+  const allMatchesByDate = useMemo((): DateGroup[] => {
+    const all: MatchEntry[] = ALL_GROUP_LETTERS.flatMap(l =>
+      GROUPS[l].matches.map(m => ({ match: m, group: l }))
+    ).sort((a, b) =>
+      matchSortKey(a.match.matchDate, a.match.kickoffIST) -
+      matchSortKey(b.match.matchDate, b.match.kickoffIST)
+    )
+    const grouped: DateGroup[] = []
+    for (const entry of all) {
+      const date = entry.match.matchDate ?? ''
+      const last = grouped[grouped.length - 1]
+      if (last?.date === date) {
+        last.matches.push(entry)
+      } else {
+        const day = parseInt(date, 10)
+        const d = new Date(2026, 5, day)
+        grouped.push({ date, dayLabel: `יום ${HE_DAYS[d.getDay()]}`, matches: [entry] })
+      }
+    }
+    return grouped
+  }, [])
 
   const activeTournamentData = allGroupData.find(d => d.group === activeGroup)
   const activeTiedTeams = activeTournamentData?.tiedTeams ?? new Set<string>()
@@ -234,44 +268,88 @@ export default function ResultsPage({ users }: { users: User[] }) {
         {/* All stages — collapsible accordion */}
         <div className="pg-ko-stages">
           <CollapsibleSection label="שלב הבתים">
-            <div className="pg-toolbar">
-              <div className="pg-groups">
-                {ALL_GROUP_LETTERS.map(letter => (
-                  <button
-                    key={letter}
-                    type="button"
-                    className={`pg-group-btn${activeGroup === letter ? ' pg-group-btn--active' : ''}${groupsWithTies.has(letter) ? ' pg-group-btn--error' : ''}`}
-                    onClick={() => setActiveGroup(letter)}
-                  >
-                    {GROUPS[letter].he}
-                  </button>
+            <div className="pg-view-toggle">
+              <button
+                type="button"
+                className={`pg-group-btn${groupStageView === 'by-group' ? ' pg-group-btn--active' : ''}`}
+                onClick={() => setGroupStageView('by-group')}
+              >לפי בית</button>
+              <button
+                type="button"
+                className={`pg-group-btn${groupStageView === 'by-date' ? ' pg-group-btn--active' : ''}`}
+                onClick={() => setGroupStageView('by-date')}
+              >לפי תאריך</button>
+            </div>
+
+            {groupStageView === 'by-group' ? (
+              <>
+                <div className="pg-toolbar">
+                  <div className="pg-groups">
+                    {ALL_GROUP_LETTERS.map(letter => (
+                      <button
+                        key={letter}
+                        type="button"
+                        className={`pg-group-btn${activeGroup === letter ? ' pg-group-btn--active' : ''}${groupsWithTies.has(letter) ? ' pg-group-btn--error' : ''}`}
+                        onClick={() => setActiveGroup(letter)}
+                      >
+                        {GROUPS[letter].he}
+                      </button>
+                    ))}
+                  </div>
+                  <a href={`/stats/groups/${activeGroup.toLowerCase()}`} className="pg-group-stats-link">סטטיסטיקות בית {GROUPS[activeGroup].he} →</a>
+                </div>
+
+                {activeAllFilled && activeTiedTeams.size > 0 && (
+                  <div role="alert" className="tie-warning">
+                    {[...activeTiedTeams].map(t => TEAMS[t].he).join(' · ')} — שוות בכל הקריטריונים
+                  </div>
+                )}
+
+                <div className="pg-matches">
+                  {GROUPS[activeGroup].matches.map(match => (
+                    <MatchRow
+                      key={match.id}
+                      match={match}
+                      scores={editedResults[match.id] ?? { home: null, away: null }}
+                      onChange={scores => updateMatch(match.id, scores)}
+                      readOnly={LOCKED_MATCH_IDS.has(match.id)}
+                      href={`/matches/${match.id.toLowerCase()}`}
+                    />
+                  ))}
+                </div>
+
+                <StandingsTable
+                  standings={calculateStandings(GROUPS[activeGroup].matches, editedResults).standings}
+                />
+              </>
+            ) : (
+              <div className="pg-matches">
+                {allMatchesByDate.map(({ date, dayLabel, matches }) => (
+                  <div key={date}>
+                    <div className="pg-date-band">
+                      <span className="pg-date-band__rule" />
+                      <div className="pg-date-band__label">
+                        <span className="pg-date-band__date">{date}</span>
+                        <span className="pg-date-band__day">{dayLabel}</span>
+                      </div>
+                      <span className="pg-date-band__rule" />
+                    </div>
+                    {matches.map(({ match, group }) => (
+                      <MatchRow
+                        key={match.id}
+                        match={match}
+                        scores={editedResults[match.id] ?? { home: null, away: null }}
+                        onChange={scores => updateMatch(match.id, scores)}
+                        readOnly={LOCKED_MATCH_IDS.has(match.id)}
+                        href={`/matches/${match.id.toLowerCase()}`}
+                        hideDate
+                        groupLabel={GROUPS[group].he}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
-              <a href={`/stats/groups/${activeGroup.toLowerCase()}`} className="pg-group-stats-link">סטטיסטיקות בית {GROUPS[activeGroup].he} →</a>
-            </div>
-
-            {activeAllFilled && activeTiedTeams.size > 0 && (
-              <div role="alert" className="tie-warning">
-                {[...activeTiedTeams].map(t => TEAMS[t].he).join(' · ')} — שוות בכל הקריטריונים
-              </div>
             )}
-
-            <div className="pg-matches">
-              {GROUPS[activeGroup].matches.map(match => (
-                <MatchRow
-                  key={match.id}
-                  match={match}
-                  scores={editedResults[match.id] ?? { home: null, away: null }}
-                  onChange={scores => updateMatch(match.id, scores)}
-                  readOnly={LOCKED_MATCH_IDS.has(match.id)}
-                  href={`/matches/${match.id.toLowerCase()}`}
-                />
-              ))}
-            </div>
-
-            <StandingsTable
-              standings={calculateStandings(GROUPS[activeGroup].matches, editedResults).standings}
-            />
           </CollapsibleSection>
           <CollapsibleSection label="דירוג נבחרות במקום השלישי">
             <ThirdPlaceTable qualification={thirdPlaceQual} allGroupsFilled={allGroupsFilled} />
