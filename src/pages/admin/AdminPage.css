@@ -1,0 +1,237 @@
+/* ── Admin Page ─────────────────────────────────────────────── */
+
+@keyframes panel-in {
+  0%   { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes status-flash {
+  0%   { opacity: 0; transform: scale(0.92); }
+  60%  { transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.admin-wrapper {
+  padding: 2.5rem 1rem 4rem;
+  display: flex;
+  justify-content: center;
+}
+
+.admin-panel {
+  width: 100%;
+  max-width: 600px;
+  background: var(--navy);
+  border: 1px solid rgba(212, 160, 22, 0.22);
+  border-top: 3px solid var(--gold);
+  border-radius: 2px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  animation: panel-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Header band */
+.admin-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.4rem 0.85rem;
+  border-bottom: 1px solid rgba(212, 160, 22, 0.15);
+  direction: rtl;
+}
+
+.admin-panel__title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+  margin: 0;
+}
+
+.admin-panel__badge {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.28em;
+  color: rgba(212, 160, 22, 0.42);
+  padding: 3px 8px;
+  border: 1px solid rgba(212, 160, 22, 0.22);
+  border-radius: 2px;
+}
+
+/* Form body */
+.admin-form {
+  padding: 1.6rem 1.4rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  direction: rtl;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.admin-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  color: rgba(212, 160, 22, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-label::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 10px;
+  background: var(--gold);
+  opacity: 0.6;
+  border-radius: 1px;
+}
+
+.admin-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 160, 22, 0.2);
+  border-radius: 2px;
+  color: var(--cream);
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.65rem 0.85rem;
+  outline: none;
+  transition: border-color 0.18s, background-color 0.18s, box-shadow 0.18s;
+  direction: rtl;
+}
+
+.admin-input:focus {
+  border-color: rgba(212, 160, 22, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(212, 160, 22, 0.09);
+}
+
+.admin-input::placeholder {
+  color: rgba(239, 228, 184, 0.22);
+  font-style: italic;
+}
+
+textarea.admin-input {
+  resize: vertical;
+  min-height: 160px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent calc(1.7em - 1px),
+    rgba(212, 160, 22, 0.06) calc(1.7em - 1px),
+    rgba(212, 160, 22, 0.06) 1.7em
+  );
+  background-attachment: local;
+}
+
+/* Password field row */
+.admin-field--password .admin-input {
+  font-family: monospace;
+  letter-spacing: 0.22em;
+}
+
+/* Divider */
+.admin-divider {
+  border: none;
+  border-top: 1px solid rgba(212, 160, 22, 0.1);
+  margin: 0;
+}
+
+/* Footer / submit row */
+.admin-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  direction: rtl;
+}
+
+.admin-status {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  animation: status-flash 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-status--ok     { color: #4ade80; }
+.admin-status--error  { color: #f87171; }
+.admin-status--unauth { color: #f87171; }
+
+.admin-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.admin-status--ok    .admin-status__dot { background: #4ade80; }
+.admin-status--error .admin-status__dot,
+.admin-status--unauth .admin-status__dot { background: #f87171; }
+
+.admin-submit {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.28em;
+  color: var(--navy);
+  background: var(--gold);
+  border: none;
+  border-radius: 2px;
+  padding: 0.7rem 2.2rem;
+  cursor: pointer;
+  transition: background-color 0.14s, transform 0.1s, box-shadow 0.14s;
+  box-shadow: 0 2px 10px rgba(212, 160, 22, 0.25);
+  white-space: nowrap;
+}
+
+.admin-submit:hover:not(:disabled) {
+  background: #e6b31a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(212, 160, 22, 0.38);
+}
+
+.admin-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 6px rgba(212, 160, 22, 0.2);
+}
+
+.admin-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Loading indicator */
+.admin-submit--loading::after {
+  content: '';
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border: 2px solid rgba(11, 34, 68, 0.4);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 0.45em;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
