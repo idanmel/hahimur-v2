@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { vi, afterEach, beforeEach } from 'vitest'
 import handler from '../../../api/publish-update'
 

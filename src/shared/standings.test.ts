@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Match, MatchScores, Standing } from './types'
 import { GROUP_A_MATCHES } from './groups'

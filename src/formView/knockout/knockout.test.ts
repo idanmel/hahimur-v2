@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { resolveKnockout, resolveRound32, clearUnresolvedKOScores, isPlayerParticipatingInKOMatch } from './knockout'
 import type { KnockoutMatch, ThirdPlaceQualification } from '../../shared/types'

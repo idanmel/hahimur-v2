@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import type { User } from '../users'

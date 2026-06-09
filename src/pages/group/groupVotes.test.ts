@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { computeGroupVotes, computeGroupR32Pickers } from './groupVotes'
 import type { User } from '../../users'
 

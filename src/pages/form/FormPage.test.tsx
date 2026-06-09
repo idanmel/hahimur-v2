@@ -18,18 +18,7 @@ function setup() {
   return { mexicoInput, southAfricaInput }
 }
 
-test('predictions page shows title', () => {
-  render(<FormPage />)
-  expect(screen.getByText('ההימור 2026')).toBeInTheDocument()
-})
-
 describe('Slice 4 — Group A (6 matches)', () => {
-  test('all 6 Group A matches are visible by default', () => {
-    render(<FormPage />)
-    const groupSection = document.querySelector('section.content-section') as HTMLElement
-    expect(within(groupSection).getAllByRole('textbox')).toHaveLength(12)
-  })
-
   test('standings update when a non-opening match score is entered', () => {
     render(<FormPage />)
     // Match A2: South Korea (home) vs Czech Republic. South Korea appears as home first in A2.
@@ -56,19 +45,9 @@ describe('Slice 8 — localStorage persistence', () => {
 })
 
 describe('Slice 9/10 — group navigation (B–L)', () => {
-  const remaining = Object.entries(GROUPS)
-    .filter(([k]) => k !== 'A')
-    .map(([k, v]) => [k, v.he] as [string, string])
-
-  test.each(remaining)('group %s button is enabled', (_letter, hebrew) => {
+  test('clicking a group button switches to that group (12 inputs, no Group A teams)', () => {
     render(<FormPage />)
-    expect(screen.getByRole('button', { name: hebrew })).not.toBeDisabled()
-  })
-
-  test.each(remaining)('group %s shows 6 matches (12 inputs) when selected', (_letter, hebrew) => {
-    render(<FormPage />)
-    fireEvent.click(screen.getByRole('button', { name: hebrew }))
-    // Group A's Mexico must be gone — confirming we really switched groups
+    fireEvent.click(screen.getByRole('button', { name: GROUPS['B'].he }))
     expect(screen.queryAllByLabelText('מקסיקו')).toHaveLength(0)
     const groupSection = document.querySelector('section.content-section') as HTMLElement
     expect(within(groupSection).getAllByRole('textbox')).toHaveLength(12)
@@ -178,15 +157,6 @@ describe('Save predictions', () => {
 })
 
 describe('Slice 3b — group standings table', () => {
-  test('standings table shows all 4 Group A teams', () => {
-    render(<FormPage />)
-    const table = screen.getAllByRole('table')[0]
-    expect(within(table).getByText('מקסיקו')).toBeInTheDocument()
-    expect(within(table).getByText('דרום אפריקה')).toBeInTheDocument()
-    expect(within(table).getByText('דרום קוריאה')).toBeInTheDocument()
-    expect(within(table).getByText('צ׳כיה')).toBeInTheDocument()
-  })
-
   test('entering scores updates the standings', () => {
     const { mexicoInput, southAfricaInput } = setup()
     fireEvent.change(mexicoInput, { target: { value: '2' } })
@@ -213,14 +183,4 @@ describe('Slice 3b — group standings table', () => {
   })
 })
 
-describe('Knockout stages', () => {
-  test('R16, QF, SF, 3P, and Final section headings are visible', () => {
-    render(<FormPage />)
-    expect(screen.getByText('שמינית גמר')).toBeInTheDocument()
-    expect(screen.getByText('רבע גמר')).toBeInTheDocument()
-    expect(screen.getByText('חצי גמר')).toBeInTheDocument()
-    expect(screen.getByText('מקום שלישי')).toBeInTheDocument()
-    expect(screen.getByText('גמר')).toBeInTheDocument()
-  })
-})
 

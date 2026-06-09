@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import { clampGoals, getLockedMatchIds } from './ResultsPage'
 import type { TournamentResults } from '../../shared/types'

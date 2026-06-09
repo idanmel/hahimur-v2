@@ -30,7 +30,7 @@ interface TeamFinalStat {
   total: number
 }
 
-function computeFinalStats(users: User[]): TeamFinalStat[] {
+export function computeFinalStats(users: User[]): TeamFinalStat[] {
   const map = new Map<string, { championPickers: string[]; runnerUpPickers: string[] }>()
 
   const get = (team: string) => {
@@ -67,7 +67,7 @@ interface FinalMatchup {
   winnerPickers: [string[], string[]]
 }
 
-function computeFinalMatchups(users: User[]): FinalMatchup[] {
+export function computeFinalMatchups(users: User[]): FinalMatchup[] {
   const map = new Map<string, { teams: [string, string]; wins: [number, number]; winnerPickers: [string[], string[]] }>()
 
   for (const user of users) {
@@ -103,7 +103,7 @@ interface TeamStageStat {
   champion: string[]
 }
 
-function computeTeamStageStats(users: User[]): TeamStageStat[] {
+export function computeTeamStageStats(users: User[]): TeamStageStat[] {
   const counts: Record<string, { r32: string[]; r16: string[]; qf: string[]; sf: string[]; final: string[]; champion: string[] }> = {}
 
   const get = (team: string) => {
@@ -138,7 +138,7 @@ interface GoalScorerStat {
   pickers: string[]
 }
 
-function computeGoalScorerStats(users: User[]): GoalScorerStat[] {
+export function computeGoalScorerStats(users: User[]): GoalScorerStat[] {
   const map = new Map<string, string[]>()
   for (const user of users) {
     if (user.topGoalscorer) {

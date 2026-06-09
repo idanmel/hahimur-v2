@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Match, MatchScores, Standing, ThirdPlaceStanding } from '../../shared/types'
 import { calculateStandings } from '../../shared/standings'
