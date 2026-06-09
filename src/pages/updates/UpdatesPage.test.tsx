@@ -9,7 +9,7 @@ function mockFetch(data: unknown) {
 }
 
 test('renders update subject fetched from /updates.json', async () => {
-  mockFetch([{ id: 1, date: '7 ביוני 2026', subject: 'כותרת בדיקה', paragraphs: [] }])
+  mockFetch([{ id: 1, date: '7 ביוני 2026', subject: 'כותרת בדיקה', text: '' }])
   render(<UpdatesPage />)
   await waitFor(() => expect(screen.getByText('כותרת בדיקה')).toBeInTheDocument())
 })
@@ -23,8 +23,8 @@ test('fetches from /updates.json', async () => {
 
 test('filters out entries with draft: true', async () => {
   mockFetch([
-    { id: 1, date: '7 ביוני 2026', subject: 'גלוי', paragraphs: [] },
-    { id: 2, date: '8 ביוני 2026', subject: 'טיוטה נסתרת', paragraphs: [], draft: true },
+    { id: 1, date: '7 ביוני 2026', subject: 'גלוי', text: '' },
+    { id: 2, date: '8 ביוני 2026', subject: 'טיוטה נסתרת', text: '', draft: true },
   ])
   render(<UpdatesPage />)
   await waitFor(() => expect(screen.getByText('גלוי')).toBeInTheDocument())

@@ -8,7 +8,7 @@ interface Update {
   id: number
   date: string
   subject: string
-  paragraphs: string[]
+  text: string
   draft?: boolean
   pdfFilename?: string
   pdfLabel?: string
@@ -19,10 +19,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' })
   }
 
-  const { password, subject, paragraphs, date } = req.body as {
+  const { password, subject, text, date } = req.body as {
     password: string
     subject: string
-    paragraphs: string[]
+    text: string
     date: string
   }
 
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const updates: Update[] = JSON.parse(Buffer.from(content, 'base64').toString('utf-8'))
   const maxId = updates.length > 0 ? Math.max(...updates.map(u => u.id)) : 0
-  const newEntry: Update = { id: maxId + 1, date, subject, paragraphs }
+  const newEntry: Update = { id: maxId + 1, date, subject, text }
   const newContent = JSON.stringify([newEntry, ...updates], null, 2)
   const encoded = Buffer.from(newContent, 'utf-8').toString('base64')
 

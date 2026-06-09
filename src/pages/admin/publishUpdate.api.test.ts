@@ -39,28 +39,28 @@ test('returns 405 for non-POST request', async () => {
 })
 
 test('returns 401 for wrong password', async () => {
-  const req = makeReq({ body: { password: 'wrong', subject: 'test', paragraphs: [], date: 'today' } })
+  const req = makeReq({ body: { password: 'wrong', subject: 'test', text: '', date: 'today' } })
   const res = makeRes()
   await handler(req, res as never)
   expect(res._status).toBe(401)
 })
 
 test('returns 401 for empty password', async () => {
-  const req = makeReq({ body: { password: '', subject: 'test', paragraphs: [], date: 'today' } })
+  const req = makeReq({ body: { password: '', subject: 'test', text: '', date: 'today' } })
   const res = makeRes()
   await handler(req, res as never)
   expect(res._status).toBe(401)
 })
 
 test('commits to GitHub and returns 200 for correct password', async () => {
-  const existingUpdates = [{ id: 1, date: 'old', subject: 'old', paragraphs: [] }]
+  const existingUpdates = [{ id: 1, date: 'old', subject: 'old', text: '' }]
   const encoded = Buffer.from(JSON.stringify(existingUpdates), 'utf-8').toString('base64')
   const fetchMock = vi.fn()
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ content: encoded, sha: 'abc123' }) })
     .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ commit: { sha: 'def456' } }) })
   vi.stubGlobal('fetch', fetchMock)
 
-  const req = makeReq({ body: { password: ADMIN_PASSWORD, subject: 'חדש', paragraphs: ['פסקה'], date: '8 ביוני 2026' } })
+  const req = makeReq({ body: { password: ADMIN_PASSWORD, subject: 'חדש', text: 'פסקה', date: '8 ביוני 2026' } })
   const res = makeRes()
   await handler(req, res as never)
 
@@ -76,7 +76,7 @@ test('commits to GitHub and returns 200 for correct password', async () => {
 
 test('returns 401 when ADMIN_PASSWORD env var is not set', async () => {
   vi.stubEnv('ADMIN_PASSWORD', '')
-  const req = makeReq({ body: { password: '', subject: 'test', paragraphs: [], date: 'today' } })
+  const req = makeReq({ body: { password: '', subject: 'test', text: '', date: 'today' } })
   const res = makeRes()
   await handler(req, res as never)
   expect(res._status).toBe(401)

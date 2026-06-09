@@ -30,9 +30,7 @@ export default function UpdatesPage() {
               <h2 className="update-card__subject">{update.subject}</h2>
 
               <div className="update-card__body">
-                {update.paragraphs.map((p, i) => (
-                  <p key={i} style={{ whiteSpace: 'pre-line' }}>{p}</p>
-                ))}
+                <p style={{ whiteSpace: 'pre-line' }}>{update.text}</p>
               </div>
 
               {update.pdfFilename && (

@@ -11,20 +11,19 @@ function toHebrewDate(date: Date): string {
 
 export default function AdminPage() {
   const [subject, setSubject] = useState('')
-  const [paragraphsRaw, setParagraphsRaw] = useState('')
+  const [text, setText] = useState('')
   const [password, setPassword] = useState(() => localStorage.getItem('admin_password') ?? '')
   const [status, setStatus] = useState<Status>('idle')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setStatus('loading')
-    const paragraphs = paragraphsRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean)
     const date = toHebrewDate(new Date())
     try {
       const res = await fetch('/api/publish-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, paragraphs, date, password }),
+        body: JSON.stringify({ subject, text, date, password }),
       })
       if (res.status === 401) {
         localStorage.removeItem('admin_password')
@@ -38,7 +37,7 @@ export default function AdminPage() {
       localStorage.setItem('admin_password', password)
       setStatus('ok')
       setSubject('')
-      setParagraphsRaw('')
+      setText('')
     } catch {
       setStatus('error')
     }
@@ -61,12 +60,12 @@ export default function AdminPage() {
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="paragraphs">פסקאות</label>
+            <label htmlFor="text">תוכן</label>
             <textarea
-              id="paragraphs"
+              id="text"
               rows={10}
-              value={paragraphsRaw}
-              onChange={e => setParagraphsRaw(e.target.value)}
+              value={text}
+              onChange={e => setText(e.target.value)}
               style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
             />
           </div>

@@ -17,9 +17,9 @@ test('renders subject field', () => {
   expect(screen.getByLabelText(/נושא/i)).toBeInTheDocument()
 })
 
-test('renders paragraphs field', () => {
+test('renders text field', () => {
   render(<AdminPage />)
-  expect(screen.getByLabelText(/פסקאות/i)).toBeInTheDocument()
+  expect(screen.getByLabelText(/תוכן/i)).toBeInTheDocument()
 })
 
 test('renders password field', () => {
@@ -41,16 +41,16 @@ test('submit button is disabled while loading', async () => {
   expect(screen.getByRole('button', { name: /שולח/i })).toBeDisabled()
 })
 
-test('shows success message and clears subject and paragraphs on 200', async () => {
+test('shows success message and clears subject and text on 200', async () => {
   mockFetch(200, { ok: true })
   render(<AdminPage />)
   fireEvent.change(screen.getByLabelText(/נושא/i), { target: { value: 'כותרת' } })
-  fireEvent.change(screen.getByLabelText(/פסקאות/i), { target: { value: 'פסקה' } })
+  fireEvent.change(screen.getByLabelText(/תוכן/i), { target: { value: 'פסקה' } })
   fireEvent.change(screen.getByLabelText(/סיסמה/i), { target: { value: 'pass' } })
   fireEvent.submit(screen.getByRole('form'))
   await waitFor(() => expect(screen.getByText(/פורסם/i)).toBeInTheDocument())
   expect((screen.getByLabelText(/נושא/i) as HTMLInputElement).value).toBe('')
-  expect((screen.getByLabelText(/פסקאות/i) as HTMLTextAreaElement).value).toBe('')
+  expect((screen.getByLabelText(/תוכן/i) as HTMLTextAreaElement).value).toBe('')
 })
 
 test('password field stays filled after successful submit', async () => {
@@ -103,20 +103,20 @@ test('form stays filled on error', async () => {
   mockFetch(500, { error: 'Server error' })
   render(<AdminPage />)
   fireEvent.change(screen.getByLabelText(/נושא/i), { target: { value: 'כותרת' } })
-  fireEvent.change(screen.getByLabelText(/פסקאות/i), { target: { value: 'טקסט' } })
+  fireEvent.change(screen.getByLabelText(/תוכן/i), { target: { value: 'טקסט' } })
   fireEvent.change(screen.getByLabelText(/סיסמה/i), { target: { value: 'pass' } })
   fireEvent.submit(screen.getByRole('form'))
   await waitFor(() => expect(screen.getByText(/שגיאה/i)).toBeInTheDocument())
   expect((screen.getByLabelText(/נושא/i) as HTMLInputElement).value).toBe('כותרת')
-  expect((screen.getByLabelText(/פסקאות/i) as HTMLTextAreaElement).value).toBe('טקסט')
+  expect((screen.getByLabelText(/תוכן/i) as HTMLTextAreaElement).value).toBe('טקסט')
 })
 
-test('sends POST with subject, paragraphs array, and password', async () => {
+test('sends POST with subject, text, and password', async () => {
   const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) })
   vi.stubGlobal('fetch', fetchMock)
   render(<AdminPage />)
   fireEvent.change(screen.getByLabelText(/נושא/i), { target: { value: 'כותרת' } })
-  fireEvent.change(screen.getByLabelText(/פסקאות/i), { target: { value: 'פסקה א\n\nפסקה ב' } })
+  fireEvent.change(screen.getByLabelText(/תוכן/i), { target: { value: 'שלום עולם' } })
   fireEvent.change(screen.getByLabelText(/סיסמה/i), { target: { value: 'pass' } })
   fireEvent.submit(screen.getByRole('form'))
   await waitFor(() => expect(fetchMock).toHaveBeenCalled())
@@ -124,7 +124,7 @@ test('sends POST with subject, paragraphs array, and password', async () => {
   expect(url).toBe('/api/publish-update')
   const body = JSON.parse(opts.body)
   expect(body.subject).toBe('כותרת')
-  expect(body.paragraphs).toEqual(['פסקה א', 'פסקה ב'])
+  expect(body.text).toBe('שלום עולם')
   expect(body.password).toBe('pass')
   expect(typeof body.date).toBe('string')
   expect(body.date.length).toBeGreaterThan(0)

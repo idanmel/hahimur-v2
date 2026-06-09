@@ -2,7 +2,7 @@ export interface Update {
   id: number
   date: string
   subject: string
-  paragraphs: string[]
+  text: string
   draft?: boolean
   pdfFilename?: string
   pdfLabel?: string
