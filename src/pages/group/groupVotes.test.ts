@@ -1,4 +1,4 @@
-import { computeGroupVotes } from './groupVotes'
+import { computeGroupVotes, computeGroupR32Pickers } from './groupVotes'
 import type { User } from '../../users'
 
 const BASE: Pick<User, 'groupMatches' | 'groupTables' | 'thirdPlaceQualification' | 'knockoutStages'> = {
@@ -64,4 +64,39 @@ test('returns correct 2nd-place vote when 1 user predicts Mexico first', () => {
 test('ignores a user with no predictions', () => {
   const noPredictions: User = { ...BASE, label: 'Empty', topGoalscorer: '', predictions: {} }
   expect(computeGroupVotes([noPredictions], 'A')).toEqual({})
+})
+
+const withR32: User = {
+  ...BASE,
+  label: 'R32User',
+  topGoalscorer: '',
+  predictions: {},
+  knockoutStages: {
+    ...BASE.knockoutStages,
+    r32: [
+      { matchNum: 1, home: 'Mexico', away: 'South Korea', resolved: false },
+    ],
+  },
+}
+
+test('computeGroupR32Pickers: team in r32 gets the picker', () => {
+  const result = computeGroupR32Pickers([withR32], 'A')
+  expect(result['Mexico']).toContain('R32User')
+  expect(result['South Korea']).toContain('R32User')
+})
+
+test('computeGroupR32Pickers: team not in r32 has empty list', () => {
+  const result = computeGroupR32Pickers([withR32], 'A')
+  expect(result['South Africa']).toHaveLength(0)
+  expect(result['Czech Republic']).toHaveLength(0)
+})
+
+test('computeGroupR32Pickers: returns all group teams with empty lists when no users', () => {
+  const result = computeGroupR32Pickers([], 'A')
+  expect(result).toEqual({
+    'Mexico': [],
+    'South Africa': [],
+    'South Korea': [],
+    'Czech Republic': [],
+  })
 })
