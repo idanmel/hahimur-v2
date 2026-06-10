@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { renderHook, act } from '@testing-library/react'
 import { vi, beforeEach, afterEach, describe, test, expect } from 'vitest'
 import { useUpdateCheck } from './useUpdateCheck'

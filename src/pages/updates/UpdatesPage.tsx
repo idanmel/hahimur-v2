@@ -3,6 +3,16 @@ import PageLayout from '../../shared/PageLayout'
 import type { Update } from './updates'
 import './UpdatesPage.css'
 
+function formatText(text: string): string {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return escaped
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<u>$1</u>')
+}
+
 export default function UpdatesPage() {
   const [updates, setUpdates] = useState<Update[]>([])
 
@@ -30,7 +40,7 @@ export default function UpdatesPage() {
               <h2 className="update-card__subject">{update.subject}</h2>
 
               <div className="update-card__body">
-                <p style={{ whiteSpace: 'pre-line' }}>{update.text}</p>
+                <p style={{ whiteSpace: 'pre-line' }} dangerouslySetInnerHTML={{ __html: formatText(update.text) }} />
               </div>
 
               {update.pdfFilename && (
