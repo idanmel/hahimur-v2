@@ -11,8 +11,8 @@ function toHebrewDate(date: Date): string {
 }
 
 export default function AdminPage() {
-  const [subject, setSubject] = useState('')
-  const [text, setText] = useState('')
+  const [subject, setSubject] = useState(() => localStorage.getItem('admin_draft_subject') ?? '')
+  const [text, setText] = useState(() => localStorage.getItem('admin_draft_text') ?? '')
   const [password, setPassword] = useState(() => localStorage.getItem('admin_password') ?? '')
   const [status, setStatus] = useState<Status>('idle')
 
@@ -36,6 +36,8 @@ export default function AdminPage() {
         return
       }
       localStorage.setItem('admin_password', password)
+      localStorage.removeItem('admin_draft_subject')
+      localStorage.removeItem('admin_draft_text')
       setStatus('ok')
       setSubject('')
       setText('')
@@ -61,7 +63,10 @@ export default function AdminPage() {
                 type="text"
                 required
                 value={subject}
-                onChange={e => setSubject(e.target.value)}
+                onChange={e => {
+                  setSubject(e.target.value)
+                  localStorage.setItem('admin_draft_subject', e.target.value)
+                }}
                 className="admin-input"
                 placeholder="כותרת העדכון..."
               />
@@ -73,7 +78,10 @@ export default function AdminPage() {
                 id="text"
                 rows={10}
                 value={text}
-                onChange={e => setText(e.target.value)}
+                onChange={e => {
+                  setText(e.target.value)
+                  localStorage.setItem('admin_draft_text', e.target.value)
+                }}
                 className="admin-input"
                 placeholder="כתוב את העדכון כאן..."
               />
