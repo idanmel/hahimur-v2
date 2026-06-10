@@ -1,28 +1,8 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import type { User } from '../users'
 import { computeUserPoints, singleMatchOutcome } from './points'
-
-const EMPTY_RESULTS: TournamentResults = {
-  groupMatches: {},
-  groupTables: {},
-  thirdPlaceQualification: { resolved: false, all: [], tied: [] },
-  knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] },
-}
-
-function makeUser(overrides: Partial<User> = {}): User {
-  return {
-    label: 'Test',
-    predictions: {},
-    topGoalscorer: '',
-    groupMatches: {},
-    groupTables: {},
-    thirdPlaceQualification: { resolved: false, all: [], tied: [] },
-    knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] },
-    ...overrides,
-  }
-}
+import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
 test('returns all-zero breakdown with empty results', () => {
   const user = makeUser({ groupMatches: { A: [{ id: 'A1', homeTeam: 'X', awayTeam: 'Y', scores: { home: 2, away: 1 } }] } })

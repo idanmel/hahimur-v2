@@ -1,17 +1,24 @@
 import { computeUserPoints, computeGroupBreakdown, singleMatchOutcome } from './points'
 import { GROUPS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
-import type { TournamentResults } from '../shared/types'
+import type { ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import type { User } from '../users'
 
 export type Scope = 'all' | GroupLetter
+
+function scopeThirdPlace(q: ThirdPlaceQualification, scope: GroupLetter): ThirdPlaceQualification {
+  const inScope = (teams: ThirdPlaceStanding[]) => teams.filter(t => t.group === scope)
+  return q.resolved
+    ? { resolved: true, all: inScope(q.all), qualifiers: inScope(q.qualifiers) }
+    : { resolved: false, all: inScope(q.all), tied: inScope(q.tied) }
+}
 
 export function buildLeaderboardRows(users: User[], results: TournamentResults, scope: Scope) {
   const filtered = scope !== 'all' ? {
     ...results,
     groupMatches: { [scope]: results.groupMatches[scope] ?? [] },
     groupTables: { [scope]: results.groupTables[scope] ?? [] },
-    thirdPlaceQualification: { resolved: false as const, all: [], tied: [] },
+    thirdPlaceQualification: scopeThirdPlace(results.thirdPlaceQualification, scope),
   } : null
 
   return users.map(user => {
