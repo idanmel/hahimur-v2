@@ -6,7 +6,7 @@ export interface LeaderboardRow extends PointsBreakdown {
   scopeData?: { matchPoints: number; advancementPoints: number; total: number }
 }
 
-const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+export const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 type RoundKey = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final' | 'goldenBoot'
 

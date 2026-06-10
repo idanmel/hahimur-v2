@@ -1,13 +1,8 @@
-export type Mode = 'points' | 'pgiya' | 'tzelifa'
-
-export function modeToSortBy(mode: Mode): 'pgiya' | 'tzelifa' {
-  return mode === 'pgiya' ? 'pgiya' : 'tzelifa'
-}
+export type Mode = 'points' | 'hits'
 
 const MODES: Array<{ key: Mode; label: string }> = [
   { key: 'points', label: 'נקודות' },
-  { key: 'pgiya', label: 'פגיעות' },
-  { key: 'tzelifa', label: 'צליפות' },
+  { key: 'hits', label: 'ניחושים' },
 ]
 
 export default function LeaderboardModeBar({ mode, onModeChange }: {

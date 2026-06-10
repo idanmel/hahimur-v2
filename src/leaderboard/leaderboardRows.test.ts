@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
-import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { buildLeaderboardRows } from './leaderboardRows'
+import type { GroupMatch, Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
+import { buildLeaderboardRows, buildHitsRows, HITS_SORTERS } from './leaderboardRows'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
 function advancementPoints(row: ReturnType<typeof buildLeaderboardRows>[number]): number {
@@ -70,4 +70,47 @@ test('group scope excludes third-place qualifiers from other groups', () => {
 
   const [rowB] = buildLeaderboardRows([user], results, 'B')
   expect(advancementPoints(rowB)).toBe(5) // Italy only
+})
+
+const grpMatch = (id: string, home: number, away: number): GroupMatch =>
+  ({ id, homeTeam: 'H', awayTeam: 'A', scores: { home, away } })
+
+test('buildHitsRows counts tzelifot and pgiyot per user', () => {
+  // Three matches in group A: 2-1, 1-1, 3-0
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: { A: [grpMatch('m1', 2, 1), grpMatch('m2', 1, 1), grpMatch('m3', 3, 0)] },
+  }
+  // Dana: 1 tzelifa (m1 exact) + 2 pgiyot (m2 draw, m3 home win)
+  const dana = makeUser({
+    label: 'Dana',
+    groupMatches: { A: [grpMatch('m1', 2, 1), grpMatch('m2', 0, 0), grpMatch('m3', 1, 0)] },
+  })
+  // Yossi: 2 tzelifot (m1, m2 exact) + 0 pgiyot (m3 away win)
+  const yossi = makeUser({
+    label: 'Yossi',
+    groupMatches: { A: [grpMatch('m1', 2, 1), grpMatch('m2', 1, 1), grpMatch('m3', 0, 1)] },
+  })
+
+  const rows = buildHitsRows([yossi, dana], results, 'A')
+  expect(rows).toEqual([
+    { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0 },
+    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2 },
+  ])
+})
+
+test('combined sorter ranks by tzelifot + pgiyot sum, not by either alone', () => {
+  const rows = [
+    { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0 },
+    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2 },
+  ].sort(HITS_SORTERS.combined)
+  expect(rows.map(r => r.label)).toEqual(['Dana', 'Yossi'])
+})
+
+test('combined sorter breaks total ties by tzelifot', () => {
+  const rows = [
+    { label: 'Gadi', tzelifaCount: 1, pgiyaCount: 1 },
+    { label: 'Rina', tzelifaCount: 2, pgiyaCount: 0 },
+  ].sort(HITS_SORTERS.combined)
+  expect(rows.map(r => r.label)).toEqual(['Rina', 'Gadi'])
 })

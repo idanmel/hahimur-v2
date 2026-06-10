@@ -39,7 +39,16 @@ export interface HitsRow {
   pgiyaCount: number
 }
 
-export function buildHitsRows(users: User[], results: TournamentResults, scope: Scope, sortBy: 'pgiya' | 'tzelifa' = 'tzelifa'): HitsRow[] {
+export type HitsSortBy = 'pgiya' | 'tzelifa' | 'combined'
+
+export const HITS_SORTERS: Record<HitsSortBy, (a: HitsRow, b: HitsRow) => number> = {
+  pgiya: (a, b) => b.pgiyaCount - a.pgiyaCount || b.tzelifaCount - a.tzelifaCount,
+  tzelifa: (a, b) => b.tzelifaCount - a.tzelifaCount || b.pgiyaCount - a.pgiyaCount,
+  combined: (a, b) =>
+    (b.tzelifaCount + b.pgiyaCount) - (a.tzelifaCount + a.pgiyaCount) || b.tzelifaCount - a.tzelifaCount,
+}
+
+export function buildHitsRows(users: User[], results: TournamentResults, scope: Scope): HitsRow[] {
   const groupIds = scope === 'all' ? Object.keys(results.groupMatches) : [scope]
 
   const resultById: Record<string, typeof results.groupMatches[string][number]> = {}
@@ -61,8 +70,5 @@ export function buildHitsRows(users: User[], results: TournamentResults, scope: 
       }
     }
     return { label: user.label, tzelifaCount, pgiyaCount }
-  }).sort(sortBy === 'pgiya'
-    ? (a, b) => b.pgiyaCount - a.pgiyaCount || b.tzelifaCount - a.tzelifaCount
-    : (a, b) => b.tzelifaCount - a.tzelifaCount || b.pgiyaCount - a.pgiyaCount
-  )
+  })
 }
