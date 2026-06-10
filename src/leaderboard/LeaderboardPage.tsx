@@ -1,27 +1,23 @@
 import { useState } from 'react'
 import PageLayout from '../shared/PageLayout'
 import { USERS_SORTED } from '../users/index'
-import LeaderboardTable from './LeaderboardTable'
-import GroupScopeTable from './GroupScopeTable'
+import ScopedLeaderboard from './ScopedLeaderboard'
 import { tournamentResults } from '../tournament-results'
-import { buildLeaderboardRows, buildGroupScopeRows } from './leaderboardRows'
 import type { Scope } from './leaderboardRows'
 import LeaderboardScopeBar from './LeaderboardScopeBar'
 import './LeaderboardPage.css'
 
 export default function LeaderboardPage() {
   const [scope, setScope] = useState<Scope>('all')
+  const [lastX, setLastX] = useState(5)
 
   return (
     <PageLayout title="לוח המובילים">
       <div className="lb-page" dir="rtl">
         <div className="lb-scope-wrap">
-          <LeaderboardScopeBar scope={scope} onScopeChange={setScope} />
+          <LeaderboardScopeBar scope={scope} onScopeChange={setScope} lastX={lastX} onLastXChange={setLastX} />
         </div>
-        {scope === 'all'
-          ? <LeaderboardTable rows={buildLeaderboardRows(USERS_SORTED, tournamentResults)} />
-          : <GroupScopeTable rows={buildGroupScopeRows(USERS_SORTED, tournamentResults, scope)} />
-        }
+        <ScopedLeaderboard users={USERS_SORTED} results={tournamentResults} scope={scope} lastX={lastX} />
       </div>
     </PageLayout>
   )

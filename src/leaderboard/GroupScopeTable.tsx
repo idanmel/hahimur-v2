@@ -25,11 +25,23 @@ const POINT_COLS: Col[] = [
   { key: 'total',             label: 'סה"כ',   value: r => r.total,             zone: 'points' },
 ]
 
-const DESKTOP_COLS = [...HIT_COLS, ...POINT_COLS]
-const MOBILE_COLS: Col[] = [
-  { ...HIT_COLS[2], label: 'ניחושים' },
-  { ...POINT_COLS[2], label: 'נקודות', zoneEdge: true },
+const LASTX_POINT_COLS: Col[] = [
+  { key: 'matchPoints', label: 'נקודות', value: r => r.matchPoints, zone: 'points', zoneEdge: true },
 ]
+
+function makeVariant(pointCols: Col[], mobilePointCol: Col, defaultSort: GroupSortBy) {
+  return {
+    desktop: [...HIT_COLS, ...pointCols],
+    mobile: [{ ...HIT_COLS[2], label: 'ניחושים' }, mobilePointCol],
+    pointCols,
+    defaultSort,
+  }
+}
+
+const COLS = {
+  group: makeVariant(POINT_COLS, { ...POINT_COLS[2], label: 'נקודות', zoneEdge: true }, 'total'),
+  lastX: makeVariant(LASTX_POINT_COLS, LASTX_POINT_COLS[0], 'matchPoints'),
+}
 
 function thClass({ key, zone, zoneEdge }: Col): string {
   return [
@@ -94,8 +106,9 @@ function ScopeRows({ rows, cols, delayMs }: { rows: GroupScopeRow[]; cols: Col[]
   })
 }
 
-export default function GroupScopeTable({ rows }: { rows: GroupScopeRow[] }) {
-  const [sortCol, setSortCol] = useState<GroupSortBy>('total')
+export default function GroupScopeTable({ rows, variant = 'group' }: { rows: GroupScopeRow[]; variant?: keyof typeof COLS }) {
+  const cols = COLS[variant]
+  const [sortCol, setSortCol] = useState<GroupSortBy>(cols.defaultSort)
   const sortedRows = [...rows].sort(GROUP_SORTERS[sortCol])
 
   return (
@@ -107,14 +120,14 @@ export default function GroupScopeTable({ rows }: { rows: GroupScopeRow[] }) {
               <th className="lb-th lb-th--rank" rowSpan={2}>#</th>
               <th className="lb-th lb-th--name" rowSpan={2}>מהמר</th>
               <th className="lb-th lb-th--phase lb-th--phase-hits" colSpan={HIT_COLS.length}>ניחושים נכונים</th>
-              <th className="lb-th lb-th--phase lb-th--phase-points lb-zone-edge" colSpan={POINT_COLS.length}>נקודות</th>
+              <th className="lb-th lb-th--phase lb-th--phase-points lb-zone-edge" colSpan={cols.pointCols.length}>נקודות</th>
             </tr>
             <tr>
-              <SortableThs cols={DESKTOP_COLS} sortCol={sortCol} onSortCol={setSortCol} />
+              <SortableThs cols={cols.desktop} sortCol={sortCol} onSortCol={setSortCol} />
             </tr>
           </thead>
           <tbody>
-            <ScopeRows rows={sortedRows} cols={DESKTOP_COLS} delayMs={90} />
+            <ScopeRows rows={sortedRows} cols={cols.desktop} delayMs={90} />
           </tbody>
         </table>
         <p className="lb-zone-hint">
@@ -130,11 +143,11 @@ export default function GroupScopeTable({ rows }: { rows: GroupScopeRow[] }) {
             <tr>
               <th className="lb-th lb-th--rank">#</th>
               <th className="lb-th lb-th--name">מהמר</th>
-              <SortableThs cols={MOBILE_COLS} sortCol={sortCol} onSortCol={setSortCol} />
+              <SortableThs cols={cols.mobile} sortCol={sortCol} onSortCol={setSortCol} />
             </tr>
           </thead>
           <tbody>
-            <ScopeRows rows={sortedRows} cols={MOBILE_COLS} delayMs={60} />
+            <ScopeRows rows={sortedRows} cols={cols.mobile} delayMs={60} />
           </tbody>
         </table>
         <p className="lb-zone-hint">

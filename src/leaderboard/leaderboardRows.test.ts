@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
 import type { GroupMatch, Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { buildGroupScopeRows, GROUP_SORTERS } from './leaderboardRows'
+import { buildGroupScopeRows, buildLastXRows, lastPlayedGroupMatches, GROUP_SORTERS } from './leaderboardRows'
 import type { GroupScopeRow } from './leaderboardRows'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
@@ -119,6 +119,60 @@ test('combined sorter breaks total ties by tzelifot', () => {
     mkRow('Rina', { tzelifaCount: 2 }),
   ].sort(GROUP_SORTERS.combined)
   expect(rows.map(r => r.label)).toEqual(['Rina', 'Gadi'])
+})
+
+const datedMatch = (id: string, matchDate: string, kickoffIST: string, scores?: { home: number; away: number }): GroupMatch =>
+  ({ id, homeTeam: 'H', awayTeam: 'A', matchDate, kickoffIST, scores: scores ?? { home: null, away: null } })
+
+test('lastPlayedGroupMatches returns the most recent played matches in chronological order', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: {
+      A: [
+        datedMatch('a1', '11 ביוני', '22:00', { home: 1, away: 0 }),
+        datedMatch('a2', '18 ביוני', '19:00'), // unplayed — must be skipped
+      ],
+      B: [
+        datedMatch('b1', '12 ביוני', '22:00', { home: 2, away: 2 }),
+        datedMatch('b2', '12 ביוני', '05:00', { home: 0, away: 3 }),
+      ],
+    },
+  }
+  expect(lastPlayedGroupMatches(results, 2).map(m => m.id)).toEqual(['b2', 'b1'])
+  expect(lastPlayedGroupMatches(results, 10).map(m => m.id)).toEqual(['a1', 'b2', 'b1'])
+})
+
+test('buildLastXRows scores only matches inside the window', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: {
+      A: [
+        datedMatch('a1', '11 ביוני', '22:00', { home: 2, away: 1 }),
+        datedMatch('a2', '12 ביוני', '19:00', { home: 1, away: 1 }),
+        datedMatch('a3', '13 ביוני', '19:00', { home: 3, away: 0 }),
+      ],
+    },
+  }
+  // Dana: tzelifa on a1 (oldest, outside window of 2), pgiya on a2, miss on a3
+  const dana = makeUser({
+    label: 'Dana',
+    groupMatches: {
+      A: [grpMatch('a1', 2, 1), grpMatch('a2', 0, 0), grpMatch('a3', 0, 1)],
+    },
+  })
+  // Yossi: tzelifa on a3 (4 pts), pgiya on a2 (2 pts)
+  const yossi = makeUser({
+    label: 'Yossi',
+    groupMatches: {
+      A: [grpMatch('a1', 0, 1), grpMatch('a2', 2, 2), grpMatch('a3', 3, 0)],
+    },
+  })
+
+  const rows = buildLastXRows([dana, yossi], results, 2)
+  expect(rows).toEqual([
+    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, total: 2 },
+    { label: 'Yossi', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, total: 6 },
+  ])
 })
 
 test('points sorters break ties by combined hits', () => {

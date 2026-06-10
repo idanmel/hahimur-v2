@@ -616,6 +616,33 @@
   margin-left: 8px;
 }
 
+.lb-lastx-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  color: var(--navy);
+}
+
+.lb-lastx-input {
+  width: 3.2em;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 4px 4px;
+  background: transparent;
+  border: 1.5px solid var(--navy);
+  color: var(--navy);
+}
+
+.lb-lastx-input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
 /* ── Scope primary columns (תוצאה / עולות in group scope view) ── */
 
 .lb-td--scope-col {

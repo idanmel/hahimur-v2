@@ -6,14 +6,13 @@ import StandingsTable from '../../formView/groupStage/StandingsTable'
 import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
 import type { User } from '../../users/index'
-import LeaderboardTable from '../../leaderboard/LeaderboardTable'
-import GroupScopeTable from '../../leaderboard/GroupScopeTable'
-import { buildLeaderboardRows, buildGroupScopeRows } from '../../leaderboard/leaderboardRows'
+import ScopedLeaderboard from '../../leaderboard/ScopedLeaderboard'
 import type { Scope } from '../../leaderboard/leaderboardRows'
 import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
+import { matchSortKey } from '../../shared/matchOrder'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS, type GroupLetter } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults, Match } from '../../shared/types'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
@@ -103,15 +102,10 @@ const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי
 type MatchEntry = { match: Match; group: GroupLetter }
 type DateGroup  = { date: string; dayLabel: string; matches: MatchEntry[] }
 
-function matchSortKey(matchDate: string | undefined, kickoffIST: string | undefined): number {
-  const day = matchDate ? parseInt(matchDate, 10) : 99
-  const [hh = 0, mm = 0] = (kickoffIST ?? '').split(':').map(Number)
-  return day * 10000 + hh * 100 + mm
-}
-
 export default function ResultsPage({ users }: { users: User[] }) {
   const [editedResults, setEditedResults] = useState<PredictionsState>(getInitialState)
   const [lbScope, setLbScope] = useState<Scope>('all')
+  const [lbLastX, setLbLastX] = useState(5)
   const [activeGroup, setActiveGroup] = useState('A')
   const [groupStageView, setGroupStageView] = useState<'by-group' | 'by-date'>('by-group')
   const [goalScorerState, setGoalScorerState] = useState(() => ({
@@ -247,11 +241,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
             <span className="pg-lb-live-dot" aria-hidden="true" />
             <span className="pg-lb-subtitle">מתעדכן בזמן אמת</span>
           </div>
-          <LeaderboardScopeBar scope={lbScope} onScopeChange={setLbScope} />
-          {lbScope === 'all'
-            ? <LeaderboardTable rows={buildLeaderboardRows(users, tournamentResults)} />
-            : <GroupScopeTable rows={buildGroupScopeRows(users, tournamentResults, lbScope)} />
-          }
+          <LeaderboardScopeBar scope={lbScope} onScopeChange={setLbScope} lastX={lbLastX} onLastXChange={setLbLastX} />
+          <ScopedLeaderboard users={users} results={tournamentResults} scope={lbScope} lastX={lbLastX} />
         </section>
 
         {/* Simulation callout */}
