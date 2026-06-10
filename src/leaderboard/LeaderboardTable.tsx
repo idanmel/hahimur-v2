@@ -3,7 +3,6 @@ import type { PointsBreakdown } from './points'
 
 export interface LeaderboardRow extends PointsBreakdown {
   label: string
-  scopeData?: { matchPoints: number; advancementPoints: number; total: number }
 }
 
 export const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
@@ -53,77 +52,13 @@ function getPhaseGroups(activeRounds: typeof ROUNDS) {
   return groups
 }
 
-export default function LeaderboardTable({ rows, scopeLabel }: { rows: LeaderboardRow[]; scopeLabel?: string }) {
+export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
   const activeRounds = ROUNDS.filter(({ key }) =>
     rows.some(row => (row[key] as unknown as Record<string, number>).total > 0)
   )
 
   const phaseGroups = getPhaseGroups(activeRounds)
   const noPoints = activeRounds.length === 0
-
-  if (scopeLabel !== undefined) {
-    return (
-      <>
-        <div className="lb-scroll lb-desktop">
-          <table className="lb-table">
-            <thead>
-              <tr className="lb-th-phase-row">
-                <th className="lb-th lb-th--rank" rowSpan={2}>#</th>
-                <th className="lb-th lb-th--name" rowSpan={2}>מהמר</th>
-                <th className="lb-th lb-th--phase lb-th--phase-group" colSpan={2}>{scopeLabel}</th>
-                <th className="lb-th lb-th--total" rowSpan={2}>סה"כ</th>
-              </tr>
-              <tr>
-                <th className="lb-th lb-th--round">תוצאה</th>
-                <th className="lb-th lb-th--round">עולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const rank = i + 1
-                const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
-                const sd = row.scopeData ?? { matchPoints: 0, advancementPoints: 0, total: row.total }
-                return (
-                  <tr key={row.label} className={`lb-row ${rankClass}`} style={{ '--delay': `${i * 90}ms` } as React.CSSProperties}>
-                    <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
-                    <td className="lb-td lb-td--name">{row.label}</td>
-                    <td className="lb-td lb-td--scope-col">{sd.matchPoints || '—'}</td>
-                    <td className="lb-td lb-td--scope-col">{sd.advancementPoints || '—'}</td>
-                    <td className="lb-td lb-td--total">{sd.total || '—'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="lb-mobile">
-          <table className="lb-table lb-table--mobile">
-            <thead>
-              <tr>
-                <th className="lb-th lb-th--rank">#</th>
-                <th className="lb-th lb-th--name">מהמר</th>
-                <th className="lb-th lb-th--total">{scopeLabel}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const rank = i + 1
-                const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
-                const sd = row.scopeData ?? { total: row.total }
-                return (
-                  <tr key={row.label} className={`lb-row ${rankClass}`} style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}>
-                    <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
-                    <td className="lb-td lb-td--name">{row.label}</td>
-                    <td className="lb-td lb-td--total">{sd.total || '—'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </>
-    )
-  }
 
   return (
     <>

@@ -1,5 +1,4 @@
 import { computeUserPoints, computeGroupBreakdown, singleMatchOutcome } from './points'
-import { GROUPS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import type { ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import type { User } from '../users'
@@ -13,62 +12,59 @@ function scopeThirdPlace(q: ThirdPlaceQualification, scope: GroupLetter): ThirdP
     : { resolved: false, all: inScope(q.all), tied: inScope(q.tied) }
 }
 
-export function buildLeaderboardRows(users: User[], results: TournamentResults, scope: Scope) {
-  const filtered = scope !== 'all' ? {
-    ...results,
-    groupMatches: { [scope]: results.groupMatches[scope] ?? [] },
-    groupTables: { [scope]: results.groupTables[scope] ?? [] },
-    thirdPlaceQualification: scopeThirdPlace(results.thirdPlaceQualification, scope),
-  } : null
-
-  return users.map(user => {
-    const breakdown = computeUserPoints(user, results)
-    if (filtered === null) return { label: user.label, ...breakdown }
-    const scopeData = computeGroupBreakdown(user, filtered)
-    return { label: user.label, ...breakdown, total: scopeData.total, scopeData }
-  }).sort((a, b) => b.total - a.total)
+export function buildLeaderboardRows(users: User[], results: TournamentResults) {
+  return users
+    .map(user => ({ label: user.label, ...computeUserPoints(user, results) }))
+    .sort((a, b) => b.total - a.total)
 }
 
-export function groupScopeLabel(scope: Scope): string | undefined {
-  return scope !== 'all' ? `בית ${GROUPS[scope].he}` : undefined
-}
-
-export interface HitsRow {
+export interface GroupScopeRow {
   label: string
   tzelifaCount: number
   pgiyaCount: number
+  matchPoints: number
+  advancementPoints: number
+  total: number
 }
 
-export type HitsSortBy = 'pgiya' | 'tzelifa' | 'combined'
+export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'total'
 
-export const HITS_SORTERS: Record<HitsSortBy, (a: HitsRow, b: HitsRow) => number> = {
-  pgiya: (a, b) => b.pgiyaCount - a.pgiyaCount || b.tzelifaCount - a.tzelifaCount,
-  tzelifa: (a, b) => b.tzelifaCount - a.tzelifaCount || b.pgiyaCount - a.pgiyaCount,
-  combined: (a, b) =>
-    (b.tzelifaCount + b.pgiyaCount) - (a.tzelifaCount + a.pgiyaCount) || b.tzelifaCount - a.tzelifaCount,
+const combinedHits = (r: GroupScopeRow) => r.tzelifaCount + r.pgiyaCount
+
+export const GROUP_SORTERS: Record<GroupSortBy, (a: GroupScopeRow, b: GroupScopeRow) => number> = {
+  pgiya: (a, b) => b.pgiyaCount - a.pgiyaCount || b.tzelifaCount - a.tzelifaCount || b.total - a.total,
+  tzelifa: (a, b) => b.tzelifaCount - a.tzelifaCount || b.pgiyaCount - a.pgiyaCount || b.total - a.total,
+  combined: (a, b) => combinedHits(b) - combinedHits(a) || b.tzelifaCount - a.tzelifaCount || b.total - a.total,
+  matchPoints: (a, b) => b.matchPoints - a.matchPoints || combinedHits(b) - combinedHits(a),
+  advancementPoints: (a, b) => b.advancementPoints - a.advancementPoints || b.total - a.total,
+  total: (a, b) => b.total - a.total || combinedHits(b) - combinedHits(a),
 }
 
-export function buildHitsRows(users: User[], results: TournamentResults, scope: Scope): HitsRow[] {
-  const groupIds = scope === 'all' ? Object.keys(results.groupMatches) : [scope]
+type MatchResult = TournamentResults['groupMatches'][string][number]
 
-  const resultById: Record<string, typeof results.groupMatches[string][number]> = {}
-  for (const groupId of groupIds) {
-    for (const m of results.groupMatches[groupId] ?? []) resultById[m.id] = m
+export function buildGroupScopeRows(users: User[], results: TournamentResults, group: GroupLetter): GroupScopeRow[] {
+  const filtered: TournamentResults = {
+    ...results,
+    groupMatches: { [group]: results.groupMatches[group] ?? [] },
+    groupTables: { [group]: results.groupTables[group] ?? [] },
+    thirdPlaceQualification: scopeThirdPlace(results.thirdPlaceQualification, group),
   }
+
+  const resultById: Record<string, MatchResult> = {}
+  for (const m of results.groupMatches[group] ?? []) resultById[m.id] = m
 
   return users.map(user => {
     let tzelifaCount = 0
     let pgiyaCount = 0
-    for (const groupId of groupIds) {
-      for (const userMatch of user.groupMatches[groupId] ?? []) {
-        const outcome = singleMatchOutcome(
-          userMatch.scores ?? { home: null, away: null },
-          resultById[userMatch.id]?.scores ?? { home: null, away: null },
-        )
-        if (outcome === 'tzelifa') tzelifaCount++
-        else if (outcome === 'pgiya') pgiyaCount++
-      }
+    for (const userMatch of user.groupMatches[group] ?? []) {
+      const outcome = singleMatchOutcome(
+        userMatch.scores ?? { home: null, away: null },
+        resultById[userMatch.id]?.scores ?? { home: null, away: null },
+      )
+      if (outcome === 'tzelifa') tzelifaCount++
+      else if (outcome === 'pgiya') pgiyaCount++
     }
-    return { label: user.label, tzelifaCount, pgiyaCount }
+    const { matchPoints, advancementPoints, total } = computeGroupBreakdown(user, filtered)
+    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, total }
   })
 }

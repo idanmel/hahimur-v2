@@ -616,12 +616,6 @@
   margin-left: 8px;
 }
 
-.lb-mode-bar {
-  display: flex;
-  gap: 5px;
-  margin-top: 8px;
-}
-
 /* ── Scope primary columns (תוצאה / עולות in group scope view) ── */
 
 .lb-td--scope-col {
@@ -637,3 +631,111 @@
 .lb-row--rank-1 .lb-td--scope-col { color: var(--gold); font-size: 18px; }
 .lb-row--rank-2 .lb-td--scope-col { color: var(--ink); }
 .lb-row--rank-3 .lb-td--scope-col { color: var(--muted); }
+
+/* ── Group scope table: counts zone vs points zone ─────────── */
+
+/* Zone boundary: a hard gold rule between "how many" and "how much".
+   RTL — the points zone sits left of the hits zone, so the line lives
+   on the right edge of the first points column. */
+.lb-zone-edge {
+  border-right: 2px solid rgba(212, 160, 22, 0.45);
+}
+
+/* Phase headers: counts read as chalk-tally (muted, dashed underline),
+   points read as scoring (gold, solid underline).
+   Tints are layered over the navy header base, not instead of it —
+   the .lb-th text colors need the dark background to stay readable. */
+.lb-th--phase-hits {
+  background: linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07)), var(--navy);
+  color: rgba(237, 232, 215, 0.7);
+  border-bottom: 1px dashed rgba(237, 232, 215, 0.35);
+}
+
+.lb-th--phase-points {
+  background: linear-gradient(rgba(212, 160, 22, 0.2), rgba(212, 160, 22, 0.2)), var(--navy);
+  color: var(--gold);
+  border-bottom: 1px solid rgba(212, 160, 22, 0.5);
+}
+
+/* Column headers inherit a faint version of their zone */
+.lb-th--hits-col {
+  background: linear-gradient(rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04)), var(--navy);
+  color: rgba(237, 232, 215, 0.75);
+}
+
+.lb-th--points-col {
+  background: linear-gradient(rgba(212, 160, 22, 0.1), rgba(212, 160, 22, 0.1)), var(--navy);
+}
+
+/* Counts: Heebo tally-chips — a different "currency" than points */
+.lb-td--hits {
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(11, 34, 68, 0.55);
+  text-align: center;
+  padding: 12px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-hit-chip {
+  display: inline-block;
+  min-width: 30px;
+  padding: 2px 8px;
+  border: 1px solid rgba(11, 34, 68, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  color: rgba(11, 34, 68, 0.8);
+  line-height: 1.35;
+}
+
+.lb-row--rank-1 .lb-hit-chip {
+  border-color: rgba(212, 160, 22, 0.55);
+  color: var(--navy);
+}
+
+/* Zone washes on body cells. These intentionally come last so they win
+   the specificity ties against row striping, hover, and rank-1 rules. */
+.lb-row td.lb-td--hits { background: rgba(11, 34, 68, 0.03); }
+.lb-row:nth-child(even) td.lb-td--hits { background: rgba(11, 34, 68, 0.055); }
+.lb-row:hover td.lb-td--hits { background: rgba(11, 34, 68, 0.07); }
+
+.lb-row td.lb-td--points { background: rgba(212, 160, 22, 0.055); }
+.lb-row:nth-child(even) td.lb-td--points { background: rgba(212, 160, 22, 0.09); }
+.lb-row:hover td.lb-td--points { background: rgba(212, 160, 22, 0.12); }
+
+/* Legend under the table */
+.lb-zone-hint {
+  max-width: 800px;
+  margin: 10px auto 0;
+  padding: 0 1rem;
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.lb-zone-hint strong {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  margin-left: 4px;
+}
+
+.lb-hit-chip--hint {
+  font-size: 11px;
+  padding: 0 8px;
+  margin-left: 4px;
+}
+
+.lb-zone-hint-sep {
+  margin: 0 10px;
+  opacity: 0.5;
+}
+
+.lb-mobile .lb-zone-hint {
+  padding: 0 1rem;
+  margin-top: 8px;
+}

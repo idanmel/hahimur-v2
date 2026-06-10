@@ -1,0 +1,148 @@
+import React, { useState } from 'react'
+import { GROUP_SORTERS } from './leaderboardRows'
+import type { GroupScopeRow, GroupSortBy } from './leaderboardRows'
+import { MEDALS } from './LeaderboardTable'
+
+type Zone = 'hits' | 'points'
+
+interface Col {
+  key: GroupSortBy
+  label: string
+  value: (r: GroupScopeRow) => number
+  zone: Zone
+  zoneEdge?: boolean
+}
+
+const HIT_COLS: Col[] = [
+  { key: 'pgiya',    label: 'פגיעות', value: r => r.pgiyaCount,                  zone: 'hits' },
+  { key: 'tzelifa',  label: 'צליפות', value: r => r.tzelifaCount,                zone: 'hits' },
+  { key: 'combined', label: 'ביחד',   value: r => r.pgiyaCount + r.tzelifaCount, zone: 'hits' },
+]
+
+const POINT_COLS: Col[] = [
+  { key: 'matchPoints',       label: 'משחקים', value: r => r.matchPoints,       zone: 'points', zoneEdge: true },
+  { key: 'advancementPoints', label: 'עולות',  value: r => r.advancementPoints, zone: 'points' },
+  { key: 'total',             label: 'סה"כ',   value: r => r.total,             zone: 'points' },
+]
+
+const DESKTOP_COLS = [...HIT_COLS, ...POINT_COLS]
+const MOBILE_COLS: Col[] = [
+  { ...HIT_COLS[2], label: 'ניחושים' },
+  { ...POINT_COLS[2], label: 'נקודות', zoneEdge: true },
+]
+
+function thClass({ key, zone, zoneEdge }: Col): string {
+  return [
+    'lb-th lb-th--round',
+    zone === 'hits' ? 'lb-th--hits-col' : 'lb-th--points-col',
+    key === 'total' ? 'lb-th--total' : '',
+    zoneEdge ? 'lb-zone-edge' : '',
+  ].filter(Boolean).join(' ')
+}
+
+function tdClass({ key, zone, zoneEdge }: Col): string {
+  return [
+    'lb-td',
+    zone === 'hits' ? 'lb-td--hits' : 'lb-td--scope-col lb-td--points',
+    key === 'total' ? 'lb-td--total' : '',
+    zoneEdge ? 'lb-zone-edge' : '',
+  ].filter(Boolean).join(' ')
+}
+
+function SortableThs({ cols, sortCol, onSortCol }: {
+  cols: Col[]
+  sortCol: GroupSortBy
+  onSortCol: (col: GroupSortBy) => void
+}) {
+  return cols.map(col => (
+    <th
+      key={col.key}
+      className={thClass(col)}
+      aria-sort={sortCol === col.key ? 'descending' : undefined}
+    >
+      <button
+        type="button"
+        className={`lb-th-sort-btn${sortCol === col.key ? ' lb-th-sort-btn--active' : ''}`}
+        onClick={() => onSortCol(col.key)}
+      >{col.label}</button>
+    </th>
+  ))
+}
+
+function ScopeRows({ rows, cols, delayMs }: { rows: GroupScopeRow[]; cols: Col[]; delayMs: number }) {
+  return rows.map((row, i) => {
+    const rank = i + 1
+    const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
+    return (
+      <tr
+        key={row.label}
+        className={`lb-row ${rankClass}`}
+        style={{ '--delay': `${i * delayMs}ms` } as React.CSSProperties}
+      >
+        <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
+        <td className="lb-td lb-td--name">{row.label}</td>
+        {cols.map(col => {
+          const v = col.value(row)
+          return (
+            <td key={col.key} className={tdClass(col)}>
+              {v === 0 ? '—' : col.zone === 'hits' ? <span className="lb-hit-chip">{v}</span> : v}
+            </td>
+          )
+        })}
+      </tr>
+    )
+  })
+}
+
+export default function GroupScopeTable({ rows }: { rows: GroupScopeRow[] }) {
+  const [sortCol, setSortCol] = useState<GroupSortBy>('total')
+  const sortedRows = [...rows].sort(GROUP_SORTERS[sortCol])
+
+  return (
+    <>
+      <div className="lb-scroll lb-desktop">
+        <table className="lb-table">
+          <thead>
+            <tr className="lb-th-phase-row">
+              <th className="lb-th lb-th--rank" rowSpan={2}>#</th>
+              <th className="lb-th lb-th--name" rowSpan={2}>מהמר</th>
+              <th className="lb-th lb-th--phase lb-th--phase-hits" colSpan={HIT_COLS.length}>ניחושים נכונים</th>
+              <th className="lb-th lb-th--phase lb-th--phase-points lb-zone-edge" colSpan={POINT_COLS.length}>נקודות</th>
+            </tr>
+            <tr>
+              <SortableThs cols={DESKTOP_COLS} sortCol={sortCol} onSortCol={setSortCol} />
+            </tr>
+          </thead>
+          <tbody>
+            <ScopeRows rows={sortedRows} cols={DESKTOP_COLS} delayMs={90} />
+          </tbody>
+        </table>
+        <p className="lb-zone-hint">
+          <span className="lb-hit-chip lb-hit-chip--hint">ניחושים</span> כמה פעמים קלעתם
+          <span className="lb-zone-hint-sep">·</span>
+          <strong>נקודות</strong> כמה זה הניב
+        </p>
+      </div>
+
+      <div className="lb-mobile">
+        <table className="lb-table lb-table--mobile">
+          <thead>
+            <tr>
+              <th className="lb-th lb-th--rank">#</th>
+              <th className="lb-th lb-th--name">מהמר</th>
+              <SortableThs cols={MOBILE_COLS} sortCol={sortCol} onSortCol={setSortCol} />
+            </tr>
+          </thead>
+          <tbody>
+            <ScopeRows rows={sortedRows} cols={MOBILE_COLS} delayMs={60} />
+          </tbody>
+        </table>
+        <p className="lb-zone-hint">
+          <span className="lb-hit-chip lb-hit-chip--hint">ניחושים</span> כמה פעמים קלעתם
+          <span className="lb-zone-hint-sep">·</span>
+          <strong>נקודות</strong> כמה זה הניב
+        </p>
+      </div>
+    </>
+  )
+}

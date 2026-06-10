@@ -7,12 +7,10 @@ import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
 import type { User } from '../../users/index'
 import LeaderboardTable from '../../leaderboard/LeaderboardTable'
-import HitsTable from '../../leaderboard/HitsTable'
-import { buildLeaderboardRows, buildHitsRows, groupScopeLabel } from '../../leaderboard/leaderboardRows'
+import GroupScopeTable from '../../leaderboard/GroupScopeTable'
+import { buildLeaderboardRows, buildGroupScopeRows } from '../../leaderboard/leaderboardRows'
 import type { Scope } from '../../leaderboard/leaderboardRows'
 import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
-import LeaderboardModeBar from '../../leaderboard/LeaderboardModeBar'
-import type { Mode } from '../../leaderboard/LeaderboardModeBar'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
@@ -114,7 +112,6 @@ function matchSortKey(matchDate: string | undefined, kickoffIST: string | undefi
 export default function ResultsPage({ users }: { users: User[] }) {
   const [editedResults, setEditedResults] = useState<PredictionsState>(getInitialState)
   const [lbScope, setLbScope] = useState<Scope>('all')
-  const [lbMode, setLbMode] = useState<Mode>('points')
   const [activeGroup, setActiveGroup] = useState('A')
   const [groupStageView, setGroupStageView] = useState<'by-group' | 'by-date'>('by-group')
   const [goalScorerState, setGoalScorerState] = useState(() => ({
@@ -238,9 +235,6 @@ export default function ResultsPage({ users }: { users: User[] }) {
     playerGoals: goalScorerState.playerGoals,
   }
 
-  const rows = buildLeaderboardRows(users, tournamentResults, lbScope)
-  const hitsRows = buildHitsRows(users, tournamentResults, lbScope)
-  const lbScopeLabel = groupScopeLabel(lbScope)
 
   return (
     <PageLayout title="תוצאות">
@@ -254,10 +248,9 @@ export default function ResultsPage({ users }: { users: User[] }) {
             <span className="pg-lb-subtitle">מתעדכן בזמן אמת</span>
           </div>
           <LeaderboardScopeBar scope={lbScope} onScopeChange={setLbScope} />
-          <LeaderboardModeBar mode={lbMode} onModeChange={setLbMode} />
-          {lbMode === 'points'
-            ? <LeaderboardTable rows={rows} scopeLabel={lbScopeLabel} />
-            : <HitsTable rows={hitsRows} />
+          {lbScope === 'all'
+            ? <LeaderboardTable rows={buildLeaderboardRows(users, tournamentResults)} />
+            : <GroupScopeTable rows={buildGroupScopeRows(users, tournamentResults, lbScope)} />
           }
         </section>
 
