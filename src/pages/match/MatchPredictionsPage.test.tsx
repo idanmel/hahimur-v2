@@ -1,5 +1,12 @@
 import { render, screen } from '@testing-library/react'
+import { vi } from 'vitest'
 import MatchPredictionsPage from './MatchPredictionsPage'
+
+// These tests describe the page before a real result exists. Pin the
+// results to empty so they don't change behavior as real scores land.
+vi.mock('../../tournament-results', () => ({
+  tournamentResults: { groupMatches: {}, playerMatchGoals: {} },
+}))
 import { findMatch } from './matchUtils'
 import { TEAMS } from '../../shared/groups'
 import type { User } from '../../users/index'
