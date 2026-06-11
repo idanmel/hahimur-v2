@@ -1,0 +1,43 @@
+name: Update match scores
+
+on:
+  schedule:
+    - cron: '*/30 * * 6,7 *' # every 30 minutes during June–July (tournament window)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-scores
+
+jobs:
+  update-scores:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Fetch finished match scores
+        run: node scripts/fetch-scores.ts
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+      - name: Commit, push, and trigger deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet src/tournament-results.ts; then
+            echo "No score changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/tournament-results.ts
+          git commit -m "auto: update match scores from football-data.org"
+          git pull --rebase origin master
+          git push
+          # Pushes made with GITHUB_TOKEN don't trigger the CI workflow,
+          # so dispatch it explicitly to test, build, and deploy.
+          gh workflow run ci.yml --ref master
