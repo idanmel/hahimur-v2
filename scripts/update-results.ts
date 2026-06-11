@@ -1,32 +1,12 @@
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout } from 'node:process'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { join, dirname } from 'node:path'
 import { tournamentResults } from '../src/tournament-results.ts'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-const RESULTS_PATH = join(__dirname, '../src/tournament-results.ts')
+import { writeGroupScores } from './results-file.ts'
 
 function parseDateKey(date: string): number {
   const [day, month] = date.split(' ')
   const monthNum: Record<string, number> = { 'ביוני': 6, 'ביולי': 7 }
   return (monthNum[month] ?? 0) * 100 + parseInt(day)
-}
-
-function writeGroupScores(scores: Record<string, { home: number; away: number }>): void {
-  const lines = Object.entries(scores)
-    .map(([id, s]) => `  ${id}: { home: ${s.home}, away: ${s.away} },`)
-    .join('\n')
-  const content = readFileSync(RESULTS_PATH, 'utf-8')
-  const updated = content.replace(
-    /const groupScores: Record<string, MatchScores> = \{[^]*?\n\}/,
-    lines
-      ? `const groupScores: Record<string, MatchScores> = {\n${lines}\n}`
-      : `const groupScores: Record<string, MatchScores> = {\n}`
-  )
-  writeFileSync(RESULTS_PATH, updated, 'utf-8')
 }
 
 const unplayed = Object.values(tournamentResults.groupMatches)
