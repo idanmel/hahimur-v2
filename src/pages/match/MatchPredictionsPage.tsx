@@ -7,7 +7,6 @@ import { isLive } from '../../shared/matchOrder'
 import MatchHeader from './MatchHeader'
 import PredictionSummary from './PredictionSummary'
 import ScoreFrequencyTable from './ScoreFrequencyTable'
-import PredictionsList from './PredictionsList'
 import './MatchPredictionsPage.css'
 
 type Team = { iso: string; he: string }
@@ -77,13 +76,9 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
           <span className="section-heading__eyebrow">סטטיסטיקה</span>
           <h2 className="section-heading__title">התפלגות תוצאות</h2>
         </header>
-        <ScoreFrequencyTable matchId={match.id} users={users} actualScore={actualScore} />
-
-        <header className="section-heading" dir="rtl">
-          <span className="section-heading__eyebrow">ניחושים</span>
-          <h2 className="section-heading__title">פירוט</h2>
-        </header>
-        <PredictionsList matchId={match.id} users={users} actualScore={actualScore} matchGoals={Object.fromEntries(scorers.map(s => [s.player, s.goals]))} />
+        {users.length === 0
+          ? <p className="match-predictions__empty">אין תחזיות למשחק זה</p>
+          : <ScoreFrequencyTable matchId={match.id} users={users} actualScore={actualScore} />}
       </div>
     </>
   )

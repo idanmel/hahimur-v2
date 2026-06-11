@@ -14,10 +14,7 @@ in PROGRESS.md but never built.
    ranks barely move.
 3. ~~**Today's matches on the home page**~~ ✅ Done — home page shows the next
    match with the crowd's favorite score, and keeps showing it until it ends.
-   **Follow-up needed before June 24:** round 3 of every group has both matches
-   kicking off simultaneously (12 pairs, June 24–28), but `nextMatch()` returns
-   a single match — the tied one is silently hidden for up to 3 hours. Show all
-   matches sharing the earliest kickoff, not just the first.
+   Simultaneous round-3 kickoffs (12 pairs, June 24–28) all get their own card.
 4. **Upset highlight** — when a finished match was predicted by ≤3 people, badge
    it and name who called it ("רק עידן ניחש 0-2"). Match drill-down already sorts
    by accuracy; this is mostly surfacing.

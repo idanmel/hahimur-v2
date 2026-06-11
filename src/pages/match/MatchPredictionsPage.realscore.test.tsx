@@ -42,13 +42,13 @@ test('played match shows the real score as fixed text with a final badge, no inp
   expect(scoreArea).toHaveTextContent('1–2')
 })
 
-test('played match scores predictions against the real result', () => {
+test('played match scores each scoreline row against the real result', () => {
   renderPage('A1', [
     u('מדויק', { A1: { home: 2, away: 1 } }),
     u('כיוון', { A1: { home: 1, away: 0 } }),
     u('פספוס', { A1: { home: 0, away: 3 } }),
   ])
-  const pts = (name: string) => screen.getByText(name).closest('.prediction-row')!.querySelector('.prediction-row__pts')!.textContent
+  const pts = (name: string) => screen.getByText(name).closest('[data-testid="score-freq-row"]')!.querySelector('.score-freq__pts')!.textContent
   expect(pts('מדויק')).toBe('4')
   expect(pts('כיוון')).toBe('2')
   expect(pts('פספוס')).toBe('0')
@@ -107,33 +107,6 @@ test('shows real goals scored by picked players in this match', () => {
   const scorers = screen.getByTestId('match-scorers')
   expect(scorers).toHaveTextContent('קיליאן אמבפה')
   expect(scorers).toHaveTextContent('×2')
-})
-
-test('prediction rows fold goal points into the total when the picked scorer scored', () => {
-  renderPage('A1', [
-    u('עם כובש', { A1: { home: 2, away: 1 } }, 'קיליאן אמבפה'),
-    u('בלי כובש', { A1: { home: 2, away: 1 } }, 'הארי קיין'),
-  ])
-  const pts = (name: string) => screen.getByText(name).closest('.prediction-row')!.querySelector('.prediction-row__pts')!.textContent
-  // 4 match points + 2 real goals × 3 = 10
-  expect(pts('עם כובש')).toBe('10')
-  expect(pts('בלי כובש')).toBe('4')
-})
-
-test('goal points total shows even for an unpredicted user whose scorer scored', () => {
-  renderPage('A1', [u('שכחן', { A1: { home: null, away: null } }, 'קיליאן אמבפה')])
-  const row = screen.getByText('שכחן').closest('.prediction-row')!
-  expect(row.querySelector('.prediction-row__pts')!.textContent).toBe('6')
-})
-
-test('rows sort by total including goal points', () => {
-  const renderResult = renderPage('A1', [
-    u('פספוס עם כובש', { A1: { home: 0, away: 3 } }, 'קיליאן אמבפה'), // 0 + 6
-    u('פגיעה', { A1: { home: 1, away: 0 } }), // 2
-  ])
-  const { container } = renderResult
-  const names = [...container.querySelectorAll('.prediction-row__name')].map(el => el.textContent)
-  expect(names).toEqual(['פספוס עם כובש', 'פגיעה'])
 })
 
 test('played match meta shows the date but drops kickoff time', () => {

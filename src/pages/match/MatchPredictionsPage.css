@@ -455,181 +455,9 @@
 .pred-summary__seg--draw { background: rgba(239, 228, 184, 0.22); }
 .pred-summary__seg--away { background: var(--red); }
 
-/* ── Prediction Row ─────────────────────────────────────────── */
-
 @keyframes row-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes exact-sweep {
-  0%    { transform: translateX(250%) skewX(-18deg); opacity: 0; }
-  8%    { opacity: 1; }
-  18%   { transform: translateX(-250%) skewX(-18deg); opacity: 0; }
-  18.1%, 100% { transform: translateX(250%) skewX(-18deg); opacity: 0; }
-}
-
-.prediction-row {
-  display: flex;
-  align-items: center;
-  background: var(--paper);
-  border: 1.5px solid var(--border);
-  border-radius: 4px;
-  margin-bottom: 0.45rem;
-  direction: rtl;
-  position: relative;
-  overflow: hidden;
-  opacity: 0;
-  animation: row-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-/* ── Outcome states ─────────────────────────────────────────── */
-
-.prediction-row--exact {
-  background: linear-gradient(90deg, rgba(212, 160, 22, 0.09) 0%, var(--paper) 42%);
-  box-shadow:
-    inset 4px 0 0 var(--gold),
-    0 3px 18px rgba(212, 160, 22, 0.2),
-    0 1px 4px rgba(0, 0, 0, 0.06);
-}
-
-/* Diagonal shimmer sweep on exact rows */
-.prediction-row--exact::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(212, 160, 22, 0.12) 50%,
-    transparent 70%
-  );
-  animation: exact-sweep 7s ease-in-out 1.2s infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.prediction-row--partial {
-  background: linear-gradient(90deg, rgba(11, 34, 68, 0.06) 0%, var(--paper) 42%);
-  box-shadow: inset 4px 0 0 var(--navy);
-}
-
-.prediction-row--miss {
-  box-shadow: inset 4px 0 0 rgba(192, 39, 45, 0.55);
-}
-
-.prediction-row--unpredicted {
-  border: 1.5px dashed rgba(200, 184, 122, 0.45);
-  background: rgba(251, 248, 236, 0.5);
-}
-
-/* ── Name ───────────────────────────────────────────────────── */
-
-.prediction-row__name {
-  flex: 1;
-  font-family: 'Heebo', sans-serif;
-  font-size: 0.93rem;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: 0.01em;
-  padding: 0.8rem 1.1rem;
-  position: relative;
-  z-index: 1;
-}
-
-.prediction-row--unpredicted .prediction-row__name,
-.prediction-row--miss .prediction-row__name {
-  color: var(--muted);
-}
-
-/* ── Score ──────────────────────────────────────────────────── */
-
-.prediction-row__score {
-  display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  direction: ltr;
-  padding: 0.55rem 0.8rem;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.prediction-row__digit {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.2rem;
-  line-height: 1;
-  color: var(--navy);
-  letter-spacing: 0.02em;
-  min-width: 1.1ch;
-  text-align: center;
-}
-
-.prediction-row--exact .prediction-row__digit {
-  color: var(--gold);
-  text-shadow: 0 0 18px rgba(212, 160, 22, 0.6);
-}
-
-.prediction-row--miss .prediction-row__digit,
-.prediction-row--unpredicted .prediction-row__digit {
-  color: rgba(200, 184, 122, 0.6);
-}
-
-/* ── Points area ────────────────────────────────────────────── */
-
-.prediction-row__pts-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 3.6rem;
-  padding: 0.55rem 0.75rem 0.55rem 0.6rem;
-  flex-shrink: 0;
-  border-right: 1px solid rgba(200, 184, 122, 0.25);
-  position: relative;
-  z-index: 1;
-}
-
-.prediction-row__pts {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.9rem;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-.prediction-row--exact .prediction-row__pts {
-  color: var(--gold);
-  text-shadow: 0 0 16px rgba(212, 160, 22, 0.55);
-}
-
-.prediction-row--partial .prediction-row__pts {
-  color: var(--navy);
-}
-
-.prediction-row--miss .prediction-row__pts {
-  color: rgba(122, 104, 69, 0.45);
-}
-
-.prediction-row__pts--na {
-  color: rgba(200, 184, 122, 0.45);
-  font-size: 1.4rem;
-}
-
-.prediction-row__pts-label {
-  font-family: 'Heebo', sans-serif;
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-  opacity: 0.55;
-  margin-top: 1px;
-  line-height: 1;
-}
-
-.prediction-row--exact .prediction-row__pts-label {
-  color: var(--gold);
-  opacity: 0.65;
 }
 
 /* ── Score Frequency Table ─────────────────────────────────── */
@@ -690,11 +518,106 @@
   text-shadow: 0 0 24px rgba(212, 160, 22, 0.5);
 }
 
+/* names of users who predicted this scoreline */
+.score-freq__names {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.55rem;
+  padding-inline: 0.9rem;
+}
+
+.score-freq__name {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(239, 228, 184, 0.62);
+  white-space: nowrap;
+}
+
+.score-freq__name:not(:last-child)::after {
+  content: '·';
+  margin-inline-start: 0.55rem;
+  color: rgba(212, 160, 22, 0.35);
+}
+
+.score-freq__row--leader .score-freq__name,
+.score-freq__row--exact .score-freq__name {
+  color: rgba(239, 228, 184, 0.85);
+}
+
+.score-freq__row--exact .score-freq__name {
+  font-weight: 600;
+}
+
+/* users without a prediction, at the bottom of the table */
+.score-freq__unpredicted {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.55rem;
+  padding: 0.7rem 1.1rem 0.8rem;
+  border-top: 1px dashed rgba(212, 160, 22, 0.2);
+}
+
+.score-freq__unpredicted .score-freq__name {
+  color: rgba(239, 228, 184, 0.35);
+}
+
+.score-freq__unpredicted-label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(239, 228, 184, 0.3);
+  margin-inline-end: 0.3rem;
+}
+
 .score-freq__meta {
   display: flex;
   align-items: baseline;
   gap: 0.45rem;
   direction: ltr;
+}
+
+/* points for this scoreline, once the match has a real score */
+.score-freq__pts-area {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  padding-right: 0.65rem;
+  border-right: 1px solid rgba(212, 160, 22, 0.2);
+  order: 1;
+}
+
+.score-freq__pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: rgba(239, 228, 184, 0.45);
+}
+
+.score-freq__pts-label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(239, 228, 184, 0.3);
+}
+
+.score-freq__row--exact .score-freq__pts {
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(212, 160, 22, 0.55);
+}
+
+.score-freq__row--outcome .score-freq__pts {
+  color: rgba(239, 228, 184, 0.85);
 }
 
 .score-freq__count {
