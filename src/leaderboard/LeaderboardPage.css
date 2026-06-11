@@ -584,63 +584,163 @@
 
 .lb-scope-bar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-.lb-scope-btn {
+/* ── Mode strip: one segmented control instead of a sea of chips ── */
+
+.lb-scope-modes {
+  display: inline-flex;
+  border: 1.5px solid var(--navy);
+}
+
+.lb-scope-mode {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1rem;
   letter-spacing: 0.05em;
-  padding: 5px 11px;
+  padding: 6px 14px 5px;
+  background: transparent;
+  border: none;
+  border-inline-start: 1.5px solid rgba(11, 34, 68, 0.25);
+  color: rgba(11, 34, 68, 0.45);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lb-scope-mode:first-child {
+  border-inline-start: none;
+}
+
+.lb-scope-mode:hover {
+  color: var(--navy);
+}
+
+.lb-scope-mode--active {
+  background: var(--navy);
+  color: var(--gold);
+}
+
+/* ── Contextual second row (group letters / last-X stepper) ── */
+
+@keyframes lb-scope-row-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lb-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  animation: lb-scope-row-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lb-scope-group {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  width: 34px;
+  padding: 5px 0 4px;
+  text-align: center;
   background: transparent;
   border: 1.5px solid rgba(200, 184, 122, 0.55);
   color: rgba(11, 34, 68, 0.38);
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.lb-scope-btn:hover {
+.lb-scope-group:hover {
   border-color: var(--navy);
   color: var(--navy);
 }
 
-.lb-scope-btn--active {
+.lb-scope-group--active {
   background: var(--navy);
   color: var(--gold);
   border-color: var(--navy);
 }
 
-.lb-scope-btn--reset {
-  margin-left: 8px;
+.lb-lastx-caption {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-inline-start: 6px;
 }
 
-.lb-lastx-picker {
+/* ── Last-X stepper — a scoreboard counter that unfolds from the active chip ── */
+
+@keyframes lb-lastx-unfold {
+  from { opacity: 0; transform: scaleX(0.55); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+.lb-lastx-stepper {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
+  border: 1.5px solid var(--navy);
+  background: var(--navy);
+  transform-origin: 100% 50%; /* unfold toward the chip that opened it (RTL) */
+  animation: lb-lastx-unfold 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lb-lastx-step {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1rem;
-  letter-spacing: 0.05em;
+  font-size: 1.05rem;
+  line-height: 1;
+  width: 32px;
+  padding: 5px 0 4px;
+  background: var(--navy);
+  color: var(--gold);
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lb-lastx-step:hover { background: #16335f; }
+
+.lb-lastx-step:active {
+  background: var(--gold);
   color: var(--navy);
+}
+
+.lb-lastx-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: var(--navy);
+  color: var(--gold);
 }
 
 .lb-lastx-input {
-  width: 3.2em;
+  width: 2.6em;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1rem;
+  font-size: 1.05rem;
   letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
   text-align: center;
-  padding: 4px 4px;
-  background: transparent;
-  border: 1.5px solid var(--navy);
+  padding: 4px 2px 3px;
+  background: var(--paper);
+  border: none;
+  border-inline: 1.5px solid var(--navy);
   color: var(--navy);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* the +/− keys replace the native spinners */
+.lb-lastx-input::-webkit-outer-spin-button,
+.lb-lastx-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .lb-lastx-input:focus {
   outline: 2px solid var(--gold);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 /* ── Scope primary columns (תוצאה / עולות in group scope view) ── */
