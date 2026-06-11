@@ -31,7 +31,8 @@ const LASTX_POINT_COLS: Col[] = [
   { key: 'total',       label: 'סה"כ',   value: r => r.total,       zone: 'points' },
 ]
 
-function makeVariant(pointCols: Col[], mobilePointCol: Col, defaultSort: GroupSortBy) {
+function makeVariant(pointCols: Col[], defaultSort: GroupSortBy) {
+  const mobilePointCol = { ...pointCols[pointCols.length - 1], label: 'נקודות', zoneEdge: true }
   return {
     desktop: [...HIT_COLS, ...pointCols],
     mobile: [{ ...HIT_COLS[2], label: 'ניחושים' }, mobilePointCol],
@@ -41,8 +42,8 @@ function makeVariant(pointCols: Col[], mobilePointCol: Col, defaultSort: GroupSo
 }
 
 const COLS = {
-  group: makeVariant(POINT_COLS, { ...POINT_COLS[2], label: 'נקודות', zoneEdge: true }, 'total'),
-  lastX: makeVariant(LASTX_POINT_COLS, { ...LASTX_POINT_COLS[2], label: 'נקודות', zoneEdge: true }, 'total'),
+  group: makeVariant(POINT_COLS, 'total'),
+  lastX: makeVariant(LASTX_POINT_COLS, 'total'),
 }
 
 function thClass({ key, zone, zoneEdge }: Col): string {

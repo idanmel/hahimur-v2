@@ -1,4 +1,4 @@
-import { computeUserPoints, computeGroupBreakdown, singleMatchOutcome, singleMatchPoints } from './points'
+import { computeUserPoints, computeGroupBreakdown, singleMatchOutcome, singleMatchPoints, POINTS_PER_GOAL } from './points'
 import type { GroupLetter } from '../shared/groups'
 import { isUnpredicted } from '../shared/types'
 import type { GroupMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
@@ -69,7 +69,7 @@ export function buildLastXRows(users: User[], results: TournamentResults, count:
       matchPoints += singleMatchPoints(match.id, predicted, match.scores!)
     }
     const goalsByMatch = results.playerMatchGoals?.[user.topGoalscorer]
-    const goalsPoints = matches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0) * 3
+    const goalsPoints = matches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0) * POINTS_PER_GOAL
     return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints: 0, goalsPoints, total: matchPoints + goalsPoints }
   })
 }

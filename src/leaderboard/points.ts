@@ -67,6 +67,8 @@ const KNOCKOUT_OLEH_POINTS: Record<'r32' | 'r16' | 'qf' | 'sf' | 'thirdPlaceWinn
   r32: 5, r16: 8, qf: 12, sf: 16, thirdPlaceWinner: 20, champion: 25,
 }
 
+export const POINTS_PER_GOAL = 3
+
 export interface GroupBreakdown {
   matchPoints: number
   advancementPoints: number
@@ -214,7 +216,7 @@ export function computeFinalBreakdown(
 }
 
 export function computeGoldenBootBreakdown(user: User, results: TournamentResults): GoldenBootBreakdown {
-  const goalsPoints = (results.playerGoals?.[user.topGoalscorer] ?? 0) * 3
+  const goalsPoints = (results.playerGoals?.[user.topGoalscorer] ?? 0) * POINTS_PER_GOAL
   if (!results.goldenBootWinner) return { goalsPoints, winnerBonus: 0, total: goalsPoints }
   const winners = Array.isArray(results.goldenBootWinner) ? results.goldenBootWinner : [results.goldenBootWinner]
   const winnerBonus = winners.includes(user.topGoalscorer) ? 10 : 0
