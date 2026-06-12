@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { computeUserPoints, singleMatchOutcome } from './points'
+import { computeUserPoints, singleMatchOutcome, OLEH_POINTS } from './points'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
 test('returns all-zero breakdown with empty results', () => {
@@ -58,7 +58,7 @@ const grpRow = (team: string, played: number, won: number, drawn: number, lost: 
   ({ team, played, won, drawn, lost, goalsFor: gf, goalsAgainst: ga, points: pts })
 
 describe('R32 qualification points', () => {
-  test('both top-2 teams correct → 10 pts', () => {
+  test('both top-2 teams correct → 2 × עולה pts', () => {
     const user = makeUser({
       groupTables: { A: [
         grpRow('Brazil',  3, 3, 0, 0, 6, 0, 9),
@@ -76,10 +76,10 @@ describe('R32 qualification points', () => {
         grpRow('Spain',   3, 0, 0, 3, 0, 6, 0),
       ]},
     }
-    expect(computeUserPoints(user, results).group.advancementPoints).toBe(10)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(2 * OLEH_POINTS.group)
   })
 
-  test('one top-2 team correct → 5 pts', () => {
+  test('one top-2 team correct → 1 × עולה pts', () => {
     const user = makeUser({
       groupTables: { A: [
         grpRow('Brazil',  3, 3, 0, 0, 6, 0, 9),
@@ -97,10 +97,10 @@ describe('R32 qualification points', () => {
         grpRow('Spain',   3, 0, 0, 3, 0, 6, 0),
       ]},
     }
-    expect(computeUserPoints(user, results).group.advancementPoints).toBe(5)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(OLEH_POINTS.group)
   })
 
-  test('predicted top-2, team qualified via third place → 5 pts', () => {
+  test('predicted top-2, team qualified via third place → עולה pts', () => {
     const s = (team: string, pos: number): ThirdPlaceStanding => ({
       team, played: 3, won: 3 - pos, drawn: 0, lost: pos, goalsFor: 6 - pos * 2, goalsAgainst: pos * 2, points: 9 - pos * 3, group: 'A',
     })
@@ -112,11 +112,11 @@ describe('R32 qualification points', () => {
       groupTables: { A: [s('France', 0), s('Germany', 1), s('Brazil', 2), s('Spain', 3)] },
       thirdPlaceQualification: { resolved: true, all: [s('Brazil', 2)], qualifiers: [s('Brazil', 2)] },
     }
-    // France: predicted top-2, finished top-2 (+5); Brazil: predicted top-2, qualified via third place (+5)
-    expect(computeUserPoints(user, results).group.advancementPoints).toBe(10)
+    // France: predicted top-2, finished top-2; Brazil: predicted top-2, qualified via third place
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(2 * OLEH_POINTS.group)
   })
 
-  test('predicted third-place qualifier, team finished top-2 → 5 pts', () => {
+  test('predicted third-place qualifier, team finished top-2 → עולה pts', () => {
     const s = (team: string, pos: number): ThirdPlaceStanding => ({
       team, played: 3, won: 3 - pos, drawn: 0, lost: pos, goalsFor: 6 - pos * 2, goalsAgainst: pos * 2, points: 9 - pos * 3, group: 'A',
     })
@@ -129,13 +129,13 @@ describe('R32 qualification points', () => {
       groupTables: { A: [s('Brazil', 0), s('France', 1), s('Germany', 2), s('Spain', 3)] },
       // thirdPlaceQualification not resolved — Brazil came top-2, not third place
     }
-    // France: predicted top-2, finished top-2 (+5)
+    // France: predicted top-2, finished top-2 (עולה)
     // Germany: predicted top-2, finished 3rd (0)
-    // Brazil: predicted third-place qualifier, but finished top-2 — still advanced (+5)
-    expect(computeUserPoints(user, results).group.advancementPoints).toBe(10)
+    // Brazil: predicted third-place qualifier, but finished top-2 — still advanced (עולה)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(2 * OLEH_POINTS.group)
   })
 
-  test('all 8 third-place qualifiers correct → 40 pts', () => {
+  test('all 8 third-place qualifiers correct → 8 × עולה pts', () => {
     const teams = ['T1','T2','T3','T4','T5','T6','T7','T8'].map(team => ({
       team, played: 3, won: 1, drawn: 0, lost: 2, goalsFor: 2, goalsAgainst: 4, points: 3, group: 'A',
     }))
@@ -146,7 +146,7 @@ describe('R32 qualification points', () => {
       ...EMPTY_RESULTS,
       thirdPlaceQualification: { resolved: true, all: teams, qualifiers: teams },
     }
-    expect(computeUserPoints(user, results).group.advancementPoints).toBe(40)
+    expect(computeUserPoints(user, results).group.advancementPoints).toBe(8 * OLEH_POINTS.group)
   })
 
   test('no points when group table not in results', () => {
@@ -293,7 +293,7 @@ describe('knockout match points', () => {
 })
 
 describe('knockout advancement (עולה)', () => {
-  test('R32 advancement: 5 pts per correctly predicted R16 team', () => {
+  test('R32 advancement: עולה pts per correctly predicted R16 team', () => {
     const user = makeUser({
       knockoutStages: {
         r32: [],
@@ -309,8 +309,8 @@ describe('knockout advancement (עולה)', () => {
         qf: [], sf: [], thirdPlace: [], final: [],
       },
     }
-    // Brazil correct (5 pts), France wrong (0), Germany not predicted (0) → 5 pts
-    expect(computeUserPoints(user, results).r32.total).toBe(5)
+    // Brazil correct (עולה), France wrong (0), Germany not predicted (0)
+    expect(computeUserPoints(user, results).r32.total).toBe(OLEH_POINTS.r32)
   })
 
   test('R32 advancement: no points when R16 not yet populated in results', () => {
@@ -326,10 +326,10 @@ describe('knockout advancement (עולה)', () => {
 })
 
 describe('champion and third-place winner', () => {
-  test('correct champion prediction → 25 pts in final bucket', () => {
+  test('correct champion prediction → champion pts in final bucket', () => {
     const user = makeUser({ predictedChampion: 'Brazil' })
     const results: TournamentResults = { ...EMPTY_RESULTS, champion: 'Brazil' }
-    expect(computeUserPoints(user, results).final.total).toBe(25)
+    expect(computeUserPoints(user, results).final.total).toBe(OLEH_POINTS.champion)
   })
 
   test('wrong champion prediction → 0', () => {
@@ -338,10 +338,10 @@ describe('champion and third-place winner', () => {
     expect(computeUserPoints(user, results).final.total).toBe(0)
   })
 
-  test('correct third-place winner → 20 pts in third bucket', () => {
+  test('correct third-place winner → thirdPlaceWinner pts in third bucket', () => {
     const user = makeUser({ predictedThirdPlaceWinner: 'Argentina' })
     const results: TournamentResults = { ...EMPTY_RESULTS, thirdPlaceWinner: 'Argentina' }
-    expect(computeUserPoints(user, results).third.total).toBe(20)
+    expect(computeUserPoints(user, results).third.total).toBe(OLEH_POINTS.thirdPlaceWinner)
   })
 
   test('no champion points when results has no champion', () => {

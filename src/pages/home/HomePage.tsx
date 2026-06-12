@@ -4,6 +4,7 @@ import NextMatchCard from './NextMatchCard'
 import TopThreeCard from './TopThreeCard'
 import { USERS } from '../../users/index'
 import { tournamentResults } from '../../tournament-results'
+import { OLEH_POINTS } from '../../leaderboard/points'
 
 const FIRST_MATCH = new Date('2026-06-11T19:00:00Z')
 
@@ -50,13 +51,13 @@ export default function HomePage() {
               </thead>
               <tbody>
                 {[
-                  { stage: 'שלב הבתים', hit: 2, exact: 4, advance: 5 },
-                  { stage: 'שלב ה-32', hit: 5, exact: 7, advance: 5 },
-                  { stage: 'שמינית הגמר', hit: 6, exact: 8, advance: 8 },
-                  { stage: 'רבע הגמר', hit: 8, exact: 12, advance: 12 },
-                  { stage: 'חצי הגמר', hit: 12, exact: 16, advance: 16 },
-                  { stage: 'מקום שלישי', hit: 16, exact: 18, advance: 20 },
-                  { stage: 'גמר', hit: 20, exact: 25, advance: 25 },
+                  { stage: 'שלב הבתים', hit: 2, exact: 4, advance: OLEH_POINTS.group },
+                  { stage: 'שלב ה-32', hit: 5, exact: 7, advance: OLEH_POINTS.r32 },
+                  { stage: 'שמינית הגמר', hit: 6, exact: 8, advance: OLEH_POINTS.r16 },
+                  { stage: 'רבע הגמר', hit: 8, exact: 12, advance: OLEH_POINTS.qf },
+                  { stage: 'חצי הגמר', hit: 12, exact: 16, advance: OLEH_POINTS.sf },
+                  { stage: 'מקום שלישי', hit: 16, exact: 18, advance: OLEH_POINTS.thirdPlaceWinner },
+                  { stage: 'גמר', hit: 20, exact: 25, advance: OLEH_POINTS.champion },
                 ].map((row) => (
                   <tr key={row.stage}>
                     <td>{row.stage}</td>

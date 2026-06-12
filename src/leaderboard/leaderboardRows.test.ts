@@ -2,6 +2,7 @@
 import { expect, test } from 'vitest'
 import type { GroupMatch, Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import { buildGroupScopeRows, buildLastXRows, lastPlayedGroupMatches, GROUP_SORTERS } from './leaderboardRows'
+import { OLEH_POINTS } from './points'
 import type { GroupScopeRow } from './leaderboardRows'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
@@ -32,8 +33,8 @@ test('group scope counts all teams that advanced from that group, including via 
   }
 
   const [row] = buildGroupScopeRows([user], results, 'A')
-  // Brazil (top-2) + France (third-place qualifier) both advanced from group A → 10 pts
-  expect(row.advancementPoints).toBe(10)
+  // Brazil (top-2) + France (third-place qualifier) both advanced from group A
+  expect(row.advancementPoints).toBe(2 * OLEH_POINTS.group)
 })
 
 test('group scope excludes third-place qualifiers from other groups', () => {
@@ -62,10 +63,10 @@ test('group scope excludes third-place qualifiers from other groups', () => {
   }
 
   const [rowA] = buildGroupScopeRows([user], results, 'A')
-  expect(rowA.advancementPoints).toBe(10) // Brazil + France only
+  expect(rowA.advancementPoints).toBe(2 * OLEH_POINTS.group) // Brazil + France only
 
   const [rowB] = buildGroupScopeRows([user], results, 'B')
-  expect(rowB.advancementPoints).toBe(5) // Italy only
+  expect(rowB.advancementPoints).toBe(OLEH_POINTS.group) // Italy only
 })
 
 const grpMatch = (id: string, home: number, away: number): GroupMatch =>

@@ -63,8 +63,8 @@ function advPts(predicted: string[], actual: string[], pts: number): number {
   return predicted.reduce((sum, t) => sum + (actualSet.has(t) ? pts : 0), 0)
 }
 
-const KNOCKOUT_OLEH_POINTS: Record<'r32' | 'r16' | 'qf' | 'sf' | 'thirdPlaceWinner' | 'champion', number> = {
-  r32: 5, r16: 8, qf: 12, sf: 16, thirdPlaceWinner: 20, champion: 25,
+export const OLEH_POINTS: Record<'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'thirdPlaceWinner' | 'champion', number> = {
+  group: 4, r32: 5, r16: 8, qf: 12, sf: 16, thirdPlaceWinner: 20, champion: 25,
 }
 
 export const POINTS_PER_GOAL = 3
@@ -174,7 +174,7 @@ export function computeGroupBreakdown(user: User, results: TournamentResults): G
 
   let advancementPoints = 0
   for (const team of userR32Set) {
-    if (actualR32Set.has(team)) advancementPoints += 5
+    if (actualR32Set.has(team)) advancementPoints += OLEH_POINTS.group
   }
 
   return { matchPoints, advancementPoints, total: matchPoints + advancementPoints }
@@ -200,7 +200,7 @@ export function computeThirdBreakdown(
   actualWinner: string | undefined,
 ): ThirdBreakdown {
   const matchPoints = koMatchPoints(userMatches, resultMatches)
-  const thirdPlaceWinner = actualWinner && predictedWinner === actualWinner ? KNOCKOUT_OLEH_POINTS.thirdPlaceWinner : 0
+  const thirdPlaceWinner = actualWinner && predictedWinner === actualWinner ? OLEH_POINTS.thirdPlaceWinner : 0
   return { matchPoints, thirdPlaceWinner, total: matchPoints + thirdPlaceWinner }
 }
 
@@ -211,7 +211,7 @@ export function computeFinalBreakdown(
   actualChampion: string | undefined,
 ): FinalBreakdown {
   const matchPoints = koMatchPoints(userMatches, resultMatches)
-  const champion = actualChampion && predictedChampion === actualChampion ? KNOCKOUT_OLEH_POINTS.champion : 0
+  const champion = actualChampion && predictedChampion === actualChampion ? OLEH_POINTS.champion : 0
   return { matchPoints, champion, total: matchPoints + champion }
 }
 
@@ -228,10 +228,10 @@ export function computeUserPoints(user: User, results: TournamentResults): Point
   const uko = user.knockoutStages
 
   const group     = computeGroupBreakdown(user, results)
-  const r32       = computeRoundBreakdown(uko.r32, ko.r32, user.predictedR16Teams ?? roundTeams(uko.r16), roundTeams(ko.r16), KNOCKOUT_OLEH_POINTS.r32, roundReady(ko.r16))
-  const r16       = computeRoundBreakdown(uko.r16, ko.r16, user.predictedQFTeams ?? roundTeams(uko.qf), roundTeams(ko.qf), KNOCKOUT_OLEH_POINTS.r16, roundReady(ko.qf))
-  const qf        = computeRoundBreakdown(uko.qf, ko.qf, user.predictedSFTeams ?? roundTeams(uko.sf), roundTeams(ko.sf), KNOCKOUT_OLEH_POINTS.qf, roundReady(ko.sf))
-  const sf        = computeRoundBreakdown(uko.sf, ko.sf, user.predictedFinalTeams ?? roundTeams(uko.final), roundTeams(ko.final), KNOCKOUT_OLEH_POINTS.sf, roundReady(ko.final))
+  const r32       = computeRoundBreakdown(uko.r32, ko.r32, user.predictedR16Teams ?? roundTeams(uko.r16), roundTeams(ko.r16), OLEH_POINTS.r32, roundReady(ko.r16))
+  const r16       = computeRoundBreakdown(uko.r16, ko.r16, user.predictedQFTeams ?? roundTeams(uko.qf), roundTeams(ko.qf), OLEH_POINTS.r16, roundReady(ko.qf))
+  const qf        = computeRoundBreakdown(uko.qf, ko.qf, user.predictedSFTeams ?? roundTeams(uko.sf), roundTeams(ko.sf), OLEH_POINTS.qf, roundReady(ko.sf))
+  const sf        = computeRoundBreakdown(uko.sf, ko.sf, user.predictedFinalTeams ?? roundTeams(uko.final), roundTeams(ko.final), OLEH_POINTS.sf, roundReady(ko.final))
   const third     = computeThirdBreakdown(uko.thirdPlace, ko.thirdPlace, user.predictedThirdPlaceWinner, results.thirdPlaceWinner)
   const final     = computeFinalBreakdown(uko.final, ko.final, user.predictedChampion, results.champion)
   const goldenBoot = computeGoldenBootBreakdown(user, results)
