@@ -109,6 +109,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }
 
   const randomize = () => {
+    // fire-and-forget click counter — must never affect the simulation itself
+    fetch('/api/sim-click', { method: 'POST' }).catch(() => {})
     const poisson = (lambda: number) => {
       const L = Math.exp(-lambda)
       let k = 0, p = 1
