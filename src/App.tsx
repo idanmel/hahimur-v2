@@ -1,4 +1,3 @@
-import FormPage from './pages/form/FormPage'
 import AdminPage from './pages/admin/AdminPage'
 import UpdatesPage from './pages/updates/UpdatesPage'
 import FormsPage from './pages/forms/FormsPage'
@@ -35,7 +34,6 @@ export default function App() {
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :
        pathname === '/stats'                             ? <StatsPage users={USERS} /> :
        pathname === '/forms'                              ? <FormsPage users={USERS} usersSorted={USERS_SORTED} /> :
-       pathname === '/form'                               ? <FormPage /> :
        pathname === '/updates'                           ? <UpdatesPage /> :
        pathname === '/admin'                            ? <AdminPage /> :
        <HomePage />}
