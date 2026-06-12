@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { GROUP_SORTERS } from './leaderboardRows'
 import type { GroupScopeRow, GroupSortBy } from './leaderboardRows'
 import { MEDALS } from './medals'
+import { competitionRanks } from './rank'
 
 type Zone = 'hits' | 'points'
 
@@ -84,9 +85,9 @@ function SortableThs({ cols, sortCol, onSortCol }: {
   ))
 }
 
-function ScopeRows({ rows, cols, delayMs }: { rows: GroupScopeRow[]; cols: Col[]; delayMs: number }) {
+function ScopeRows({ rows, ranks, cols, delayMs }: { rows: GroupScopeRow[]; ranks: number[]; cols: Col[]; delayMs: number }) {
   return rows.map((row, i) => {
-    const rank = i + 1
+    const rank = ranks[i]
     const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
     return (
       <tr
@@ -113,6 +114,8 @@ export default function GroupScopeTable({ rows, variant = 'group' }: { rows: Gro
   const cols = COLS[variant]
   const [sortCol, setSortCol] = useState<GroupSortBy>(cols.defaultSort)
   const sortedRows = [...rows].sort(GROUP_SORTERS[sortCol])
+  const sortValue = cols.desktop.find(c => c.key === sortCol)!.value
+  const ranks = competitionRanks(sortedRows, sortValue)
 
   return (
     <>
@@ -130,7 +133,7 @@ export default function GroupScopeTable({ rows, variant = 'group' }: { rows: Gro
             </tr>
           </thead>
           <tbody>
-            <ScopeRows rows={sortedRows} cols={cols.desktop} delayMs={90} />
+            <ScopeRows rows={sortedRows} ranks={ranks} cols={cols.desktop} delayMs={90} />
           </tbody>
         </table>
         <p className="lb-zone-hint">
@@ -150,7 +153,7 @@ export default function GroupScopeTable({ rows, variant = 'group' }: { rows: Gro
             </tr>
           </thead>
           <tbody>
-            <ScopeRows rows={sortedRows} cols={cols.mobile} delayMs={60} />
+            <ScopeRows rows={sortedRows} ranks={ranks} cols={cols.mobile} delayMs={60} />
           </tbody>
         </table>
         <p className="lb-zone-hint">

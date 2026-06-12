@@ -1,6 +1,7 @@
 import React from 'react'
 import type { PointsBreakdown } from './points'
 import { MEDALS } from './medals'
+import { competitionRanks } from './rank'
 
 export interface LeaderboardRow extends PointsBreakdown {
   label: string
@@ -58,6 +59,7 @@ export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
 
   const phaseGroups = getPhaseGroups(activeRounds)
   const noPoints = activeRounds.length === 0
+  const ranks = competitionRanks(rows, row => row.total)
 
   return (
     <>
@@ -93,7 +95,7 @@ export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
             </thead>
             <tbody>
               {rows.map((row, i) => {
-                const rank = i + 1
+                const rank = ranks[i]
                 const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
                 return (
                   <tr
@@ -145,7 +147,7 @@ export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
           </thead>
           <tbody>
             {rows.map((row, i) => {
-              const rank = i + 1
+              const rank = ranks[i]
               const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
               return (
                 <tr
