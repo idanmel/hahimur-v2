@@ -16,7 +16,9 @@ test('home page shows the next match card during the group stage', () => {
 test('home page shows the top three card', () => {
   render(<HomePage />)
   expect(screen.getByTestId('top-three')).toBeInTheDocument()
-  expect(screen.getAllByTestId('top-three-row')).toHaveLength(3)
+  // Exact row count depends on live standings (ties expand the list),
+  // which TopThreeCard.test.tsx covers with fixtures.
+  expect(screen.getAllByTestId('top-three-row').length).toBeGreaterThanOrEqual(3)
 })
 
 test('home page shows title', () => {
