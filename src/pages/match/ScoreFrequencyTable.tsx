@@ -46,11 +46,12 @@ export default function ScoreFrequencyTable({ matchId, users, actualScore = null
   }
 
   const rowClass = (key: string, isLeader: boolean) => {
-    if (!actualScore) return isLeader ? ' score-freq__row--leader' : ''
     const { h, aw } = parseKey(key)
-    if (h === actualScore.home && aw === actualScore.away) return ' score-freq__row--exact'
-    if (resultGroup(h, aw) === resultGroup(actualScore.home!, actualScore.away!)) return ' score-freq__row--outcome'
-    return ''
+    const group = ` score-freq__row--g${resultGroup(h, aw)}`
+    if (!actualScore) return group + (isLeader ? ' score-freq__row--leader' : '')
+    if (h === actualScore.home && aw === actualScore.away) return group + ' score-freq__row--exact'
+    if (resultGroup(h, aw) === resultGroup(actualScore.home!, actualScore.away!)) return group + ' score-freq__row--outcome'
+    return group + ' score-freq__row--miss'
   }
 
   return (
@@ -72,6 +73,7 @@ export default function ScoreFrequencyTable({ matchId, users, actualScore = null
             className={`score-freq__row${rowClass(key, isLeader)}`}
             style={{ '--bar-pct': `${pct}%`, '--row-delay': `${i * 80}ms`, animationDelay: `${i * 80}ms` } as React.CSSProperties}
           >
+            <div className="score-freq__fill" />
             <div className="score-freq__content">
               <span className="score-freq__score">{key.split('-').reverse().join('–')}</span>
               <div className="score-freq__names">
@@ -84,12 +86,11 @@ export default function ScoreFrequencyTable({ matchId, users, actualScore = null
                     <span className="score-freq__pts-label">נק׳</span>
                   </span>
                 )}
-                <span className="score-freq__count">{count}</span>
-                <span className="score-freq__pct">{pct}%</span>
+                <span className="score-freq__stat">
+                  <span className="score-freq__count">{count}</span>
+                  <span className="score-freq__pct">{pct}%</span>
+                </span>
               </div>
-            </div>
-            <div className="score-freq__track">
-              <div className="score-freq__fill" />
             </div>
           </div>
         ))}

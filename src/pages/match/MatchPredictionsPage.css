@@ -491,26 +491,47 @@
   animation: row-in 0.35s ease forwards;
 }
 
+/* result-group tick on the reading edge: gold = home, cream = draw, red = away
+   (mirrors the 1/X/2 colors of the prediction summary above) */
+.score-freq__row::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 2px 0 0 2px;
+  z-index: 2;
+}
+
+.score-freq__row--g0::before { background: rgba(212, 160, 22, 0.55); }
+.score-freq__row--g1::before { background: rgba(239, 228, 184, 0.22); }
+.score-freq__row--g2::before { background: rgba(192, 39, 45, 0.65); }
+
 .score-freq__content {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.8rem 1.1rem 0.65rem;
+  padding: 0.7rem 1.1rem;
   direction: rtl;
   border-bottom: 1px solid rgba(212, 160, 22, 0.1);
 }
 
-.score-freq__row:last-child .score-freq__content {
+.score-freq__row:last-of-type .score-freq__content {
   border-bottom: none;
 }
 
 .score-freq__score {
+  flex: 0 0 52px;
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.9rem;
   line-height: 1;
   letter-spacing: 0.04em;
   color: rgba(239, 228, 184, 0.58);
   direction: ltr;
+  text-align: center;
 }
 
 .score-freq__row--leader .score-freq__score {
@@ -525,7 +546,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.55rem;
-  padding-inline: 0.9rem;
+  padding-inline: 0.85rem;
+  border-right: 1px solid rgba(239, 228, 184, 0.1);
+  margin-right: 0.85rem;
 }
 
 .score-freq__name {
@@ -533,7 +556,7 @@
   font-size: 0.8rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: rgba(239, 228, 184, 0.62);
+  color: rgba(239, 228, 184, 0.68);
   white-space: nowrap;
 }
 
@@ -579,25 +602,25 @@
 
 .score-freq__meta {
   display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
+  align-items: center;
+  gap: 0.7rem;
   direction: ltr;
 }
 
-/* points for this scoreline, once the match has a real score */
+/* points pill, once the match has a real score */
 .score-freq__pts-area {
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
-  gap: 0.25rem;
-  margin-right: 0.5rem;
-  padding-right: 0.65rem;
-  border-right: 1px solid rgba(212, 160, 22, 0.2);
+  gap: 0.22rem;
   order: 1;
+  padding: 0.22rem 0.5rem 0.18rem;
+  border-radius: 3px;
+  border: 1px solid rgba(239, 228, 184, 0.14);
 }
 
 .score-freq__pts {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   line-height: 1;
   letter-spacing: 0.04em;
   color: rgba(239, 228, 184, 0.45);
@@ -605,62 +628,81 @@
 
 .score-freq__pts-label {
   font-family: 'Heebo', sans-serif;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: rgba(239, 228, 184, 0.3);
+  color: rgba(239, 228, 184, 0.32);
 }
 
-.score-freq__row--exact .score-freq__pts {
-  color: var(--gold);
-  text-shadow: 0 0 16px rgba(212, 160, 22, 0.55);
+/* tzelifa: solid gold pill, navy text */
+.score-freq__row--exact .score-freq__pts-area {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(212, 160, 22, 0.45);
+}
+
+.score-freq__row--exact .score-freq__pts,
+.score-freq__row--exact .score-freq__pts-label {
+  color: var(--navy);
+}
+
+/* pagiya: gold outline */
+.score-freq__row--outcome .score-freq__pts-area {
+  border-color: rgba(212, 160, 22, 0.55);
 }
 
 .score-freq__row--outcome .score-freq__pts {
-  color: rgba(239, 228, 184, 0.85);
+  color: var(--gold);
+}
+
+.score-freq__row--outcome .score-freq__pts-label {
+  color: rgba(212, 160, 22, 0.6);
+}
+
+/* count over percentage, one stat block */
+.score-freq__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 30px;
 }
 
 .score-freq__count {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.25rem;
+  font-size: 1.45rem;
   line-height: 1;
   letter-spacing: 0.04em;
-  color: rgba(239, 228, 184, 0.45);
+  color: rgba(239, 228, 184, 0.55);
 }
 
 .score-freq__row--leader .score-freq__count {
-  color: rgba(239, 228, 184, 0.85);
+  color: rgba(239, 228, 184, 0.95);
 }
 
 .score-freq__pct {
   font-family: 'Heebo', sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   font-weight: 500;
   letter-spacing: 0.04em;
-  color: rgba(239, 228, 184, 0.28);
+  color: rgba(239, 228, 184, 0.32);
 }
 
-/* thin proportional bar at bottom of each row — mirrors pred-summary bar */
-.score-freq__track {
-  height: 3px;
-  background: rgba(255, 255, 255, 0.05);
-  position: relative;
-  overflow: hidden;
-}
-
+/* full-height proportional fill behind the row — the table reads as a bar chart */
 .score-freq__fill {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
   right: 0;
   width: var(--bar-pct);
-  background: rgba(239, 228, 184, 0.2);
+  background: linear-gradient(270deg, rgba(239, 228, 184, 0.1), rgba(239, 228, 184, 0.02));
   transform: scaleX(0);
   transform-origin: right center;
   animation: freq-fill 0.75s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--row-delay, 0ms) + 180ms) both;
 }
 
 .score-freq__row--leader .score-freq__fill {
-  background: var(--gold);
+  background: linear-gradient(270deg, rgba(212, 160, 22, 0.24), rgba(212, 160, 22, 0.04));
 }
 
 @keyframes freq-fill {
@@ -670,18 +712,23 @@
 
 /* ── Result-aware states (after a real score) ───────────────── */
 
-/* frequency table: the scoreline that actually happened */
+/* the scoreline that actually happened */
 .score-freq__row--exact .score-freq__score {
   color: var(--gold);
   text-shadow: 0 0 24px rgba(212, 160, 22, 0.65);
 }
 
 .score-freq__row--exact .score-freq__count {
-  color: rgba(239, 228, 184, 0.9);
+  color: rgba(239, 228, 184, 0.95);
 }
 
 .score-freq__row--exact .score-freq__fill {
+  background: linear-gradient(270deg, rgba(212, 160, 22, 0.32), rgba(212, 160, 22, 0.06));
+}
+
+.score-freq__row--exact::before {
   background: var(--gold);
+  box-shadow: 0 0 10px rgba(212, 160, 22, 0.7);
 }
 
 /* correct outcome, wrong score: a softer tint */
@@ -690,7 +737,17 @@
 }
 
 .score-freq__row--outcome .score-freq__fill {
-  background: rgba(212, 160, 22, 0.45);
+  background: linear-gradient(270deg, rgba(212, 160, 22, 0.16), rgba(212, 160, 22, 0.03));
+}
+
+/* missed entirely: recede so the hits carry the story */
+.score-freq__row--miss .score-freq__content,
+.score-freq__row--miss::before {
+  opacity: 0.45;
+}
+
+.score-freq__row--miss .score-freq__fill {
+  background: linear-gradient(270deg, rgba(239, 228, 184, 0.05), transparent);
 }
 
 /* summary bar: light the column that happened, dim the rest */
