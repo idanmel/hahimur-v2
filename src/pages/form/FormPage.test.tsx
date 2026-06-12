@@ -142,8 +142,8 @@ describe('Save predictions', () => {
     const mockAnchor = { href: '', download: '', click: mockClick }
     const original = document.createElement.bind(document)
     vi.spyOn(document, 'createElement').mockImplementation((tag, ...args) => {
-      if (tag === 'a') return mockAnchor as any
-      return original(tag as any, ...args)
+      if (tag === 'a') return mockAnchor as unknown as HTMLElement
+      return original(tag, ...args)
     })
     vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:fake')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, test, expect } from 'vitest'
-import { computeFinalStats, computeFinalMatchups, computeTeamStageStats } from './StatsPage'
+import { computeFinalStats, computeFinalMatchups, computeTeamStageStats } from './stats'
 import type { User } from '../../users/index'
 import type { ThirdPlaceQualification, KnockoutStages, GroupMatch } from '../../shared/types'
 

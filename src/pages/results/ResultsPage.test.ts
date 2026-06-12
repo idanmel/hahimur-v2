@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
-import { clampGoals, getLockedMatchIds } from './ResultsPage'
+import { clampGoals, getLockedMatchIds } from './resultsUtils'
 import type { TournamentResults } from '../../shared/types'
 
 const EMPTY_RESULTS: TournamentResults = {

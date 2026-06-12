@@ -72,10 +72,10 @@ export default function FormPage() {
   const [topGoalscorer, setTopGoalscorer] = useState<string>(() => loadFromStorage().topGoalscorer)
   const [userName, setUserName] = useState<string>(() => loadFromStorage().userName)
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
-  const activeMatches = GROUP_MATCHES[activeGroup] ?? []
+  const activeMatches = useMemo(() => GROUP_MATCHES[activeGroup] ?? [], [activeGroup])
   const { standings: activeStandings, tiedTeams: activeTiedTeams } = useMemo(
     () => calculateStandings(activeMatches, predictions),
-    [activeGroup, predictions]
+    [activeMatches, predictions]
   )
   const activeAllFilled = activeMatches.length > 0 && activeMatches.every(m => {
     const pred = predictions[m.id]
@@ -84,17 +84,16 @@ export default function FormPage() {
 
   const { allGroupData, thirdPlaceQual, groupsWithTies, completedGroups, allGroupsFilled, round32Matches, knockout, finalWinner } = useTournament(predictions)
 
-  useEffect(() => {
-    const allKOMatches = [
-      ...round32Matches,
-      ...knockout.r16, ...knockout.qf, ...knockout.sf,
-      knockout.thirdPlace, knockout.final,
-    ]
-    const cleaned = clearUnresolvedKOScores(allKOMatches, predictions)
-    if (cleaned !== predictions) {
-      setPredictions(cleaned)
-    }
-  }, [round32Matches, knockout])
+  // adjust state during render: drop scores of KO matches whose teams are no longer resolved
+  const allKOMatches = [
+    ...round32Matches,
+    ...knockout.r16, ...knockout.qf, ...knockout.sf,
+    knockout.thirdPlace, knockout.final,
+  ]
+  const cleaned = clearUnresolvedKOScores(allKOMatches, predictions)
+  if (cleaned !== predictions) {
+    setPredictions(cleaned)
+  }
 
   const user: User = useMemo(() => {
     const groupMatchesWithScores = Object.fromEntries(
@@ -154,7 +153,7 @@ export default function FormPage() {
   }, [predictions, topGoalscorer, userName, allGroupData, thirdPlaceQual, round32Matches, knockout, finalWinner])
 
   useEffect(() => {
-    const { predictions: _, ...storable } = user
+    const storable = { ...user, predictions: undefined }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storable))
     window.dispatchEvent(new Event(USER_STORAGE_EVENT))
   }, [user])
@@ -172,8 +171,7 @@ export default function FormPage() {
   }
 
   function saveToFile() {
-    const { predictions: _, ...storable } = user
-    const data = { ...storable }
+    const data = { ...user, predictions: undefined }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

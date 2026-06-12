@@ -1,11 +1,10 @@
 import React from 'react'
 import type { PointsBreakdown } from './points'
+import { MEDALS } from './medals'
 
 export interface LeaderboardRow extends PointsBreakdown {
   label: string
 }
-
-export const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 type RoundKey = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final' | 'goldenBoot'
 

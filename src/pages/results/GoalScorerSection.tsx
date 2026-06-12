@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { clampGoals } from './ResultsPage'
+import { useState } from 'react'
+import { clampGoals } from './resultsUtils'
 
 interface Props {
   players: string[]
@@ -16,10 +16,6 @@ function PlayerGoalInput({ player, min, value, onCommit }: {
   onCommit: (value: number) => void
 }) {
   const [display, setDisplay] = useState(String(value))
-
-  useEffect(() => {
-    setDisplay(String(value))
-  }, [value])
 
   return (
     <input
@@ -46,18 +42,28 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
 
   const maxGoals = Math.max(0, ...players.map(p => playerGoals[p] ?? 0))
 
-  useEffect(() => {
-    setGoldenBootWinners(prev => {
-      if (prev.length === 0) return prev
-      const stillTied = prev.filter(p => maxGoals > 0 && (playerGoals[p] ?? 0) >= maxGoals)
-      if (stillTied.length === 0) return []
-      return players.filter(p => (playerGoals[p] ?? 0) === maxGoals)
-    })
-  }, [playerGoals])
+  const commitGoals = (player: string, val: number) => {
+    const nextGoals = { ...playerGoals, [player]: val }
+    const nextMax = Math.max(0, ...players.map(p => nextGoals[p] ?? 0))
+    let nextWinners = goldenBootWinners
+    if (nextWinners.length > 0) {
+      const stillTied = nextWinners.filter(p => nextMax > 0 && (nextGoals[p] ?? 0) >= nextMax)
+      nextWinners = stillTied.length === 0
+        ? []
+        : players.filter(p => (nextGoals[p] ?? 0) === nextMax)
+    }
+    setPlayerGoals(nextGoals)
+    setGoldenBootWinners(nextWinners)
+    onChange(nextGoals, nextWinners)
+  }
 
-  useEffect(() => {
-    onChange(playerGoals, goldenBootWinners)
-  }, [playerGoals, goldenBootWinners])
+  const toggleWinners = () => {
+    const nextWinners = goldenBootWinners.length > 0
+      ? []
+      : players.filter(p => (playerGoals[p] ?? 0) === maxGoals)
+    setGoldenBootWinners(nextWinners)
+    onChange(playerGoals, nextWinners)
+  }
 
   return (
     <div className="pg-scorer-list">
@@ -69,11 +75,7 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
             className="pg-scorer-checkbox"
             checked={goldenBootWinners.includes(player)}
             disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
-            onChange={() => setGoldenBootWinners(prev =>
-              prev.length > 0
-                ? []
-                : players.filter(p => (playerGoals[p] ?? 0) === maxGoals)
-            )}
+            onChange={toggleWinners}
           />
           <div className="pg-scorer-player">
             <span className="pg-scorer-name">{player}</span>
@@ -86,10 +88,11 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
             ) : null}
           </div>
           <PlayerGoalInput
+            key={playerGoals[player] ?? 0}
             player={player}
             min={realGoals[player] ?? 0}
             value={playerGoals[player] ?? 0}
-            onCommit={val => setPlayerGoals(prev => ({ ...prev, [player]: val }))}
+            onCommit={val => commitGoals(player, val)}
           />
         </div>
       ))}

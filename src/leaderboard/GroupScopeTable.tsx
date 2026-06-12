@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { GROUP_SORTERS } from './leaderboardRows'
 import type { GroupScopeRow, GroupSortBy } from './leaderboardRows'
-import { MEDALS } from './LeaderboardTable'
+import { MEDALS } from './medals'
 
 type Zone = 'hits' | 'points'
 

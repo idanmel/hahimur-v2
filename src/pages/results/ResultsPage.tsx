@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import GoalScorerSection from './GoalScorerSection'
 import PageLayout from '../../shared/PageLayout'
 import MatchRow from '../../formView/groupStage/MatchRow'
@@ -16,30 +16,16 @@ import { matchSortKey } from '../../shared/matchOrder'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS, type GroupLetter } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults, Match } from '../../shared/types'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
+import { getLockedMatchIds } from './resultsUtils'
 import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
 import '../../pages/form/FormPage.css'
 import './ResultsPage.css'
 
-export function clampGoals(real: number, entered: number): number {
-  return Math.max(real, entered)
-}
-
 const GROUP_MATCH_TEAMS: Record<string, { homeTeam: string; awayTeam: string }> = {}
 Object.values(GROUPS).forEach(group =>
   group.matches.forEach(m => { GROUP_MATCH_TEAMS[m.id] = { homeTeam: m.homeTeam, awayTeam: m.awayTeam } })
 )
-
-export function getLockedMatchIds(results: TournamentResults): Set<string> {
-  return new Set<string>([
-    ...Object.values(results.groupMatches).flat()
-      .filter(m => m.scores?.home != null && m.scores?.away != null)
-      .map(m => m.id),
-    ...Object.values(results.knockoutStages).flat()
-      .filter(m => m.scores?.home != null && m.scores?.away != null)
-      .map(m => String(m.matchNum)),
-  ])
-}
 
 const LOCKED_MATCH_IDS = getLockedMatchIds(realTournamentResults)
 
@@ -187,15 +173,14 @@ export default function ResultsPage({ users }: { users: User[] }) {
   const activeTiedTeams = activeTournamentData?.tiedTeams ?? new Set<string>()
   const activeAllFilled = activeTournamentData?.allFilled ?? false
 
-  useEffect(() => {
-    const allKOMatches = [
-      ...round32Matches,
-      ...knockout.r16, ...knockout.qf, ...knockout.sf,
-      knockout.thirdPlace, knockout.final,
-    ]
-    const cleaned = clearUnresolvedKOScores(allKOMatches, editedResults)
-    if (cleaned !== editedResults) setEditedResults(cleaned)
-  }, [round32Matches, knockout])
+  // adjust state during render: drop scores of KO matches whose teams are no longer resolved
+  const allKOMatches = [
+    ...round32Matches,
+    ...knockout.r16, ...knockout.qf, ...knockout.sf,
+    knockout.thirdPlace, knockout.final,
+  ]
+  const cleaned = clearUnresolvedKOScores(allKOMatches, editedResults)
+  if (cleaned !== editedResults) setEditedResults(cleaned)
 
   const thirdPred = editedResults['103']
   const thirdPlaceWinner: string | undefined =

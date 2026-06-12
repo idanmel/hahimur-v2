@@ -29,11 +29,11 @@ export default function FormView({
   predictedChampion,
 }: Props) {
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
-  const activeMatches = GROUP_MATCHES[activeGroup] ?? []
+  const activeMatches = useMemo(() => GROUP_MATCHES[activeGroup] ?? [], [activeGroup])
 
   const { standings: computedStandings } = useMemo(
     () => calculateStandings(activeMatches, predictions),
-    [activeGroup, predictions]
+    [activeMatches, predictions]
   )
   const activeStandings = groupTables?.[activeGroup] ?? computedStandings
 

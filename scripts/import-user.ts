@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, readdirSync, copyFileSync } from 'fs'
-import { resolve, basename } from 'path'
+import { resolve } from 'path'
 import type { Standing, ThirdPlaceStanding, ThirdPlaceQualification, KnockoutStages, KnockoutMatch, GroupMatch } from '../src/shared/types'
 
 const DOWNLOADS = '/mnt/c/Users/idanm/Downloads'
@@ -11,7 +11,7 @@ function findNewDownloads(): string[] {
     .filter(f => f.startsWith('wc2026-predictions-') && f.endsWith('.json') && !existing.has(f))
 }
 
-let [arg1, arg2] = process.argv.slice(2)
+const [arg1, arg2] = process.argv.slice(2)
 let inputPath: string
 let outputSlug: string
 
