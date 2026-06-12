@@ -23,7 +23,7 @@ const ROUNDS: { key: RoundKey; label: string }[] = [
 type SubField = { key: string; label: string }
 
 const SUB_FIELDS: Record<RoundKey, SubField[]> = {
-  group:      [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'advancementPoints', label: 'עולות' }],
+  group:      [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'advancementPoints', label: 'עולות' }, { key: 'placePoints', label: 'מיקומים' }],
   r32:        [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'advancementPoints', label: 'עולות' }],
   r16:        [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'advancementPoints', label: 'עולות' }],
   qf:         [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'advancementPoints', label: 'עולות' }],

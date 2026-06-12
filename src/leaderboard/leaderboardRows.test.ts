@@ -98,13 +98,13 @@ test('buildGroupScopeRows merges hit counts with match points for the scoped gro
 
   const rows = buildGroupScopeRows([yossi, dana], results, 'A')
   expect(rows).toEqual([
-    { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0, matchPoints: 8, advancementPoints: 0, goalsPoints: 0, total: 8 },
-    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2, matchPoints: 8, advancementPoints: 0, goalsPoints: 0, total: 8 },
+    { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8 },
+    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8 },
   ])
 })
 
 const mkRow = (label: string, over: Partial<GroupScopeRow>): GroupScopeRow =>
-  ({ label, tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, goalsPoints: 0, total: 0, ...over })
+  ({ label, tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 0, ...over })
 
 test('combined sorter ranks by tzelifot + pgiyot sum, not by either alone', () => {
   const rows = [
@@ -171,8 +171,8 @@ test('buildLastXRows scores only matches inside the window', () => {
 
   const rows = buildLastXRows([dana, yossi], results, 2)
   expect(rows).toEqual([
-    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, goalsPoints: 0, total: 2 },
-    { label: 'Yossi', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, goalsPoints: 0, total: 6 },
+    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
+    { label: 'Yossi', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 6 },
   ])
 })
 
@@ -194,8 +194,8 @@ test('buildLastXRows adds 3 points per goal the pick scored inside the window on
 
   const rows = buildLastXRows([dana, yossi], results, 2)
   expect(rows).toEqual([
-    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, goalsPoints: 6, total: 6 },
-    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, goalsPoints: 0, total: 0 },
+    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, placePoints: 0, goalsPoints: 6, total: 6 },
+    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 0 },
   ])
 })
 

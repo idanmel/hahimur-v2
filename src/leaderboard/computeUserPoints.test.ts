@@ -1,13 +1,13 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { computeUserPoints, singleMatchOutcome, OLEH_POINTS } from './points'
+import { computeUserPoints, singleMatchOutcome, OLEH_POINTS, PLACE_POINT } from './points'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
 test('returns all-zero breakdown with empty results', () => {
   const user = makeUser({ groupMatches: { A: [{ id: 'A1', homeTeam: 'X', awayTeam: 'Y', scores: { home: 2, away: 1 } }] } })
   expect(computeUserPoints(user, EMPTY_RESULTS)).toEqual({
-    group:      { matchPoints: 0, advancementPoints: 0, total: 0 },
+    group:      { matchPoints: 0, advancementPoints: 0, placePoints: 0, total: 0 },
     r32:        { matchPoints: 0, advancementPoints: 0, total: 0 },
     r16:        { matchPoints: 0, advancementPoints: 0, total: 0 },
     qf:         { matchPoints: 0, advancementPoints: 0, total: 0 },
@@ -182,6 +182,54 @@ describe('R32 qualification points', () => {
     expect(computeUserPoints(user, EMPTY_RESULTS).group.advancementPoints).toBe(0)
   })
 
+})
+
+describe('group place points', () => {
+  const table = (...teams: string[]) => teams.map(t => grpRow(t, 3, 1, 1, 1, 3, 3, 4))
+
+  test('all 4 places correct → 4 × place pts, on top of עולה pts', () => {
+    const user = makeUser({
+      groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') },
+    })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') },
+    }
+    const group = computeUserPoints(user, results).group
+    expect(group.placePoints).toBe(4 * PLACE_POINT)
+    expect(group.total).toBe(2 * OLEH_POINTS.group + 4 * PLACE_POINT)
+  })
+
+  test('two places correct (middle pair swapped) → 2 × place pts', () => {
+    const user = makeUser({
+      groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') },
+    })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: table('Brazil', 'Germany', 'France', 'Spain') },
+    }
+    expect(computeUserPoints(user, results).group.placePoints).toBe(2 * PLACE_POINT)
+  })
+
+  test('no place pts while group not yet complete', () => {
+    const user = makeUser({
+      groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') },
+    })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: ['Brazil', 'France', 'Germany', 'Spain'].map(t => grpRow(t, 1, 1, 0, 0, 2, 0, 3)) },
+    }
+    expect(computeUserPoints(user, results).group.placePoints).toBe(0)
+  })
+
+  test('no place pts when user did not predict the group', () => {
+    const user = makeUser({})
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') },
+    }
+    expect(computeUserPoints(user, results).group.placePoints).toBe(0)
+  })
 })
 
 describe('knockout match points', () => {

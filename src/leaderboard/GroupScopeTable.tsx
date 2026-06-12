@@ -21,9 +21,10 @@ const HIT_COLS: Col[] = [
 ]
 
 const POINT_COLS: Col[] = [
-  { key: 'matchPoints',       label: 'משחקים', value: r => r.matchPoints,       zone: 'points', zoneEdge: true },
-  { key: 'advancementPoints', label: 'עולות',  value: r => r.advancementPoints, zone: 'points' },
-  { key: 'total',             label: 'סה"כ',   value: r => r.total,             zone: 'points' },
+  { key: 'matchPoints',       label: 'משחקים',  value: r => r.matchPoints,       zone: 'points', zoneEdge: true },
+  { key: 'advancementPoints', label: 'עולות',   value: r => r.advancementPoints, zone: 'points' },
+  { key: 'placePoints',       label: 'מיקומים', value: r => r.placePoints,       zone: 'points' },
+  { key: 'total',             label: 'סה"כ',    value: r => r.total,             zone: 'points' },
 ]
 
 const LASTX_POINT_COLS: Col[] = [

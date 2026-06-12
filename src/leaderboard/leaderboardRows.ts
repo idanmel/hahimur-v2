@@ -26,11 +26,12 @@ export interface GroupScopeRow {
   pgiyaCount: number
   matchPoints: number
   advancementPoints: number
+  placePoints: number
   goalsPoints: number
   total: number
 }
 
-export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'goalsPoints' | 'total'
+export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'placePoints' | 'goalsPoints' | 'total'
 
 const combinedHits = (r: GroupScopeRow) => r.tzelifaCount + r.pgiyaCount
 
@@ -40,6 +41,7 @@ export const GROUP_SORTERS: Record<GroupSortBy, (a: GroupScopeRow, b: GroupScope
   combined: (a, b) => combinedHits(b) - combinedHits(a) || b.tzelifaCount - a.tzelifaCount || b.total - a.total,
   matchPoints: (a, b) => b.matchPoints - a.matchPoints || combinedHits(b) - combinedHits(a),
   advancementPoints: (a, b) => b.advancementPoints - a.advancementPoints || b.total - a.total,
+  placePoints: (a, b) => b.placePoints - a.placePoints || b.total - a.total,
   goalsPoints: (a, b) => b.goalsPoints - a.goalsPoints || b.total - a.total,
   total: (a, b) => b.total - a.total || combinedHits(b) - combinedHits(a),
 }
@@ -70,7 +72,7 @@ export function buildLastXRows(users: User[], results: TournamentResults, count:
     }
     const goalsByMatch = results.playerMatchGoals?.[user.topGoalscorer]
     const goalsPoints = matches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0) * POINTS_PER_GOAL
-    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints: 0, goalsPoints, total: matchPoints + goalsPoints }
+    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints: 0, placePoints: 0, goalsPoints, total: matchPoints + goalsPoints }
   })
 }
 
@@ -98,7 +100,7 @@ export function buildGroupScopeRows(users: User[], results: TournamentResults, g
       if (outcome === 'tzelifa') tzelifaCount++
       else if (outcome === 'pgiya') pgiyaCount++
     }
-    const { matchPoints, advancementPoints, total } = computeGroupBreakdown(user, filtered)
-    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, goalsPoints: 0, total }
+    const { matchPoints, advancementPoints, placePoints, total } = computeGroupBreakdown(user, filtered)
+    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, placePoints, goalsPoints: 0, total }
   })
 }

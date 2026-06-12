@@ -69,9 +69,12 @@ export const OLEH_POINTS: Record<'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'thirdP
 
 export const POINTS_PER_GOAL = 3
 
+export const PLACE_POINT = 1
+
 export interface GroupBreakdown {
   matchPoints: number
   advancementPoints: number
+  placePoints: number
   total: number
 }
 
@@ -161,11 +164,16 @@ export function computeGroupBreakdown(user: User, results: TournamentResults): G
   }
 
   const actualR32Set = new Set<string>()
+  let placePoints = 0
   for (const groupId of Object.keys(results.groupTables)) {
     const actualTable = results.groupTables[groupId]
     const groupComplete = actualTable.length >= 2 && actualTable.every(s => s.played === actualTable.length - 1)
     if (groupComplete) {
       actualTable.slice(0, 2).forEach(s => actualR32Set.add(s.team))
+      const userTable = user.groupTables[groupId] ?? []
+      actualTable.forEach((s, i) => {
+        if (userTable[i]?.team === s.team) placePoints += PLACE_POINT
+      })
     }
   }
   if (results.thirdPlaceQualification.resolved) {
@@ -177,7 +185,7 @@ export function computeGroupBreakdown(user: User, results: TournamentResults): G
     if (actualR32Set.has(team)) advancementPoints += OLEH_POINTS.group
   }
 
-  return { matchPoints, advancementPoints, total: matchPoints + advancementPoints }
+  return { matchPoints, advancementPoints, placePoints, total: matchPoints + advancementPoints + placePoints }
 }
 
 export function computeRoundBreakdown(

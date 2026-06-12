@@ -4,7 +4,7 @@ import NextMatchCard from './NextMatchCard'
 import TopThreeCard from './TopThreeCard'
 import { USERS } from '../../users/index'
 import { tournamentResults } from '../../tournament-results'
-import { OLEH_POINTS } from '../../leaderboard/points'
+import { OLEH_POINTS, PLACE_POINT } from '../../leaderboard/points'
 
 const FIRST_MATCH = new Date('2026-06-11T19:00:00Z')
 
@@ -68,6 +68,9 @@ export default function HomePage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="scoring-section__goalscorer">
+            <strong>מיקום בבית:</strong> כל קבוצה שסיימה את הבית בדיוק במקום שניחשת — {PLACE_POINT} נקודה (בנוסף לנקודות העולה).
           </div>
           <div className="scoring-section__goalscorer">
             <strong>מלך שערים:</strong> כל שער של השחקן שניחשת — 3 נקודות. זכה בנעל הזהב — בונוס 10 נקודות.
