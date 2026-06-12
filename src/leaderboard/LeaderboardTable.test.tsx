@@ -8,7 +8,7 @@ function makeRow(group: { matchPoints: number; advancementPoints: number }): Lea
   const total = group.matchPoints + group.advancementPoints
   return {
     label: 'Dana',
-    group: { ...group, total },
+    group: { placePoints: 0, ...group, total },
     r32: EMPTY_ROUND,
     r16: EMPTY_ROUND,
     qf: EMPTY_ROUND,
