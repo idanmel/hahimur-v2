@@ -180,13 +180,35 @@ function warnUnmapped(source: string, unmapped: string[]): void {
   for (const u of unmapped) console.warn(`  ${u}`)
 }
 
-async function main(): Promise<void> {
-  const espn = await fetchEspnScores()
-  const footballData = await fetchFootballDataScores()
-  warnUnmapped('ESPN', espn.unmapped)
-  warnUnmapped('football-data.org', footballData.unmapped)
+type Extracted = { scores: ScoreMap; unmapped: string[] }
 
-  const { scores: fetched, conflicts } = mergeScores(espn.scores, footballData.scores)
+// A single source failing (ESPN is unofficial, football-data needs a token)
+// only loses us its scores for this run; the cron retries in 5 minutes.
+export async function gatherScores(
+  fetchEspn: () => Promise<Extracted>,
+  fetchFootballData: () => Promise<Extracted>,
+): Promise<{ scores: ScoreMap; conflicts: string[] } | null> {
+  const [espn, footballData] = await Promise.allSettled([fetchEspn(), fetchFootballData()])
+  if (espn.status === 'rejected') console.warn(`ESPN fetch failed: ${espn.reason}`)
+  else warnUnmapped('ESPN', espn.value.unmapped)
+  if (footballData.status === 'rejected') console.warn(`football-data.org fetch failed: ${footballData.reason}`)
+  else warnUnmapped('football-data.org', footballData.value.unmapped)
+
+  if (espn.status === 'rejected' && footballData.status === 'rejected') return null
+  return mergeScores(
+    espn.status === 'fulfilled' ? espn.value.scores : {},
+    footballData.status === 'fulfilled' ? footballData.value.scores : {},
+  )
+}
+
+async function main(): Promise<void> {
+  const gathered = await gatherScores(fetchEspnScores, fetchFootballDataScores)
+  if (!gathered) {
+    console.error('Both score sources failed.')
+    process.exit(1)
+  }
+
+  const { scores: fetched, conflicts } = gathered
   for (const c of conflicts) {
     console.warn(`Sources disagree (using ESPN): ${c}`)
   }

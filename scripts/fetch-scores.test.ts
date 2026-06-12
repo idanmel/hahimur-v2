@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import { vi } from 'vitest'
 import {
   extractGroupScores,
   extractEspnGroupScores,
   mergeScores,
+  gatherScores,
   parseFakeFinished,
   type ApiMatch,
   type EspnEvent,
@@ -193,5 +195,39 @@ describe('mergeScores', () => {
       { A1: { home: 2, away: 0 } },
     )
     expect(conflicts).toEqual([])
+  })
+})
+
+describe('gatherScores', () => {
+  const ok = (scores: Record<string, { home: number; away: number }>) =>
+    async () => ({ scores, unmapped: [] })
+  const boom = async (): Promise<{ scores: Record<string, { home: number; away: number }>; unmapped: string[] }> => {
+    throw new Error('api down')
+  }
+
+  it('merges both sources when both succeed', async () => {
+    const result = await gatherScores(ok({ A1: { home: 2, away: 0 } }), ok({ A2: { home: 2, away: 1 } }))
+    expect(result?.scores).toEqual({ A1: { home: 2, away: 0 }, A2: { home: 2, away: 1 } })
+  })
+
+  it('continues with football-data when ESPN fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await gatherScores(boom, ok({ A1: { home: 2, away: 0 } }))
+    expect(result?.scores).toEqual({ A1: { home: 2, away: 0 } })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('api down'))
+    warn.mockRestore()
+  })
+
+  it('continues with ESPN when football-data fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await gatherScores(ok({ A1: { home: 2, away: 0 } }), boom)
+    expect(result?.scores).toEqual({ A1: { home: 2, away: 0 } })
+    warn.mockRestore()
+  })
+
+  it('returns null when both sources fail', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(await gatherScores(boom, boom)).toBeNull()
+    warn.mockRestore()
   })
 })
