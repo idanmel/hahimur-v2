@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
 import '../pages/results/ResultsPage.css'
-import type { PredictionsState, Standing, ThirdPlaceQualification, KnockoutStages } from '../shared/types'
+import type { PredictionsState, Standing, ThirdPlaceQualification, KnockoutStages, MatchScores } from '../shared/types'
+import { isUnpredicted } from '../shared/types'
 import { GROUP_MATCHES, GROUPS, GROUP_HEBREW, ALL_GROUP_LETTERS, type GroupLetter } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
 import { useTournament } from '../shared/useTournament'
 import { GROUP_MATCHES_BY_DATE } from '../shared/matchesByDate'
+import { singleMatchOutcome, singleMatchPoints, type MatchOutcome } from '../leaderboard/points'
+import { tournamentResults } from '../tournament-results'
 import MatchRow from './groupStage/MatchRow'
 import StandingsTable from './groupStage/StandingsTable'
 import ThirdPlaceTable from './thirdPlace/ThirdPlaceTable'
@@ -60,6 +63,28 @@ export default function FormView({
   const third = knockoutStages?.thirdPlace ?? [tournament.knockout.thirdPlace]
   const fin   = knockoutStages?.final      ?? [tournament.knockout.final]
 
+  // Flatten actual group scores for quick lookup
+  const actualScores = useMemo(() => {
+    const scores: Record<string, MatchScores> = {}
+    for (const groupMatches of Object.values(tournamentResults.groupMatches)) {
+      for (const match of groupMatches) {
+        if (match.scores) scores[match.id] = match.scores
+      }
+    }
+    return scores
+  }, [])
+
+  // Compute outcome and points for a finished match
+  const getOutcomeAndPoints = (matchId: string): { outcome?: MatchOutcome; points?: number } => {
+    const actual = actualScores[matchId]
+    if (!actual || isUnpredicted(actual)) return {}
+    const pred = predictions[matchId] ?? { home: null, away: null }
+    return {
+      outcome: singleMatchOutcome(pred, actual),
+      points: singleMatchPoints(matchId, pred, actual),
+    }
+  }
+
   return (
     <>
       <div className="pg-view-toggle">
@@ -101,15 +126,20 @@ export default function FormView({
       <section className="content-section">
         {groupStageView === 'by-group' ? (
           <>
-            {activeMatches.map(match => (
-              <MatchRow
-                key={match.id}
-                match={match}
-                scores={predictions[match.id] ?? { home: null, away: null }}
-                onChange={noop}
-                readOnly
-              />
-            ))}
+            {activeMatches.map(match => {
+              const { outcome, points } = getOutcomeAndPoints(match.id)
+              return (
+                <MatchRow
+                  key={match.id}
+                  match={match}
+                  scores={predictions[match.id] ?? { home: null, away: null }}
+                  onChange={noop}
+                  readOnly
+                  outcome={outcome}
+                  points={points}
+                />
+              )
+            })}
             <StandingsTable standings={activeStandings} />
           </>
         ) : (
@@ -124,17 +154,22 @@ export default function FormView({
                   </div>
                   <span className="pg-date-band__rule" />
                 </div>
-                {matches.map(({ match, group }) => (
-                  <MatchRow
-                    key={match.id}
-                    match={match}
-                    scores={predictions[match.id] ?? { home: null, away: null }}
-                    onChange={noop}
-                    readOnly
-                    hideDate
-                    groupLabel={GROUPS[group].he}
-                  />
-                ))}
+                {matches.map(({ match, group }) => {
+                  const { outcome, points } = getOutcomeAndPoints(match.id)
+                  return (
+                    <MatchRow
+                      key={match.id}
+                      match={match}
+                      scores={predictions[match.id] ?? { home: null, away: null }}
+                      onChange={noop}
+                      readOnly
+                      hideDate
+                      groupLabel={GROUPS[group].he}
+                      outcome={outcome}
+                      points={points}
+                    />
+                  )
+                })}
               </div>
             ))}
           </>

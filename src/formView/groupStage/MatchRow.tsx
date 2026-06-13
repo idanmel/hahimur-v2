@@ -1,8 +1,15 @@
 import type { Match, MatchScores, Score } from '../../shared/types'
+import type { MatchOutcome } from '../../leaderboard/points'
 import { TEAMS } from '../../shared/groups'
 import ScoreInput from '../ScoreInput'
 
 const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+const OUTCOME_LABEL: Record<MatchOutcome, string> = {
+  tzelifa: 'צליפה',
+  pgiya: 'פגיעה',
+  miss: 'פספוס',
+}
 
 function dayOfWeek(matchDate: string): string {
   const day = parseInt(matchDate)
@@ -18,9 +25,11 @@ interface Props {
   href?: string
   hideDate?: boolean
   groupLabel?: string
+  outcome?: MatchOutcome
+  points?: number
 }
 
-export default function MatchRow({ match, scores, onChange, readOnly = false, href, hideDate = false, groupLabel }: Props) {
+export default function MatchRow({ match, scores, onChange, readOnly = false, href, hideDate = false, groupLabel, outcome, points }: Props) {
   const set = (home: Score, away: Score) => onChange({ home, away })
   const Card = href && readOnly ? 'a' : 'div'
   const cardProps = href && readOnly ? { href, className: 'match-card' } : { className: 'match-card' }
@@ -74,6 +83,12 @@ export default function MatchRow({ match, scores, onChange, readOnly = false, hr
         <span className="match-team-name">{TEAMS[match.awayTeam].he}</span>
         <span className={`fi fi-${TEAMS[match.awayTeam].iso} match-team-flag`} />
       </div>
+      {outcome && (
+        <div className={`match-outcome match-outcome--${outcome}`} data-testid="match-outcome">
+          <span className="match-outcome__label">{OUTCOME_LABEL[outcome]}</span>
+          <span className="match-outcome__points">{points! > 0 ? `+${points}` : `${points}`}</span>
+        </div>
+      )}
       {href && readOnly ? (
         <div className="match-card-hint" aria-hidden="true">
           <span className="match-card-hint__label">לפרטים</span>

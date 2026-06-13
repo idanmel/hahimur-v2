@@ -512,6 +512,54 @@ a.match-card-hint {
   line-height: 1;
 }
 
+/* ── Outcome Badge ──────────────────────────────────────────── */
+
+.match-outcome {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.match-outcome--tzelifa {
+  background: rgba(212, 160, 22, 0.18);
+  color: #b8860b;
+  border-left: 3px solid var(--gold);
+  padding-left: 7px;
+}
+
+.match-outcome--pgiya {
+  background: rgba(42, 126, 59, 0.12);
+  color: #2a7e3b;
+  border-left: 3px solid #2a7e3b;
+  padding-left: 7px;
+}
+
+.match-outcome--miss {
+  background: rgba(122, 104, 69, 0.08);
+  color: var(--muted);
+  border-left: 3px solid var(--muted);
+  padding-left: 7px;
+}
+
+.match-outcome__label {
+  font-weight: 700;
+}
+
+.match-outcome__points {
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
 /* ── Score Input (scoreboard tile) ─────────────────────────── */
 
 .score-input {
