@@ -5,25 +5,23 @@ import { scoreFrequencies } from '../match/matchUtils'
 
 // Group-stage matches only for now: knockout fixtures have a different shape
 // (matchNum, unresolved team slots) and their own resolution logic.
-// A started match still counts as "next" until its final score is recorded.
-// Returns every match sharing the earliest kickoff: round 3 of each group
-// plays both matches simultaneously.
+// A started match still counts until its final score is recorded.
+// Returns, in chronological order, the next few matches (up to MAX_MATCHES) so
+// the home page shows what's coming up, not just one match.
+const MAX_MATCHES = 5
+
 export function nextMatches(matches: GroupMatch[], now: Date): GroupMatch[] {
-  let next: GroupMatch[] = []
-  let nextTime = Infinity
-  for (const m of matches) {
-    const kickoff = kickoffDate(m.matchDate, m.kickoffIST)?.getTime()
-    if (kickoff === undefined || kickoff > nextTime) continue
-    const ended = m.scores?.home != null && m.scores?.away != null
-    if (ended || now.getTime() >= kickoff + MATCH_WINDOW_MS) continue
-    if (kickoff < nextTime) {
-      next = [m]
-      nextTime = kickoff
-    } else {
-      next.push(m)
-    }
-  }
-  return next
+  return matches
+    .map(m => ({ m, kickoff: kickoffDate(m.matchDate, m.kickoffIST)?.getTime() }))
+    .filter((x): x is { m: GroupMatch; kickoff: number } => {
+      if (x.kickoff === undefined) return false
+      const ended = x.m.scores?.home != null && x.m.scores?.away != null
+      if (ended) return false
+      return now.getTime() < x.kickoff + MATCH_WINDOW_MS
+    })
+    .sort((a, b) => a.kickoff - b.kickoff)
+    .slice(0, MAX_MATCHES)
+    .map(x => x.m)
 }
 
 export interface TopPrediction {

@@ -6,11 +6,11 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-test('home page shows the next match card during the group stage', () => {
+test('home page shows the upcoming match cards during the group stage', () => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-06-12T00:00:00Z'))
   render(<HomePage />)
-  expect(screen.getByTestId('next-match')).toBeInTheDocument()
+  expect(screen.getAllByTestId('next-match').length).toBeGreaterThanOrEqual(1)
 })
 
 test('home page shows the top three card', () => {
