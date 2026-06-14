@@ -652,32 +652,116 @@
   margin-inline-start: 6px;
 }
 
-/* ── "טווח" — pick a stretch of games (from / to) for the form table ── */
+/* ── "טווח" — pick a stretch of games (from / to) for the form table ──
+   Just two tidy selects. Mobile-first: full-width stacked rows with roomy
+   tap targets; they fold into one inline strip on wider screens. */
 .lb-range-row {
-  gap: 10px;
+  width: 100%;
+  gap: 0;
+}
+
+.lb-range-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
 .lb-range-field {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 9px;
+  width: 100%;
 }
 
 .lb-range-label {
+  flex: none;
+  min-width: 2.1em;
   font-family: 'Heebo', sans-serif;
-  font-size: 0.78rem;
+  font-weight: 600;
+  font-size: 0.9rem;
   color: var(--muted);
 }
 
+.lb-range-select-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+}
+
+/* custom navy chevron, flips to gold while the picker is focused */
+.lb-range-select-wrap::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 13px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border-inline-end: 1.5px solid var(--navy);
+  border-bottom: 1.5px solid var(--navy);
+  transform: rotate(45deg);
+  pointer-events: none;
+  transition: border-color 0.12s;
+}
+
+.lb-range-select-wrap:focus-within::after {
+  border-color: var(--gold);
+}
+
 .lb-range-select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
   font-family: 'Heebo', sans-serif;
-  font-size: 0.8rem;
-  max-width: 200px;
-  padding: 4px 6px;
-  background: #fff;
-  border: 1.5px solid var(--navy);
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding-block: 11px;
+  padding-inline-start: 14px;
+  padding-inline-end: 34px;
+  background: linear-gradient(180deg, #fff, var(--paper));
+  border: 1.5px solid rgba(11, 34, 68, 0.22);
   color: var(--navy);
   cursor: pointer;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(11, 34, 68, 0.06);
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+
+.lb-range-select:hover {
+  border-color: rgba(11, 34, 68, 0.42);
+  box-shadow: 0 2px 5px rgba(11, 34, 68, 0.09);
+}
+
+.lb-range-select:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212, 160, 22, 0.18);
+}
+
+/* ≥560px: rail stays full-width, selects fold into one inline strip */
+@media (min-width: 560px) {
+  .lb-range-picker {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    width: auto;
+  }
+
+  .lb-range-field {
+    width: auto;
+  }
+
+  .lb-range-label {
+    min-width: 0;
+  }
+
+  .lb-range-select {
+    width: auto;
+    max-width: 230px;
+    padding-block: 7px;
+  }
 }
 
 /* ── Scope primary columns (תוצאה / עולות in group scope view) ── */

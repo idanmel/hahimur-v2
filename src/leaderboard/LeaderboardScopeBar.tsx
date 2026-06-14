@@ -66,23 +66,27 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, r
           {playedCount === 0 ? (
             <span className="lb-lastx-caption">אין עדיין משחקים ששוחקו</span>
           ) : (
-            [
-              { label: 'מ־', value: rangeFrom, onChange: onRangeFromChange },
-              { label: 'עד', value: rangeTo, onChange: onRangeToChange },
-            ].map(field => (
-              <label key={field.label} className="lb-range-field">
-                <span className="lb-range-label">{field.label}</span>
-                <select
-                  className="lb-range-select"
-                  value={field.value}
-                  onChange={e => field.onChange(Number(e.target.value))}
-                >
-                  {playedMatchLabels.map((label, i) => (
-                    <option key={i} value={i + 1}>{i + 1}. {label}</option>
-                  ))}
-                </select>
-              </label>
-            ))
+            <div className="lb-range-picker">
+              {[
+                { label: 'מ־', value: rangeFrom, onChange: onRangeFromChange },
+                { label: 'עד', value: rangeTo, onChange: onRangeToChange },
+              ].map(field => (
+                <label key={field.label} className="lb-range-field">
+                  <span className="lb-range-label">{field.label}</span>
+                  <span className="lb-range-select-wrap">
+                    <select
+                      className="lb-range-select"
+                      value={field.value}
+                      onChange={e => field.onChange(Number(e.target.value))}
+                    >
+                      {playedMatchLabels.map((label, i) => (
+                        <option key={i} value={i + 1}>{i + 1}. {label}</option>
+                      ))}
+                    </select>
+                  </span>
+                </label>
+              ))}
+            </div>
           )}
         </div>
       )}
