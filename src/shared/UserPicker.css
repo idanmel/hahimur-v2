@@ -1,111 +1,118 @@
-/* ── Tournament Credential ─────────────────────────────────────
-   A press-box credential stub that lives under the nav on every page.
-   Speaks the poster's language: Bebas Neue caps, cream paper, a gold
-   ticket-stub spine that punches in once you've stamped your name. */
+/* ── Greeting line ─────────────────────────────────────────────
+   A quiet strip under the nav that names you back. Centered, airy,
+   the same paper-and-ink language as the rest of the poster. Once
+   you're known there's no picker — just "שלום, <name>", and the name
+   is the door back to switching. One line, identical on every screen. */
 
-.credential {
+.greeting {
   background: var(--cream);
   border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
-  gap: 12px;
-  padding: 7px 16px 8px;
+  padding: 6px 16px 7px;
+  min-height: 31px;
 }
 
-.credential__eyebrow {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
+/* ── Known: the greeting ───────────────────────────────────── */
+.greeting__hello {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.16em;
   color: var(--muted);
-  white-space: nowrap;
-  transition: color 0.2s ease;
+  animation: greeting-in 0.3s ease both;
 }
 
-.credential--stamped .credential__eyebrow {
+.greeting__name {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0 0 1px;
+  margin-inline-start: 2px;
+  color: var(--navy);
+  cursor: pointer;
+  border-bottom: 1.5px solid var(--gold);
+  transition: color 0.14s ease, border-color 0.14s ease;
+}
+
+.greeting__name:hover {
   color: var(--red);
+  border-bottom-color: var(--red);
 }
 
-.credential__field {
+.greeting__name:focus-visible {
+  outline: none;
+  color: var(--red);
+  border-bottom-color: var(--red);
+}
+
+@keyframes greeting-in {
+  0%   { opacity: 0; transform: translateY(-2px); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* ── Unknown / switching: the inline picker ────────────────── */
+.greeting__field {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
-.credential__select {
+.greeting__select {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 16px;
-  letter-spacing: 0.12em;
-  color: rgba(11, 34, 68, 0.55);
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: rgba(11, 34, 68, 0.6);
   background: var(--paper);
   border: 1.5px solid var(--border);
   border-radius: 2px;
-  padding: 4px 14px 4px 30px; /* leave the inline-end (left, RTL) for the chevron */
+  padding: 3px 14px 3px 28px; /* inline-end (left, RTL) leaves room for the chevron */
   margin: 0;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
-  transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.credential__select:hover {
+.greeting__select:hover {
   border-color: var(--gold);
 }
 
-.credential__select:focus-visible {
+.greeting__select:focus-visible {
   outline: none;
   border-color: var(--navy);
-  box-shadow: 0 0 0 2px rgba(11, 34, 68, 0.18);
-}
-
-/* The stamped state: navy ink, a gold spine punched down the leading edge. */
-.credential--stamped .credential__select {
   color: var(--navy);
-  border-color: var(--gold);
-  box-shadow: inset 4px 0 0 var(--gold); /* +x = right edge = leading edge in RTL */
+  box-shadow: 0 0 0 2px rgba(11, 34, 68, 0.16);
 }
 
-.credential__chevron {
+.greeting__chevron {
   position: absolute;
   left: 10px; /* inline-end in RTL */
   top: 50%;
   transform: translateY(-50%);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   color: var(--muted);
   pointer-events: none;
 }
 
-/* Rubber-stamp settle when a name lands (the field is keyed on the name). */
-.credential--stamped .credential__field {
-  animation: credential-stamp 0.32s cubic-bezier(0.2, 0.9, 0.2, 1.4);
-}
-
-@keyframes credential-stamp {
-  0%   { transform: scale(1.12) rotate(-1.5deg); opacity: 0.4; }
-  60%  { transform: scale(0.98) rotate(0.4deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .credential--stamped .credential__field {
-    animation: none;
-  }
+  .greeting__hello { animation: none; }
 }
 
 @media (max-width: 639px) {
-  .credential {
-    gap: 9px;
-    padding: 6px 12px;
+  .greeting {
+    padding: 5px 12px 6px;
+    min-height: 28px;
   }
 
-  .credential__eyebrow {
-    letter-spacing: 0.22em;
-  }
-
-  .credential__select {
+  .greeting__hello,
+  .greeting__select {
     font-size: 14px;
-    padding: 3px 11px 3px 26px;
+    letter-spacing: 0.12em;
+  }
+
+  .greeting__select {
+    padding: 2px 11px 2px 24px;
   }
 }

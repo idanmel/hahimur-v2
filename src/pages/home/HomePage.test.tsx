@@ -44,7 +44,8 @@ test('remembers the picked name across reloads', () => {
   first.unmount()
 
   render(<HomePage />) // a fresh mount stands in for a page reload
-  expect(screen.getByRole('combobox')).toHaveValue('עידן מלמד')
+  // Identified now, so the picker has collapsed to the greeting — the name persists there.
+  expect(screen.getByRole('button', { name: /עידן מלמד/ })).toBeInTheDocument()
   expect(screen.getAllByTestId('your-prediction').length).toBeGreaterThanOrEqual(1)
 })
 
