@@ -3,9 +3,11 @@ import { vi } from 'vitest'
 import {
   extractGroupScores,
   extractEspnGroupScores,
+  extractGroupScorers,
   mergeScores,
   gatherScores,
   parseFakeFinished,
+  SCORER_ALIASES,
   type ApiMatch,
   type EspnEvent,
 } from './fetch-scores'
@@ -20,6 +22,62 @@ function apiMatch(over: Partial<ApiMatch> & { home: string; away: string }): Api
     ...over,
   }
 }
+
+describe('extractGroupScorers', () => {
+  it('records goals by a tracked player', () => {
+    const result = extractGroupScorers([
+      { ...apiMatch({ home: 'France', away: 'Senegal' }), goals: [{ scorer: { name: 'Kylian Mbappé' }, type: 'REGULAR' }] },
+    ])
+    expect(result).toEqual({ 'קיליאן אמבפה': { I1: 1 } })
+  })
+
+  it('counts multiple goals by the same player in the same match', () => {
+    const result = extractGroupScorers([
+      {
+        ...apiMatch({ home: 'France', away: 'Senegal' }),
+        goals: [
+          { scorer: { name: 'Kylian Mbappé' }, type: 'REGULAR' },
+          { scorer: { name: 'Kylian Mbappé' }, type: 'PENALTY' },
+        ],
+      },
+    ])
+    expect(result).toEqual({ 'קיליאן אמבפה': { I1: 2 } })
+  })
+
+  it('skips own goals', () => {
+    const result = extractGroupScorers([
+      { ...apiMatch({ home: 'France', away: 'Senegal' }), goals: [{ scorer: { name: 'Kylian Mbappé' }, type: 'OWN_GOAL' }] },
+    ])
+    expect(result).toEqual({})
+  })
+
+  it('skips players not in SCORER_ALIASES', () => {
+    const result = extractGroupScorers([
+      { ...apiMatch({ home: 'France', away: 'Senegal' }), goals: [{ scorer: { name: 'Antoine Griezmann' }, type: 'REGULAR' }] },
+    ])
+    expect(result).toEqual({})
+  })
+
+  it('ignores non-finished matches', () => {
+    const result = extractGroupScorers([
+      { ...apiMatch({ home: 'France', away: 'Senegal', status: 'IN_PLAY' }), goals: [{ scorer: { name: 'Kylian Mbappé' }, type: 'REGULAR' }] },
+    ])
+    expect(result).toEqual({})
+  })
+
+  it('ignores knockout-stage matches', () => {
+    const result = extractGroupScorers([
+      { ...apiMatch({ home: 'France', away: 'Senegal', stage: 'LAST_32' }), goals: [{ scorer: { name: 'Kylian Mbappé' }, type: 'REGULAR' }] },
+    ])
+    expect(result).toEqual({})
+  })
+
+  it('covers all picked players in SCORER_ALIASES', () => {
+    const picked = ['קיליאן אמבפה', 'הארי קיין', 'קאי האברץ', 'פראן טורס', 'לאמין ימאל', 'פלוריאן וירץ', 'ויניסיוס ג׳וניור']
+    const covered = new Set(Object.values(SCORER_ALIASES))
+    for (const p of picked) expect(covered).toContain(p)
+  })
+})
 
 describe('parseFakeFinished', () => {
   it('parses a fake finished score spec like A1=9-9', () => {

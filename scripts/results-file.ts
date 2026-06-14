@@ -43,6 +43,15 @@ export function renderRealGoals(content: string, goals: Record<string, Record<st
   )
 }
 
+export function readRealGoals(): Record<string, Record<string, number>> {
+  return parseRealGoals(readFileSync(RESULTS_PATH, 'utf-8'))
+}
+
+export function writeRealGoals(goals: Record<string, Record<string, number>>): void {
+  const content = readFileSync(RESULTS_PATH, 'utf-8')
+  writeFileSync(RESULTS_PATH, renderRealGoals(content, goals), 'utf-8')
+}
+
 export function writeGroupScores(scores: Record<string, { home: number; away: number }>): void {
   const lines = Object.entries(scores)
     .map(([id, s]) => `  ${id}: { home: ${s.home}, away: ${s.away} },`)

@@ -2,10 +2,15 @@ import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { join, dirname } from 'node:path'
 import { GROUPS } from '../src/shared/groups.ts'
-import { readGroupScores, writeGroupScores } from './results-file.ts'
+import { readGroupScores, writeGroupScores, readRealGoals, writeRealGoals } from './results-file.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+export interface ApiGoal {
+  scorer: { name: string }
+  type: string
+}
 
 export interface ApiMatch {
   status: string
@@ -13,6 +18,18 @@ export interface ApiMatch {
   homeTeam: { name: string | null }
   awayTeam: { name: string | null }
   score: { fullTime: { home: number | null; away: number | null } }
+  goals?: ApiGoal[]
+}
+
+// football-data.org scorer names → Hebrew topGoalscorer strings (must match users/*.ts exactly)
+export const SCORER_ALIASES: Record<string, string> = {
+  'Kylian Mbappé': 'קיליאן אמבפה',
+  'Harry Kane': 'הארי קיין',
+  'Kai Havertz': 'קאי האברץ',
+  'Ferran Torres': 'פראן טורס',
+  'Lamin Yamal': 'לאמין ימאל',
+  'Florian Wirtz': 'פלוריאן וירץ',
+  'Vinícius Júnior': 'ויניסיוס ג׳וניור',
 }
 
 // football-data.org names → the names used in shared/groups.ts
@@ -66,6 +83,25 @@ export function extractGroupScores(apiMatches: ApiMatch[]): {
   }
 
   return { scores, unmapped }
+}
+
+export function extractGroupScorers(apiMatches: ApiMatch[]): Record<string, Record<string, number>> {
+  const result: Record<string, Record<string, number>> = {}
+  for (const m of apiMatches) {
+    if (m.status !== 'FINISHED' || m.stage !== 'GROUP_STAGE' || !m.goals?.length) continue
+    const home = canonical(m.homeTeam.name)
+    const away = canonical(m.awayTeam.name)
+    const hit = home && away ? pairIndex.get(`${home}|${away}`) : undefined
+    if (!hit) continue
+    for (const goal of m.goals) {
+      if (goal.type === 'OWN_GOAL') continue
+      const hePlayer = SCORER_ALIASES[goal.scorer.name]
+      if (!hePlayer) continue
+      if (!result[hePlayer]) result[hePlayer] = {}
+      result[hePlayer][hit.id] = (result[hePlayer][hit.id] ?? 0) + 1
+    }
+  }
+  return result
 }
 
 export interface EspnEvent {
@@ -161,15 +197,19 @@ async function fetchEspnScores(): Promise<{ scores: ScoreMap; unmapped: string[]
   return extractEspnGroupScores(events)
 }
 
-async function fetchFootballDataScores(): Promise<{ scores: ScoreMap; unmapped: string[] }> {
+async function fetchFootballDataRaw(): Promise<ApiMatch[]> {
   const token = loadToken()
   if (!token) throw new Error('Missing FOOTBALL_DATA_TOKEN (env var or .env.local)')
-
   const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
     headers: { 'X-Auth-Token': token },
   })
   if (!res.ok) throw new Error(`football-data.org returned ${res.status}: ${await res.text()}`)
   const { matches } = await res.json() as { matches: ApiMatch[] }
+  return matches
+}
+
+async function fetchFootballDataScores(): Promise<{ scores: ScoreMap; unmapped: string[] }> {
+  const matches = await fetchFootballDataRaw()
   console.log(`Fetched ${matches.length} matches from football-data.org`)
   return extractGroupScores(matches)
 }
@@ -202,7 +242,13 @@ export async function gatherScores(
 }
 
 async function main(): Promise<void> {
-  const gathered = await gatherScores(fetchEspnScores, fetchFootballDataScores)
+  let fdMatches: ApiMatch[] | null = null
+
+  const gathered = await gatherScores(fetchEspnScores, async () => {
+    fdMatches = await fetchFootballDataRaw()
+    console.log(`Fetched ${fdMatches.length} matches from football-data.org`)
+    return extractGroupScores(fdMatches)
+  })
   if (!gathered) {
     console.error('Both score sources failed.')
     process.exit(1)
@@ -234,14 +280,30 @@ async function main(): Promise<void> {
     merged[id] = score
   }
 
-  if (changed.length === 0) {
-    console.log('No score changes.')
-    return
+  if (changed.length > 0) {
+    writeGroupScores(merged)
+    console.log(`Updated ${changed.length} scores:`)
+    for (const c of changed) console.log(`  ${c}`)
   }
 
-  writeGroupScores(merged)
-  console.log(`Updated ${changed.length} scores:`)
-  for (const c of changed) console.log(`  ${c}`)
+  if (fdMatches) {
+    const freshScorers = extractGroupScorers(fdMatches)
+    if (Object.keys(freshScorers).length > 0) {
+      const existingGoals = readRealGoals()
+      const mergedGoals: Record<string, Record<string, number>> = { ...existingGoals }
+      for (const [player, byMatch] of Object.entries(freshScorers)) {
+        mergedGoals[player] = { ...(mergedGoals[player] ?? {}), ...byMatch }
+      }
+      if (JSON.stringify(mergedGoals) !== JSON.stringify(existingGoals)) {
+        writeRealGoals(mergedGoals)
+        console.log('Updated scorer goals')
+      }
+    }
+  }
+
+  if (changed.length === 0) {
+    console.log('No score changes.')
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
