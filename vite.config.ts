@@ -12,5 +12,9 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     globals: true,
     pool: 'threads',
+    // userEvent-driven tests finish in well under a second solo, but the
+    // default 5s ceiling gets starved when the whole suite runs in parallel.
+    // Give headroom for scheduling contention — a genuine hang still fails.
+    testTimeout: 15000,
   },
 })
