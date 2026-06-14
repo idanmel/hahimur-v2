@@ -660,6 +660,34 @@
   cursor: pointer;
 }
 
+/* ── "טווח" — pick a stretch of games (from / to) for the form table ── */
+.lb-range-row {
+  gap: 10px;
+}
+
+.lb-range-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lb-range-label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.lb-range-select {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.8rem;
+  max-width: 200px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1.5px solid var(--navy);
+  color: var(--navy);
+  cursor: pointer;
+}
+
 /* ── Last-X stepper — a scoreboard counter that unfolds from the active chip ── */
 
 @keyframes lb-lastx-unfold {

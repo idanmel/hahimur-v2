@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
 import type { GroupMatch, Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { buildGroupScopeRows, buildLastXRows, buildAsOfRows, lastPlayedGroupMatches, GROUP_SORTERS } from './leaderboardRows'
+import { buildGroupScopeRows, buildLastXRows, buildAsOfRows, buildRangeRows, lastPlayedGroupMatches, GROUP_SORTERS } from './leaderboardRows'
 import { OLEH_POINTS } from './points'
 import type { GroupScopeRow } from './leaderboardRows'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
@@ -229,6 +229,41 @@ test('buildAsOfRows accumulates from the first played game through game N', () =
 
   // through game 2: a1 + a2 accumulate
   expect(buildAsOfRows([dana, yossi], results, 2)).toEqual([
+    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 6 },
+    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
+  ])
+})
+
+test('buildRangeRows scores only the chosen stretch of games', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: {
+      A: [
+        datedMatch('a1', '11 ביוני', '22:00', { home: 2, away: 1 }),
+        datedMatch('a2', '12 ביוני', '19:00', { home: 1, away: 1 }),
+        datedMatch('a3', '13 ביוני', '19:00', { home: 3, away: 0 }),
+      ],
+    },
+  }
+  // Dana: tzelifa on a1, pgiya on a2 (predicted draw), miss on a3
+  const dana = makeUser({
+    label: 'Dana',
+    groupMatches: { A: [grpMatch('a1', 2, 1), grpMatch('a2', 0, 0), grpMatch('a3', 0, 1)] },
+  })
+  // Yossi: miss on a1, pgiya on a2 (predicted draw), miss on a3
+  const yossi = makeUser({
+    label: 'Yossi',
+    groupMatches: { A: [grpMatch('a1', 0, 1), grpMatch('a2', 2, 2), grpMatch('a3', 0, 0)] },
+  })
+
+  // stretch a2..a3 excludes Dana's a1 tzelifa
+  expect(buildRangeRows([dana, yossi], results, 2, 3)).toEqual([
+    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
+    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
+  ])
+
+  // full stretch a1..a3 includes everything
+  expect(buildRangeRows([dana, yossi], results, 1, 3)).toEqual([
     { label: 'Dana', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 6 },
     { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
   ])

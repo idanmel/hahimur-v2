@@ -47,8 +47,8 @@ const LASTX_ROWS = [
   { label: 'Yossi', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 6 },
 ]
 
-test('lastX variant breaks points into משחקים, שערים and סה"כ, sortable by each', async () => {
-  render(<GroupScopeTable variant="lastX" rows={LASTX_ROWS} />)
+test('window variant breaks points into משחקים, שערים and סה"כ, sortable by each', async () => {
+  render(<GroupScopeTable variant="window" rows={LASTX_ROWS} />)
   expect(rowNames()).toEqual(['Dana', 'Yossi']) // default sort: total
   await userEvent.click(within(desktopTable()).getByRole('button', { name: 'משחקים' }))
   expect(rowNames()).toEqual(['Yossi', 'Dana'])

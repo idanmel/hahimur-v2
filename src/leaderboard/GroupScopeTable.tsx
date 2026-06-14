@@ -49,9 +49,8 @@ function makeVariant(pointCols: Col[], defaultSort: GroupSortBy) {
 
 const COLS = {
   group: makeVariant(POINT_COLS, 'total'),
-  lastX: makeVariant(LASTX_POINT_COLS, 'total'),
-  // "as of game N" shares the match/goals/total columns of the last-X window view
-  asOf: makeVariant(LASTX_POINT_COLS, 'total'),
+  // window scopes (last-X, as-of game N, range) all share match/goals/total columns
+  window: makeVariant(LASTX_POINT_COLS, 'total'),
 }
 
 function thClass({ key, zone, zoneEdge }: Col): string {

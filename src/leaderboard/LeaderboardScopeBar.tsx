@@ -3,20 +3,26 @@ import { GROUPS, ALL_GROUP_LETTERS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import type { Scope } from './leaderboardRows'
 
-const isGroupScope = (s: Scope): s is GroupLetter => s !== 'all' && s !== 'lastX' && s !== 'asOf'
+const NON_GROUP_SCOPES = ['all', 'lastX', 'asOf', 'range'] as const
+const isGroupScope = (s: Scope): s is GroupLetter => !(NON_GROUP_SCOPES as readonly string[]).includes(s)
 
-export default function LeaderboardScopeBar({ scope, onScopeChange, lastX, onLastXChange, asOfIndex, onAsOfChange, playedMatchLabels }: {
+export default function LeaderboardScopeBar({ scope, onScopeChange, lastX, onLastXChange, asOfIndex, onAsOfChange, rangeFrom, rangeTo, onRangeFromChange, onRangeToChange, playedMatchLabels }: {
   scope: Scope
   onScopeChange: (s: Scope) => void
   lastX: number
   onLastXChange: (n: number) => void
   asOfIndex: number
   onAsOfChange: (n: number) => void
+  rangeFrom: number
+  rangeTo: number
+  onRangeFromChange: (n: number) => void
+  onRangeToChange: (n: number) => void
   playedMatchLabels: string[]
 }) {
   // remembered so re-entering "לפי בית" lands on the group you were viewing
   const [lastGroup, setLastGroup] = useState<GroupLetter>(isGroupScope(scope) ? scope : 'A')
-  const mode = scope === 'all' ? 'all' : scope === 'lastX' ? 'lastX' : scope === 'asOf' ? 'asOf' : 'group'
+  // for non-group scopes the mode is just the scope name itself
+  const mode = isGroupScope(scope) ? 'group' : scope
   const playedCount = playedMatchLabels.length
   const currentMatchLabel = playedMatchLabels[asOfIndex - 1]
 
@@ -50,6 +56,12 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, lastX, onLas
           aria-pressed={mode === 'asOf'}
           onClick={() => onScopeChange('asOf')}
         >לפי משחק</button>
+        <button
+          type="button"
+          className={modeBtn(mode === 'range')}
+          aria-pressed={mode === 'range'}
+          onClick={() => onScopeChange('range')}
+        >טווח</button>
       </div>
 
       {mode === 'group' && (
@@ -114,6 +126,32 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, lastX, onLas
                 אחרי משחק {asOfIndex}/{playedCount} · {currentMatchLabel}
               </span>
             </>
+          )}
+        </div>
+      )}
+
+      {mode === 'range' && (
+        <div className="lb-scope-row lb-range-row">
+          {playedCount === 0 ? (
+            <span className="lb-lastx-caption">אין עדיין משחקים ששוחקו</span>
+          ) : (
+            [
+              { label: 'מ־', value: rangeFrom, onChange: onRangeFromChange },
+              { label: 'עד', value: rangeTo, onChange: onRangeToChange },
+            ].map(field => (
+              <label key={field.label} className="lb-range-field">
+                <span className="lb-range-label">{field.label}</span>
+                <select
+                  className="lb-range-select"
+                  value={field.value}
+                  onChange={e => field.onChange(Number(e.target.value))}
+                >
+                  {playedMatchLabels.map((label, i) => (
+                    <option key={i} value={i + 1}>{i + 1}. {label}</option>
+                  ))}
+                </select>
+              </label>
+            ))
           )}
         </div>
       )}

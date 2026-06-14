@@ -5,7 +5,7 @@ import type { GroupMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStandi
 import { matchSortKey } from '../shared/matchOrder'
 import type { User } from '../users'
 
-export type Scope = 'all' | GroupLetter | 'lastX' | 'asOf'
+export type Scope = 'all' | GroupLetter | 'lastX' | 'asOf' | 'range'
 
 function scopeThirdPlace(q: ThirdPlaceQualification, scope: GroupLetter): ThirdPlaceQualification {
   const inScope = (teams: ThirdPlaceStanding[]) => teams.filter(t => t.group === scope)
@@ -86,6 +86,13 @@ export function buildLastXRows(users: User[], results: TournamentResults, count:
 // chronological order — the mirror of buildLastXRows, for rewinding the table.
 export function buildAsOfRows(users: User[], results: TournamentResults, throughCount: number): GroupScopeRow[] {
   return rowsForMatches(users, results, playedGroupMatchesChrono(results).slice(0, throughCount))
+}
+
+// Points gained over a chosen stretch — played group matches from `fromIndex`
+// through `toIndex` (1-based, inclusive) in chronological order. A form table:
+// sort by total to see who gained the most across the stretch.
+export function buildRangeRows(users: User[], results: TournamentResults, fromIndex: number, toIndex: number): GroupScopeRow[] {
+  return rowsForMatches(users, results, playedGroupMatchesChrono(results).slice(fromIndex - 1, toIndex))
 }
 
 type MatchResult = TournamentResults['groupMatches'][string][number]
