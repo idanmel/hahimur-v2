@@ -15,6 +15,7 @@ const groupScores: Record<string, MatchScores> = {
 // Real goals by picked players: player → match ID → goals in that match.
 // Names must match users' topGoalscorer strings exactly.
 const realGoals: Record<string, Record<string, number>> = {
+  'ויניסיוס ג׳וניור': { C1: 1 },
 }
 
 export function derivePlayerGoals(perMatch: Record<string, Record<string, number>>): Record<string, number> {
