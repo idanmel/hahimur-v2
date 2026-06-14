@@ -14,12 +14,12 @@ export default function UserPicker() {
   return (
     <div dir="rtl" className={`credential${identified ? ' credential--stamped' : ''}`}>
       <span className="credential__eyebrow" aria-hidden="true">
-        {identified ? 'המתמודד/ת' : 'מי אתה?'}
+        {identified ? 'המהמר' : 'מי אתה?'}
       </span>
       <div className="credential__field" key={me /* re-stamp on change */}>
         <select
           className="credential__select"
-          aria-label="המתמודד/ת"
+          aria-label="המהמר"
           value={me}
           onChange={e => pickMe(e.target.value)}
         >
