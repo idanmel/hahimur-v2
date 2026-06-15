@@ -121,21 +121,25 @@ function InlineMove({ delta }: { delta: number | null | undefined }) {
   )
 }
 
-function ScopeRows({ rows, ranks, cols, delayMs, movements, inlineMovement }: { rows: GroupScopeRow[]; ranks: number[]; cols: Col[]; delayMs: number; movements?: Record<string, number | null>; inlineMovement?: boolean }) {
+function ScopeRows({ rows, ranks, cols, delayMs, movements, inlineMovement, me }: { rows: GroupScopeRow[]; ranks: number[]; cols: Col[]; delayMs: number; movements?: Record<string, number | null>; inlineMovement?: boolean; me?: string }) {
   return rows.map((row, i) => {
     const rank = ranks[i]
     const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
+    const isMe = row.label === me
     return (
       <tr
         key={row.label}
-        className={`lb-row ${rankClass}`}
+        className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}`}
         style={{ '--delay': `${i * delayMs}ms` } as React.CSSProperties}
       >
         <td className="lb-td lb-td--rank">
           <span className="lb-rank-num">{rank <= 3 ? MEDALS[rank] : rank}</span>
           {inlineMovement && movements && <InlineMove delta={movements[row.label]} />}
         </td>
-        <td className="lb-td lb-td--name">{row.label}</td>
+        <td className="lb-td lb-td--name">
+          {row.label}
+          {isMe && <span className="lb-me-badge">אני</span>}
+        </td>
         {movements && !inlineMovement && <MoveCell delta={movements[row.label]} />}
         {cols.map(col => {
           const v = col.value(row)
@@ -150,7 +154,7 @@ function ScopeRows({ rows, ranks, cols, delayMs, movements, inlineMovement }: { 
   })
 }
 
-export default function GroupScopeTable({ rows, variant = 'group', movements }: { rows: GroupScopeRow[]; variant?: keyof typeof COLS; movements?: Record<string, number | null> }) {
+export default function GroupScopeTable({ rows, variant = 'group', movements, me }: { rows: GroupScopeRow[]; variant?: keyof typeof COLS; movements?: Record<string, number | null>; me?: string }) {
   const cols = COLS[variant]
   const [sortCol, setSortCol] = useState<GroupSortBy>(cols.defaultSort)
   const sortedRows = [...rows].sort(GROUP_SORTERS[sortCol])
@@ -174,7 +178,7 @@ export default function GroupScopeTable({ rows, variant = 'group', movements }: 
             </tr>
           </thead>
           <tbody>
-            <ScopeRows rows={sortedRows} ranks={ranks} cols={cols.desktop} delayMs={90} movements={movements} />
+            <ScopeRows rows={sortedRows} ranks={ranks} cols={cols.desktop} delayMs={90} movements={movements} me={me} />
           </tbody>
         </table>
         <p className="lb-zone-hint">
@@ -194,7 +198,7 @@ export default function GroupScopeTable({ rows, variant = 'group', movements }: 
             </tr>
           </thead>
           <tbody>
-            <ScopeRows rows={sortedRows} ranks={ranks} cols={cols.mobile} delayMs={60} movements={movements} inlineMovement />
+            <ScopeRows rows={sortedRows} ranks={ranks} cols={cols.mobile} delayMs={60} movements={movements} inlineMovement me={me} />
           </tbody>
         </table>
         <p className="lb-zone-hint">

@@ -33,7 +33,16 @@ const SUB_FIELDS: Record<RoundKey, SubField[]> = {
   goldenBoot: [{ key: 'goalsPoints', label: 'שערים' }, { key: 'winnerBonus', label: 'מלך' }],
 }
 
-export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
+function NameCell({ label, isMe }: { label: string; isMe: boolean }) {
+  return (
+    <td className="lb-td lb-td--name">
+      {label}
+      {isMe && <span className="lb-me-badge">אני</span>}
+    </td>
+  )
+}
+
+export default function LeaderboardTable({ rows, me }: { rows: LeaderboardRow[]; me?: string }) {
   const activeRounds = ROUNDS.filter(({ key }) =>
     rows.some(row => (row[key] as unknown as Record<string, number>).total > 0)
   )
@@ -77,16 +86,17 @@ export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
               {rows.map((row, i) => {
                 const rank = ranks[i]
                 const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
+                const isMe = row.label === me
                 return (
                   <tr
                     key={row.label}
-                    className={`lb-row ${rankClass}`}
+                    className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}`}
                     style={{ '--delay': `${i * 90}ms` } as React.CSSProperties}
                   >
                     <td className="lb-td lb-td--rank">
                       {rank <= 3 ? MEDALS[rank] : rank}
                     </td>
-                    <td className="lb-td lb-td--name">{row.label}</td>
+                    <NameCell label={row.label} isMe={isMe} />
                     {roundColumns.map(({ key }) => {
                       const data = row[key] as unknown as Record<string, number>
                       const activeSubs = SUB_FIELDS[key].filter(sf => (data[sf.key] ?? 0) > 0)
@@ -129,14 +139,15 @@ export default function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
             {rows.map((row, i) => {
               const rank = ranks[i]
               const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
+              const isMe = row.label === me
               return (
                 <tr
                   key={row.label}
-                  className={`lb-row ${rankClass}`}
+                  className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}`}
                   style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
                 >
                   <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
-                  <td className="lb-td lb-td--name">{row.label}</td>
+                  <NameCell label={row.label} isMe={isMe} />
                   <td className="lb-td lb-td--total">{row.total}</td>
                 </tr>
               )

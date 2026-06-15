@@ -63,6 +63,18 @@ test('window variant adds a בטורניר column sorting by full-tournament tot
   expect(rowNames()).toEqual(['Yossi', 'Dana']) // Yossi stands higher overall
 })
 
+test('flags the viewer\'s own row with an "אני" badge', () => {
+  render(<GroupScopeTable rows={ROWS} me="Dana" />)
+  const danaRows = screen.getAllByText('Dana').map(el => el.closest('tr')!)
+  danaRows.forEach(tr => {
+    expect(tr).toHaveClass('lb-row--me')
+    expect(within(tr).getByText('אני')).toBeInTheDocument()
+  })
+  screen.getAllByText('Yossi').map(el => el.closest('tr')!).forEach(tr => {
+    expect(tr).not.toHaveClass('lb-row--me')
+  })
+})
+
 test('active sort column is marked with aria-sort', async () => {
   render(<GroupScopeTable rows={ROWS} />)
   const headers = () => within(desktopTable()).getAllByRole('columnheader')

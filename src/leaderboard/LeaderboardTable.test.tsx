@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { expect, test } from 'vitest'
 import LeaderboardTable, { type LeaderboardRow } from './LeaderboardTable'
 
@@ -75,4 +75,25 @@ test('shows the sub-breakdown when more than one sub-field has points', () => {
   render(<LeaderboardTable rows={[row]} />)
   expect(screen.getByText('תוצאה')).toBeInTheDocument()
   expect(screen.getByText('עולות')).toBeInTheDocument()
+})
+
+test('flags the viewer\'s own row with an "אני" badge, leaving others unmarked', () => {
+  const mine = { ...makeRow({ matchPoints: 8, advancementPoints: 5 }), label: 'עידן' }
+  const theirs = { ...makeRow({ matchPoints: 6, advancementPoints: 3 }), label: 'דנה' }
+  render(<LeaderboardTable rows={[mine, theirs]} me="עידן" />)
+
+  screen.getAllByText('עידן').map(el => el.closest('tr')!).forEach(tr => {
+    expect(tr).toHaveClass('lb-row--me')
+    expect(within(tr).getByText('אני')).toBeInTheDocument()
+  })
+  screen.getAllByText('דנה').map(el => el.closest('tr')!).forEach(tr => {
+    expect(tr).not.toHaveClass('lb-row--me')
+    expect(within(tr).queryByText('אני')).not.toBeInTheDocument()
+  })
+})
+
+test('no row is flagged when me is absent from the table', () => {
+  const row = { ...makeRow({ matchPoints: 8, advancementPoints: 5 }), label: 'עידן' }
+  render(<LeaderboardTable rows={[row]} me="someone-else" />)
+  expect(screen.queryByText('אני')).not.toBeInTheDocument()
 })

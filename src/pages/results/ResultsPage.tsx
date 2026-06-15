@@ -13,6 +13,7 @@ import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
+import { useCurrentUser } from '../../shared/useCurrentUser'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import { GROUP_MATCHES_BY_DATE } from '../../shared/matchesByDate'
@@ -86,6 +87,7 @@ const pickersByPlayer = (users: User[]): Record<string, string[]> => {
 }
 
 export default function ResultsPage({ users }: { users: User[] }) {
+  const { me } = useCurrentUser()
   const [editedResults, setEditedResults] = useState<PredictionsState>(getInitialState)
   const [lbScope, setLbScope] = useState<Scope>('all')
   const [lbRangeFrom, setLbRangeFrom] = useState(1)
@@ -222,7 +224,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
             rangeFrom={rangeFrom} rangeTo={rangeTo} onRangeFromChange={setRangeFrom} onRangeToChange={setRangeTo}
             playedMatchLabels={playedMatchLabels}
           />
-          <ScopedLeaderboard users={users} results={tournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} />
+          <ScopedLeaderboard users={users} results={tournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} me={me} />
         </section>
 
         {/* Simulation callout */}

@@ -401,6 +401,61 @@
 .lb-row--rank-2 .lb-td--total  { font-size: 18px; }
 .lb-row--rank-3 .lb-td--name   { font-weight: 800; }
 
+/* ── "You are here" — the viewer's own row ───────────────────
+   A cool navy spotlight wash framed by faint gold rails lifts the row
+   off the warm cream field, and a gold-on-navy "אני" pennant rides
+   beside the name. Authored after the striping/podium rules (and matched
+   in specificity via the doubled .lb-row.lb-row--me selector) so the wash
+   wins the ties — while the medal stripe keeps the row's right edge and
+   the me-cap takes the free left edge, so the two signals never collide. */
+.lb-row.lb-row--me td {
+  background:
+    linear-gradient(to left,
+      rgba(11, 34, 68, 0.11) 0%,
+      rgba(11, 34, 68, 0.05) 55%,
+      rgba(11, 34, 68, 0.09) 100%);
+  border-top: 1px solid rgba(212, 160, 22, 0.5);
+  border-bottom: 1px solid rgba(212, 160, 22, 0.5);
+}
+
+/* gold end-cap on the row's left edge (RTL end) closes the framed band
+   without touching the right-edge medal stripe of a podium me-row */
+.lb-row.lb-row--me td:last-child {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.lb-row.lb-row--me:hover td {
+  background:
+    linear-gradient(to left,
+      rgba(11, 34, 68, 0.16) 0%,
+      rgba(11, 34, 68, 0.08) 55%,
+      rgba(11, 34, 68, 0.13) 100%);
+}
+
+/* The pennant: a compact navy chip, gold display caps, gently lifted. */
+.lb-me-badge {
+  display: inline-block;
+  margin-inline-start: 7px;
+  padding: 1px 7px 0;
+  vertical-align: middle;
+  transform: translateY(-1px);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  line-height: 1.55;
+  color: var(--gold);
+  background: var(--navy);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(11, 34, 68, 0.25);
+}
+
+.lb-table--mobile .lb-me-badge {
+  margin-inline-start: 5px;
+  padding: 1px 5px 0;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+}
+
 /* ── Always-visible stacked sub-fields (desktop) ── */
 
 .lb-td--detail {
