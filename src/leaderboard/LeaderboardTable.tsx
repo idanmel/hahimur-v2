@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { PointsBreakdown } from './points'
 import { MEDALS } from './medals'
 import { competitionRanks } from './rank'
+import RankTrajectoryChart from './RankTrajectoryChart'
 
 export interface LeaderboardRow extends PointsBreakdown {
   label: string
@@ -42,7 +43,9 @@ function NameCell({ label, isMe }: { label: string; isMe: boolean }) {
   )
 }
 
-export default function LeaderboardTable({ rows, me }: { rows: LeaderboardRow[]; me?: string }) {
+export default function LeaderboardTable({ rows, me, trajectories }: { rows: LeaderboardRow[]; me?: string; trajectories?: Record<string, number[]> }) {
+  // mobile: tap a bettor to reveal their rank trajectory beneath their row
+  const [openLabel, setOpenLabel] = useState<string | null>(null)
   const activeRounds = ROUNDS.filter(({ key }) =>
     rows.some(row => (row[key] as unknown as Record<string, number>).total > 0)
   )
@@ -140,16 +143,41 @@ export default function LeaderboardTable({ rows, me }: { rows: LeaderboardRow[];
               const rank = ranks[i]
               const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
               const isMe = row.label === me
+              const trajectory = trajectories?.[row.label]
+              const open = openLabel === row.label
               return (
-                <tr
-                  key={row.label}
-                  className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}`}
-                  style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
-                >
-                  <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
-                  <NameCell label={row.label} isMe={isMe} />
-                  <td className="lb-td lb-td--total">{row.total}</td>
-                </tr>
+                <React.Fragment key={row.label}>
+                  <tr
+                    className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}`}
+                    style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
+                  >
+                    <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
+                    {trajectory ? (
+                      <td className="lb-td lb-td--name">
+                        <button
+                          type="button"
+                          className="lb-name-btn"
+                          aria-expanded={open}
+                          onClick={() => setOpenLabel(open ? null : row.label)}
+                        >
+                          {row.label}
+                          {isMe && <span className="lb-me-badge">אני</span>}
+                          <span className="lb-name-chevron" aria-hidden="true">{open ? '▾' : '‹'}</span>
+                        </button>
+                      </td>
+                    ) : (
+                      <NameCell label={row.label} isMe={isMe} />
+                    )}
+                    <td className="lb-td lb-td--total">{row.total}</td>
+                  </tr>
+                  {trajectory && open && (
+                    <tr className="lb-traj-row">
+                      <td className="lb-td lb-traj-cell" colSpan={3} data-testid={`lb-traj-${row.label}`}>
+                        <RankTrajectoryChart ranks={trajectory} />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               )
             })}
           </tbody>

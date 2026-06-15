@@ -90,17 +90,27 @@ export function buildRangeRows(users: User[], results: TournamentResults, fromIn
 // stretch: their rank just before it (as of match fromIndex-1) vs at its end
 // (as of match toIndex). Positive = climbed, negative = dropped, 0 = held.
 // Null when the stretch starts at game 1 — there's no "before" to compare to.
+// Each bettor's cumulative rank as of the first `count` played matches.
+function ranksAsOf(users: User[], results: TournamentResults, chrono: GroupMatch[], count: number): Record<string, number> {
+  const rows = rowsForMatches(users, results, chrono.slice(0, count)).sort(GROUP_SORTERS.total)
+  const ranks = competitionRanks(rows, r => r.total)
+  return Object.fromEntries(rows.map((r, i) => [r.label, ranks[i]]))
+}
+
 export function rangePlaceMovement(users: User[], results: TournamentResults, fromIndex: number, toIndex: number): Record<string, number | null> {
   if (fromIndex <= 1) return Object.fromEntries(users.map(u => [u.label, null]))
   const chrono = playedGroupMatchesChrono(results)
-  const ranksAsOf = (count: number): Record<string, number> => {
-    const rows = rowsForMatches(users, results, chrono.slice(0, count)).sort(GROUP_SORTERS.total)
-    const ranks = competitionRanks(rows, r => r.total)
-    return Object.fromEntries(rows.map((r, i) => [r.label, ranks[i]]))
-  }
-  const before = ranksAsOf(fromIndex - 1)
-  const after = ranksAsOf(toIndex)
+  const before = ranksAsOf(users, results, chrono, fromIndex - 1)
+  const after = ranksAsOf(users, results, chrono, toIndex)
   return Object.fromEntries(users.map(u => [u.label, before[u.label] - after[u.label]]))
+}
+
+// Each bettor's rank after every played match, chronologically:
+// trajectory[label][i] = their cumulative rank as of played match i+1.
+export function rankTrajectories(users: User[], results: TournamentResults): Record<string, number[]> {
+  const chrono = playedGroupMatchesChrono(results)
+  const snapshots = Array.from({ length: chrono.length }, (_, i) => ranksAsOf(users, results, chrono, i + 1))
+  return Object.fromEntries(users.map(u => [u.label, snapshots.map(s => s[u.label])]))
 }
 
 type MatchResult = TournamentResults['groupMatches'][string][number]

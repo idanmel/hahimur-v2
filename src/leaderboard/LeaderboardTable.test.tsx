@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { expect, test } from 'vitest'
 import LeaderboardTable, { type LeaderboardRow } from './LeaderboardTable'
 
@@ -90,6 +90,19 @@ test('flags the viewer\'s own row with an "אני" badge, leaving others unmarke
     expect(tr).not.toHaveClass('lb-row--me')
     expect(within(tr).queryByText('אני')).not.toBeInTheDocument()
   })
+})
+
+test('tapping a bettor on mobile reveals their rank trajectory', () => {
+  const row = makeRow({ matchPoints: 8, advancementPoints: 0 }) // label 'Dana'
+  render(<LeaderboardTable rows={[row]} trajectories={{ Dana: [1, 4, 1] }} />)
+
+  // collapsed by default — no trajectory shown yet
+  expect(screen.queryByTestId('lb-traj-Dana')).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /Dana/ }))
+  const panel = screen.getByTestId('lb-traj-Dana')
+  // the panel now holds the rank line graph
+  expect(within(panel).getByTestId('lb-traj-line')).toBeInTheDocument()
 })
 
 test('no row is flagged when me is absent from the table', () => {
