@@ -78,14 +78,15 @@ export interface TeamStageStat {
   qf: string[]
   sf: string[]
   final: string[]
+  thirdPlace: string[]
   champion: string[]
 }
 
 export function computeTeamStageStats(users: User[]): TeamStageStat[] {
-  const counts: Record<string, { r32: string[]; r16: string[]; qf: string[]; sf: string[]; final: string[]; champion: string[] }> = {}
+  const counts: Record<string, { r32: string[]; r16: string[]; qf: string[]; sf: string[]; final: string[]; thirdPlace: string[]; champion: string[] }> = {}
 
   const get = (team: string) => {
-    if (!counts[team]) counts[team] = { r32: [], r16: [], qf: [], sf: [], final: [], champion: [] }
+    if (!counts[team]) counts[team] = { r32: [], r16: [], qf: [], sf: [], final: [], thirdPlace: [], champion: [] }
     return counts[team]
   }
 
@@ -100,6 +101,7 @@ export function computeTeamStageStats(users: User[]): TeamStageStat[] {
     for (const team of user.predictedQFTeams ?? []) get(team).qf.push(user.label)
     for (const team of user.predictedSFTeams ?? []) get(team).sf.push(user.label)
     for (const team of user.predictedFinalTeams ?? []) get(team).final.push(user.label)
+    if (user.predictedThirdPlaceWinner) get(user.predictedThirdPlaceWinner).thirdPlace.push(user.label)
     if (user.predictedChampion) get(user.predictedChampion).champion.push(user.label)
   }
 

@@ -30,9 +30,12 @@ export interface GroupScopeRow {
   placePoints: number
   goalsPoints: number
   total: number
+  // Full-tournament total, independent of any scope/range — context for where a
+  // bettor stands overall while reading the in-range form numbers.
+  tournamentTotal: number
 }
 
-export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'placePoints' | 'goalsPoints' | 'total'
+export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'placePoints' | 'goalsPoints' | 'total' | 'tournamentTotal'
 
 const combinedHits = (r: GroupScopeRow) => r.tzelifaCount + r.pgiyaCount
 
@@ -45,6 +48,7 @@ export const GROUP_SORTERS: Record<GroupSortBy, (a: GroupScopeRow, b: GroupScope
   placePoints: (a, b) => b.placePoints - a.placePoints || b.total - a.total,
   goalsPoints: (a, b) => b.goalsPoints - a.goalsPoints || b.total - a.total,
   total: (a, b) => b.total - a.total || combinedHits(b) - combinedHits(a),
+  tournamentTotal: (a, b) => b.tournamentTotal - a.tournamentTotal || b.total - a.total || combinedHits(b) - combinedHits(a),
 }
 
 export function playedGroupMatchesChrono(results: TournamentResults): GroupMatch[] {
@@ -71,7 +75,7 @@ export function rowsForMatches(users: User[], results: TournamentResults, matche
     }
     const goalsByMatch = results.playerMatchGoals?.[user.topGoalscorer]
     const goalsPoints = matches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0) * POINTS_PER_GOAL
-    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints: 0, placePoints: 0, goalsPoints, total: matchPoints + goalsPoints }
+    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints: 0, placePoints: 0, goalsPoints, total: matchPoints + goalsPoints, tournamentTotal: computeUserPoints(user, results).total }
   })
 }
 
@@ -124,6 +128,6 @@ export function buildGroupScopeRows(users: User[], results: TournamentResults, g
       else if (outcome === 'pgiya') pgiyaCount++
     }
     const { matchPoints, advancementPoints, placePoints, total } = computeGroupBreakdown(user, filtered)
-    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, placePoints, goalsPoints: 0, total }
+    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, placePoints, goalsPoints: 0, total, tournamentTotal: computeUserPoints(user, results).total }
   })
 }

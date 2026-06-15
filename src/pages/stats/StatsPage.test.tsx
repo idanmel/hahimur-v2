@@ -14,6 +14,7 @@ function makeUser(
   predictedSFTeams?: string[],
   predictedQFTeams?: string[],
   predictedR16Teams?: string[],
+  predictedThirdPlaceWinner?: string,
 ): User {
   return {
     label,
@@ -28,6 +29,7 @@ function makeUser(
     predictedSFTeams,
     predictedQFTeams,
     predictedR16Teams,
+    predictedThirdPlaceWinner,
   }
 }
 
@@ -121,6 +123,18 @@ describe('computeTeamStageStats', () => {
   test('France appears before Germany (higher score)', () => {
     const result = computeTeamStageStats(STAGE_USERS)
     expect(result.findIndex(r => r.team === 'France')).toBeLessThan(result.findIndex(r => r.team === 'Germany'))
+  })
+
+  test('thirdPlace counts predictedThirdPlaceWinner', () => {
+    const users = [
+      makeUser('א', 'France', undefined, undefined, undefined, undefined, 'Germany'),
+      makeUser('ב', 'France', undefined, undefined, undefined, undefined, 'Germany'),
+      makeUser('ג', 'Brazil', undefined, undefined, undefined, undefined, 'Spain'),
+    ]
+    const result = computeTeamStageStats(users)
+    expect(result.find(r => r.team === 'Germany')!.thirdPlace).toEqual(['א', 'ב'])
+    expect(result.find(r => r.team === 'Spain')!.thirdPlace).toEqual(['ג'])
+    expect(result.find(r => r.team === 'France')!.thirdPlace).toHaveLength(0)
   })
 
   test('r32 counts teams from knockoutStages.r32', () => {

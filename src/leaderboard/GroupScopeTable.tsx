@@ -28,19 +28,19 @@ const POINT_COLS: Col[] = [
 ]
 
 const LASTX_POINT_COLS: Col[] = [
-  { key: 'matchPoints', label: 'משחקים', value: r => r.matchPoints, zone: 'points', zoneEdge: true },
-  { key: 'goalsPoints', label: 'שערים',  value: r => r.goalsPoints, zone: 'points' },
-  { key: 'total',       label: 'סה"כ',   value: r => r.total,       zone: 'points' },
+  { key: 'matchPoints',     label: 'משחקים',  value: r => r.matchPoints,      zone: 'points', zoneEdge: true },
+  { key: 'goalsPoints',     label: 'שערים',   value: r => r.goalsPoints,      zone: 'points' },
+  { key: 'total',           label: 'בטווח',   value: r => r.total,            zone: 'points' },
+  { key: 'tournamentTotal', label: 'בטורניר', value: r => r.tournamentTotal,  zone: 'points' },
 ]
 
-function makeVariant(pointCols: Col[], defaultSort: GroupSortBy) {
-  const mobilePointCol = { ...pointCols[pointCols.length - 1], label: 'נקודות', zoneEdge: true }
+function makeVariant(pointCols: Col[], defaultSort: GroupSortBy, mobilePointCols: Col[]) {
   return {
     desktop: [...HIT_COLS, ...pointCols],
     mobile: [
       { ...HIT_COLS[0], label: 'פגיעה' },
       { ...HIT_COLS[1], label: 'צליפה' },
-      mobilePointCol,
+      ...mobilePointCols,
     ],
     pointCols,
     defaultSort,
@@ -48,9 +48,15 @@ function makeVariant(pointCols: Col[], defaultSort: GroupSortBy) {
 }
 
 const COLS = {
-  group: makeVariant(POINT_COLS, 'total'),
-  // window scopes (last-X, as-of game N, range) all share match/goals/total columns
-  window: makeVariant(LASTX_POINT_COLS, 'total'),
+  group: makeVariant(POINT_COLS, 'total', [
+    { ...POINT_COLS[POINT_COLS.length - 1], label: 'נקודות', zoneEdge: true },
+  ]),
+  // window scopes (last-X, as-of game N, range) split points into in-range
+  // (משחקים/שערים/בטווח) plus the full-tournament total (בטורניר) for context
+  window: makeVariant(LASTX_POINT_COLS, 'total', [
+    { key: 'total',           label: 'בטווח',   value: r => r.total,           zone: 'points', zoneEdge: true },
+    { key: 'tournamentTotal', label: 'בטורניר', value: r => r.tournamentTotal, zone: 'points' },
+  ]),
 }
 
 function thClass({ key, zone, zoneEdge }: Col): string {

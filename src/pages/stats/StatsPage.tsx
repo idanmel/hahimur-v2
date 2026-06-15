@@ -12,6 +12,7 @@ const STAGE_LABELS: Record<string, string> = {
   qf: 'רבע גמר',
   sf: 'חצי גמר',
   final: 'גמר',
+  thirdPlace: '🥉 מקום שלישי',
   champion: '★ אלופה',
 }
 
@@ -21,6 +22,7 @@ const STAGE_LABELS_INVERTED: Record<string, string> = {
   qf: 'לא העלו לרבע',
   sf: 'לא העלו לחצי',
   final: 'לא העלו לגמר',
+  thirdPlace: 'לא בחרו למקום שלישי',
   champion: 'לא בחרו כאלופה',
 }
 
@@ -257,11 +259,12 @@ export default function StatsPage({ users = USERS }: Props) {
                 <th className="stages-th">רבע</th>
                 <th className="stages-th">חצי</th>
                 <th className="stages-th">גמר</th>
+                <th className="stages-th">🥉</th>
                 <th className="stages-th stages-th--champ">★</th>
               </tr>
             </thead>
             <tbody>
-              {teamStageStats.map(({ team, r32, r16, qf, sf, final, champion }, i) => {
+              {teamStageStats.map(({ team, r32, r16, qf, sf, final, thirdPlace, champion }, i) => {
                 const teamInfo = TEAMS[team]
                 const teamName = teamInfo?.he ?? team
                 const cell = (pickers: string[], col: string, extra?: string) => {
@@ -295,6 +298,7 @@ export default function StatsPage({ users = USERS }: Props) {
                     {cell(qf, 'qf')}
                     {cell(sf, 'sf')}
                     {cell(final, 'final')}
+                    {cell(thirdPlace, 'thirdPlace')}
                     {cell(champion, 'champion', 'stages-td--champ')}
                   </tr>
                 )

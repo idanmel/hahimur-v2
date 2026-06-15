@@ -97,14 +97,15 @@ test('buildGroupScopeRows merges hit counts with match points for the scoped gro
   })
 
   const rows = buildGroupScopeRows([yossi, dana], results, 'A')
+  // tournamentTotal spans every group: Dana's exact b1 in group B lifts hers above her group-A total
   expect(rows).toEqual([
-    { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8 },
-    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8 },
+    { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8, tournamentTotal: 8 },
+    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8, tournamentTotal: 12 },
   ])
 })
 
 const mkRow = (label: string, over: Partial<GroupScopeRow>): GroupScopeRow =>
-  ({ label, tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 0, ...over })
+  ({ label, tzelifaCount: 0, pgiyaCount: 0, matchPoints: 0, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 0, tournamentTotal: 0, ...over })
 
 test('combined sorter ranks by tzelifot + pgiyot sum, not by either alone', () => {
   const rows = [
@@ -147,16 +148,16 @@ test('buildRangeRows scores only the chosen stretch of games', () => {
     groupMatches: { A: [grpMatch('a1', 0, 1), grpMatch('a2', 2, 2), grpMatch('a3', 0, 0)] },
   })
 
-  // stretch a2..a3 excludes Dana's a1 tzelifa
+  // stretch a2..a3 excludes Dana's a1 tzelifa; tournamentTotal stays the full-tournament total (a1 included)
   expect(buildRangeRows([dana, yossi], results, 2, 3)).toEqual([
-    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
-    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
+    { label: 'Dana', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2, tournamentTotal: 6 },
+    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2, tournamentTotal: 2 },
   ])
 
-  // full stretch a1..a3 includes everything
+  // full stretch a1..a3 includes everything — here the range total matches the tournament total
   expect(buildRangeRows([dana, yossi], results, 1, 3)).toEqual([
-    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 6 },
-    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2 },
+    { label: 'Dana', tzelifaCount: 1, pgiyaCount: 1, matchPoints: 6, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 6, tournamentTotal: 6 },
+    { label: 'Yossi', tzelifaCount: 0, pgiyaCount: 1, matchPoints: 2, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 2, tournamentTotal: 2 },
   ])
 })
 
@@ -195,4 +196,13 @@ test('points sorters break ties by combined hits', () => {
     mkRow('Rina', { matchPoints: 4, total: 4, tzelifaCount: 1, pgiyaCount: 2 }),
   ].sort(GROUP_SORTERS.total)
   expect(rows.map(r => r.label)).toEqual(['Rina', 'Gadi'])
+})
+
+test('tournamentTotal sorter ranks by full-tournament points, not range gain', () => {
+  // Avi gained more in the range, but Boaz stands higher overall
+  const rows = [
+    mkRow('Avi', { total: 10, tournamentTotal: 20 }),
+    mkRow('Boaz', { total: 4, tournamentTotal: 50 }),
+  ].sort(GROUP_SORTERS.tournamentTotal)
+  expect(rows.map(r => r.label)).toEqual(['Boaz', 'Avi'])
 })
