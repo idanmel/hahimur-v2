@@ -19,6 +19,7 @@ const groupScores: Record<string, MatchScores> = {
   G1: { home: 1, away: 1 },
   H2: { home: 1, away: 1 },
   G2: { home: 2, away: 2 },
+  I1: { home: 3, away: 1 },
 }
 
 // Real goals by picked players: player → match ID → goals in that match.
@@ -26,6 +27,7 @@ const groupScores: Record<string, MatchScores> = {
 const realGoals: Record<string, Record<string, number>> = {
   'ויניסיוס ג׳וניור': { C1: 1 },
   'קאי האברץ': { E1: 2 },
+  'קיליאן אמבפה': { I1: 2 },
 }
 
 export function derivePlayerGoals(perMatch: Record<string, Record<string, number>>): Record<string, number> {
