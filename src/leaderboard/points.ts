@@ -43,6 +43,12 @@ function isDraw(scores: MatchScores): boolean {
 
 export type MatchOutcome = 'tzelifa' | 'pgiya' | 'miss'
 
+export const OUTCOME_LABEL: Record<MatchOutcome, string> = {
+  tzelifa: 'צליפה',
+  pgiya: 'פגיעה',
+  miss: 'פספוס',
+}
+
 export function singleMatchOutcome(predicted: MatchScores, actual: MatchScores): MatchOutcome {
   if (isUnpredicted(predicted) || isUnpredicted(actual)) return 'miss'
   if (isExactMatch(predicted, actual)) return 'tzelifa'

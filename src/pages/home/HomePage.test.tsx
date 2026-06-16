@@ -33,6 +33,7 @@ test('picking a name shows that user\'s own prediction on an upcoming match', ()
   render(<HomePage />)
   expect(screen.queryByTestId('your-prediction')).not.toBeInTheDocument()
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'עידן מלמד' } })
+  fireEvent.click(screen.getByRole('tab', { name: 'המשחקים הבאים' })) // upcoming fixtures
   expect(screen.getAllByTestId('your-prediction').length).toBeGreaterThanOrEqual(1)
 })
 
@@ -46,6 +47,7 @@ test('remembers the picked name across reloads', () => {
   render(<HomePage />) // a fresh mount stands in for a page reload
   // Identified now, so the picker has collapsed to the greeting — the name persists there.
   expect(screen.getByRole('button', { name: /עידן מלמד/ })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('tab', { name: 'המשחקים הבאים' })) // upcoming fixtures
   expect(screen.getAllByTestId('your-prediction').length).toBeGreaterThanOrEqual(1)
 })
 

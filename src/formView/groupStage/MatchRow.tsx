@@ -1,15 +1,9 @@
 import type { Match, MatchScores, Score } from '../../shared/types'
-import type { MatchOutcome } from '../../leaderboard/points'
+import { OUTCOME_LABEL, type MatchOutcome } from '../../leaderboard/points'
 import { TEAMS } from '../../shared/groups'
 import ScoreInput from '../ScoreInput'
 
 const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
-
-const OUTCOME_LABEL: Record<MatchOutcome, string> = {
-  tzelifa: 'צליפה',
-  pgiya: 'פגיעה',
-  miss: 'פספוס',
-}
 
 function dayOfWeek(matchDate: string): string {
   const day = parseInt(matchDate)

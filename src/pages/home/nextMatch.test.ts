@@ -1,4 +1,4 @@
-import { nextMatches, topPrediction } from './nextMatch'
+import { nextMatches, recentMatches, topPrediction } from './nextMatch'
 import { makeUser } from '../../leaderboard/testFixtures'
 import type { GroupMatch } from '../../shared/types'
 
@@ -76,6 +76,35 @@ test('nextMatches drops a tied match once its score is in but keeps the other', 
   ]
   const now = new Date('2026-06-24T20:00:00Z') // both kicked off at 19:00Z, only A3 has a score
   expect(ids(nextMatches(round3, now))).toEqual(['A4'])
+})
+
+// Mirror of nextMatches: the last few matches that already have a final score,
+// most recent first. Built from the same fixture, with scores filled in.
+const SCORED: GroupMatch[] = MATCHES.map(m => ({ ...m, scores: { home: 1, away: 0 } }))
+
+test('recentMatches returns settled matches most-recent-first, up to five', () => {
+  const now = new Date('2026-06-20T12:00:00Z') // every match has been played
+  expect(ids(recentMatches(SCORED, now))).toEqual(['E1', 'D1', 'C1', 'B1', 'A2'])
+})
+
+test('recentMatches ignores matches without a final score', () => {
+  const matches: GroupMatch[] = [
+    { ...MATCHES[0], scores: { home: 2, away: 1 } }, // A1 settled
+    MATCHES[1], // A2 no score
+    { ...MATCHES[2], scores: { home: 0, away: 0 } }, // B1 settled
+  ]
+  const now = new Date('2026-06-20T12:00:00Z')
+  expect(ids(recentMatches(matches, now))).toEqual(['B1', 'A1'])
+})
+
+test('recentMatches only counts matches whose kickoff has passed', () => {
+  const now = new Date('2026-06-12T12:00:00Z') // only A1, A2 have kicked off
+  expect(ids(recentMatches(SCORED, now))).toEqual(['A2', 'A1'])
+})
+
+test('recentMatches returns empty before any match is settled', () => {
+  const now = new Date('2026-06-10T12:00:00Z')
+  expect(recentMatches(SCORED, now)).toEqual([])
 })
 
 test('topPrediction returns the most common predicted score and its count', () => {
