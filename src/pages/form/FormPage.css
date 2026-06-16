@@ -664,6 +664,18 @@ a.match-card-hint {
   background: var(--paper);
 }
 
+.standings-caption {
+  padding: 7px 10px;
+  background: var(--paper);
+  color: var(--navy);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-align: right;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(200, 184, 122, 0.45);
+}
+
 .standings thead tr {
   background: var(--navy);
   color: var(--cream);

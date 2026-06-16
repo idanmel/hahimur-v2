@@ -4,14 +4,16 @@ import { goalDifference } from '../../shared/standings'
 
 interface Props {
   standings: Standing[]
+  caption?: string
 }
 
 const QUALIFY_COUNT = 2
 
-export default function StandingsTable({ standings }: Props) {
+export default function StandingsTable({ standings, caption }: Props) {
   return (
     <div className="standings-wrapper">
       <table className="standings">
+        {caption && <caption className="standings-caption">{caption}</caption>}
         <thead>
           <tr>
             <th className="col-rank">#</th>

@@ -74,6 +74,13 @@ export default function FormView({
     return scores
   }, [])
 
+  // Real standings for the active group, always shown beside the prediction —
+  // before kickoff it just lists the teams with empty stats
+  const { standings: actualStandings } = useMemo(
+    () => calculateStandings(activeMatches, actualScores),
+    [activeMatches, actualScores]
+  )
+
   // Compute outcome and points for a finished match
   const getOutcomeAndPoints = (matchId: string): { outcome?: MatchOutcome; points?: number } => {
     const actual = actualScores[matchId]
@@ -126,6 +133,8 @@ export default function FormView({
       <section className="content-section">
         {groupStageView === 'by-group' ? (
           <>
+            <StandingsTable standings={activeStandings} caption="התחזית" />
+            <StandingsTable standings={actualStandings} caption="בפועל" />
             {activeMatches.map(match => {
               const { outcome, points } = getOutcomeAndPoints(match.id)
               const actual = actualScores[match.id]
@@ -144,7 +153,6 @@ export default function FormView({
                 />
               )
             })}
-            <StandingsTable standings={activeStandings} />
           </>
         ) : (
           <>
