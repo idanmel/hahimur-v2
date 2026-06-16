@@ -54,6 +54,22 @@
 .top-three__row--rank-3 .top-three__name,
 .top-three__row--rank-3 .top-three__points { color: var(--medal-bronze); }
 
+/* The viewer's own row, appended below the podium when they're off it. A
+   dashed divider and faint tint set it apart without breaking the card's look. */
+.top-three__row.top-three__row--you {
+  border-top: 1px dashed var(--border);
+  margin-top: 0.25rem;
+  background: var(--cream);
+  border-radius: 8px;
+}
+
+.top-three__rank {
+  min-width: 1.2rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
 .top-three__link {
   display: inline-block;
   margin-top: 0.6rem;

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import TopThreeCard from './TopThreeCard'
+import LeaderboardGlance from './LeaderboardGlance'
 import { EMPTY_RESULTS, makeUser } from '../../leaderboard/testFixtures'
 import type { GroupMatch, TournamentResults } from '../../shared/types'
 
@@ -24,7 +24,7 @@ const users = [
 ]
 
 test('shows the top three users in order with their points', () => {
-  render(<TopThreeCard users={users} results={results} />)
+  render(<LeaderboardGlance users={users} results={results} />)
   const rows = screen.getAllByTestId('top-three-row')
   expect(rows.map(r => r.textContent)).toEqual([
     expect.stringContaining('דנה'),
@@ -37,7 +37,7 @@ test('shows the top three users in order with their points', () => {
 })
 
 test('shows only three rows even when there are more users', () => {
-  render(<TopThreeCard users={users} results={results} />)
+  render(<LeaderboardGlance users={users} results={results} />)
   expect(screen.getAllByTestId('top-three-row')).toHaveLength(3)
   expect(screen.queryByText('רינה')).not.toBeInTheDocument()
 })
@@ -48,7 +48,7 @@ test('tied users share the same medal and rank-3 ties are all shown', () => {
     ...users,
     makeUser({ label: 'שרה', groupMatches: { A: [grpMatch('m2', 1, 1)] } }),
   ]
-  render(<TopThreeCard users={withTie} results={results} />)
+  render(<LeaderboardGlance users={withTie} results={results} />)
   const rows = screen.getAllByTestId('top-three-row')
   expect(rows.map(r => r.textContent)).toEqual([
     expect.stringContaining('דנה'),
@@ -65,14 +65,36 @@ test('a tie for third place shows more than three rows', () => {
     makeUser({ label: 'רינה', groupMatches: { A: [grpMatch('m1', 3, 2)] } }),
     ...users.slice(1),
   ]
-  render(<TopThreeCard users={tiedThird} results={results} />)
+  render(<LeaderboardGlance users={tiedThird} results={results} />)
   const rows = screen.getAllByTestId('top-three-row')
   expect(rows).toHaveLength(4)
   expect(rows[2]).toHaveTextContent('🥉')
   expect(rows[3]).toHaveTextContent('🥉')
 })
 
+test("appends the current user's own row when they're outside the top three", () => {
+  // רינה is rank 4 (0 pts) — below the podium.
+  const me = users[0]
+  render(<LeaderboardGlance users={users} results={results} currentUser={me} />)
+  expect(screen.getAllByTestId('top-three-row')).toHaveLength(3)
+  const youRow = screen.getByTestId('top-three-you')
+  expect(youRow).toHaveTextContent('רינה')
+  expect(youRow).toHaveTextContent('4') // rank
+  expect(youRow).toHaveTextContent('0') // points
+})
+
+test('does not append a row when the current user is already in the top three', () => {
+  // דנה is rank 1.
+  render(<LeaderboardGlance users={users} results={results} currentUser={users[1]} />)
+  expect(screen.queryByTestId('top-three-you')).not.toBeInTheDocument()
+})
+
+test('shows no current-user row when nobody is selected', () => {
+  render(<LeaderboardGlance users={users} results={results} />)
+  expect(screen.queryByTestId('top-three-you')).not.toBeInTheDocument()
+})
+
 test('links to the results page', () => {
-  render(<TopThreeCard users={users} results={results} />)
+  render(<LeaderboardGlance users={users} results={results} />)
   expect(screen.getByRole('link', { name: /לכל התוצאות/ })).toHaveAttribute('href', '/results')
 })
