@@ -17,7 +17,12 @@ function scopeThirdPlace(q: ThirdPlaceQualification, scope: GroupLetter): ThirdP
 
 export function buildLeaderboardRows(users: User[], results: TournamentResults) {
   return users
-    .map(user => ({ label: user.label, ...computeUserPoints(user, results) }))
+    .map(user => ({
+      label: user.label,
+      topGoalscorer: user.topGoalscorer,
+      predictedChampion: user.predictedChampion,
+      ...computeUserPoints(user, results),
+    }))
     .sort((a, b) => b.total - a.total)
 }
 

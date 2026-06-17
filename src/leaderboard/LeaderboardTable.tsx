@@ -2,10 +2,13 @@ import React, { useState } from 'react'
 import type { PointsBreakdown } from './points'
 import { MEDALS } from './medals'
 import { competitionRanks } from './rank'
+import { TEAMS } from '../shared/groups'
 import RankTrajectoryChart from './RankTrajectoryChart'
 
 export interface LeaderboardRow extends PointsBreakdown {
   label: string
+  topGoalscorer?: string
+  predictedChampion?: string
 }
 
 type RoundKey = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final' | 'goldenBoot'
@@ -43,6 +46,63 @@ function NameLabel({ label, isMe }: { label: string; isMe: boolean }) {
   )
 }
 
+// Gold-leaf emblems for the two outright honours — stroked line icons that sit
+// inside the medallion disc, matching the almanac's navy-ink-on-parchment hand.
+const TrophyIcon = () => (
+  <svg className="lb-pick-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+    <path d="M7 5H4v1a3 3 0 0 0 3 3" />
+    <path d="M17 5h3v1a3 3 0 0 1-3 3" />
+    <path d="M12 13v3" />
+    <path d="M9 20h6l-1-3.5h-4L9 20Z" />
+  </svg>
+)
+
+const MedalIcon = () => (
+  <svg className="lb-pick-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m9 9-3-6M15 9l3-6" />
+    <circle cx="12" cy="14.5" r="5.5" />
+    <path d="m12 11.6 1 2 2.2.3-1.6 1.5.4 2.2-2-1.05-2 1.05.4-2.2-1.6-1.5 2.2-.3 1-2Z" />
+  </svg>
+)
+
+// A single honour plaque: gold-ringed emblem, a tracked kicker, the pick itself
+// (a flag chip for the champion), and a gold wax-seal when the pick came true.
+function PickPlaque({ kicker, icon, value, iso, correct }: {
+  kicker: string; icon: React.ReactNode; value: string; iso?: string; correct: boolean
+}) {
+  return (
+    <div className={`lb-pick${correct ? ' lb-pick--correct' : ''}`}>
+      <span className="lb-pick-emblem">{icon}</span>
+      <span className="lb-pick-text">
+        <span className="lb-pick-kicker">{kicker}</span>
+        <span className="lb-pick-value">
+          {iso && <span className={`fi fi-${iso} lb-pick-flag`} aria-hidden="true" />}
+          {value}
+        </span>
+      </span>
+      {correct && <span className="lb-pick-seal" aria-label="ניחוש נכון">✓</span>}
+    </div>
+  )
+}
+
+// A bettor's two outright picks (golden boot, champion), shown in the expand
+// panel. Correctness rides on the points breakdown the row already carries.
+function PicksPanel({ row }: { row: LeaderboardRow }) {
+  if (!row.topGoalscorer && !row.predictedChampion) return null
+  const champ = row.predictedChampion ? TEAMS[row.predictedChampion] : undefined
+  return (
+    <div className="lb-picks">
+      {row.topGoalscorer && (
+        <PickPlaque kicker="מלך השערים" icon={<MedalIcon />} value={row.topGoalscorer} correct={row.goldenBoot.winnerBonus > 0} />
+      )}
+      {row.predictedChampion && (
+        <PickPlaque kicker="אלופת העולם" icon={<TrophyIcon />} value={champ?.he ?? row.predictedChampion} iso={champ?.iso} correct={row.final.champion > 0} />
+      )}
+    </div>
+  )
+}
+
 function NameCell({ label, isMe }: { label: string; isMe: boolean }) {
   return (
     <td className="lb-td lb-td--name">
@@ -72,10 +132,13 @@ export default function LeaderboardTable({ rows, me, trajectories }: { rows: Lea
       : []
   const ranks = competitionRanks(rows, row => row.total)
 
-  // Name cell that toggles a rank-trajectory panel, when trajectory data exists.
+  // A row expands if it has picks to reveal or a rank trajectory to chart.
+  const hasDetail = (row: LeaderboardRow) =>
+    !!row.topGoalscorer || !!row.predictedChampion || !!trajectories?.[row.label]
+
+  // Name cell that toggles the expand panel, when there's detail to show.
   const renderName = (row: LeaderboardRow, isMe: boolean) => {
-    const trajectory = trajectories?.[row.label]
-    if (!trajectory) return <NameCell label={row.label} isMe={isMe} />
+    if (!hasDetail(row)) return <NameCell label={row.label} isMe={isMe} />
     const open = openLabel === row.label
     return (
       <td className="lb-td lb-td--name">
@@ -92,14 +155,15 @@ export default function LeaderboardTable({ rows, me, trajectories }: { rows: Lea
     )
   }
 
-  // Expansion row holding the trajectory chart, spanning the whole table.
-  const renderTrajRow = (row: LeaderboardRow, colSpan: number) => {
+  // Expansion row holding the bettor's picks and trajectory chart.
+  const renderDetailRow = (row: LeaderboardRow, colSpan: number) => {
+    if (!hasDetail(row) || openLabel !== row.label) return null
     const trajectory = trajectories?.[row.label]
-    if (!trajectory || openLabel !== row.label) return null
     return (
       <tr className="lb-traj-row">
         <td className="lb-td lb-traj-cell" colSpan={colSpan} data-testid={`lb-traj-${row.label}`}>
-          <RankTrajectoryChart ranks={trajectory} />
+          <PicksPanel row={row} />
+          {trajectory && <RankTrajectoryChart ranks={trajectory} />}
         </td>
       </tr>
     )
@@ -162,7 +226,7 @@ export default function LeaderboardTable({ rows, me, trajectories }: { rows: Lea
                       })}
                       <td className="lb-td lb-td--total">{row.total}</td>
                     </tr>
-                    {renderTrajRow(row, 3 + roundColumns.length)}
+                    {renderDetailRow(row, 3 + roundColumns.length)}
                   </React.Fragment>
                 )
               })}
@@ -196,7 +260,7 @@ export default function LeaderboardTable({ rows, me, trajectories }: { rows: Lea
                     {renderName(row, isMe)}
                     <td className="lb-td lb-td--total">{row.total}</td>
                   </tr>
-                  {renderTrajRow(row, 3)}
+                  {renderDetailRow(row, 3)}
                 </React.Fragment>
               )
             })}

@@ -109,6 +109,39 @@ test.each([
   expect(within(panel).getByTestId('lb-traj-line')).toBeInTheDocument()
 })
 
+test.each([
+  ['mobile', '.lb-mobile'],
+  ['desktop', '.lb-desktop'],
+])('tapping a bettor on %s reveals their golden-boot and champion picks', (_name, selector) => {
+  const row = { ...makeRow({ matchPoints: 8, advancementPoints: 0 }), topGoalscorer: 'הארי קיין', predictedChampion: 'France' }
+  const { container } = render(<LeaderboardTable rows={[row]} />)
+  const table = within(container.querySelector(selector) as HTMLElement)
+
+  // collapsed by default — no picks shown yet
+  expect(table.queryByText('הארי קיין')).not.toBeInTheDocument()
+
+  fireEvent.click(table.getByRole('button', { name: /Dana/ }))
+  const panel = table.getByTestId('lb-traj-Dana')
+  expect(within(panel).getByText('הארי קיין')).toBeInTheDocument()
+  // champion shown in Hebrew (France → צרפת), not the raw English name
+  expect(within(panel).getByText('צרפת')).toBeInTheDocument()
+  expect(within(panel).queryByText('France')).not.toBeInTheDocument()
+})
+
+test('marks a pick correct when it earned its winner bonus', () => {
+  const row = {
+    ...makeRow({ matchPoints: 8, advancementPoints: 0 }),
+    topGoalscorer: 'הארי קיין',
+    predictedChampion: 'France',
+    goldenBoot: { goalsPoints: 0, winnerBonus: 10, total: 10 },
+    final: { matchPoints: 0, champion: 25, total: 25 },
+  }
+  render(<LeaderboardTable rows={[row]} />)
+  fireEvent.click(within(document.querySelector('.lb-desktop') as HTMLElement).getByRole('button', { name: /Dana/ }))
+  const panel = screen.getAllByTestId('lb-traj-Dana')[0]
+  expect(within(panel).getAllByLabelText('ניחוש נכון')).toHaveLength(2)
+})
+
 test('no row is flagged when me is absent from the table', () => {
   const row = { ...makeRow({ matchPoints: 8, advancementPoints: 5 }), label: 'עידן' }
   render(<LeaderboardTable rows={[row]} me="someone-else" />)
