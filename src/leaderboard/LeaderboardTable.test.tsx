@@ -36,7 +36,8 @@ test('a single active round duplicates the total, so its column is dropped', () 
 
 test('a lone active round returns once עולות points split its breakdown', () => {
   render(<LeaderboardTable rows={[makeRow({ matchPoints: 8, advancementPoints: 5 })]} />)
-  expect(screen.getByRole('columnheader', { name: 'שלב הבתים' })).toBeInTheDocument()
+  // header appears in both desktop and mobile tables once the column returns
+  expect(screen.getAllByRole('columnheader', { name: 'שלב הבתים' }).length).toBeGreaterThan(0)
   expect(screen.getByText('תוצאה')).toBeInTheDocument()
   expect(screen.getByText('עולות')).toBeInTheDocument()
 })

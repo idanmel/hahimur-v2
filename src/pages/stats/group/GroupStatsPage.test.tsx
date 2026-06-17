@@ -13,7 +13,7 @@ test('renders group A heading', () => {
 
 test('shows standings section', () => {
   render(<GroupStatsPage groupLetter="A" />)
-  expect(screen.getByText('טבלת הבית')).toBeInTheDocument()
+  expect(screen.getByText(/טבלת הבית/)).toBeInTheDocument()
 })
 
 test('shows predictions section', () => {

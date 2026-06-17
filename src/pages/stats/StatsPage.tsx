@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from '../../users/index'
 import { USERS } from '../../users/index'
-import { TEAMS, ALL_GROUP_LETTERS, GROUP_HEBREW } from '../../shared/groups'
+import { TEAMS } from '../../shared/groups'
 import PageLayout from '../../shared/PageLayout'
+import GroupPicker from './GroupPicker'
 import { computeFinalStats, computeFinalMatchups, computeTeamStageStats, computeGoalScorerStats } from './stats'
 import './StatsPage.css'
 
@@ -92,17 +93,7 @@ export default function StatsPage({ users = USERS }: Props) {
       <main className="stats-main">
         <p className="stats-eyebrow">סטטיסטיקות בתים</p>
         <p className="stats-subtitle">בחרו בית כדי לראות את הסטטיסטיקות שלו</p>
-        <nav className="stats-group-picker" aria-label="סטטיסטיקות לפי בית">
-          {ALL_GROUP_LETTERS.map(letter => (
-            <a
-              key={letter}
-              href={`/stats/groups/${letter.toLowerCase()}`}
-              className="stats-group-chip"
-            >
-              בית {GROUP_HEBREW[letter]}
-            </a>
-          ))}
-        </nav>
+        <GroupPicker />
 
         <p className="stats-eyebrow stats-eyebrow--section">ניחושי הגמר</p>
         <p className="stats-subtitle">כמה מהמשתתפים חזו לכל נבחרת לנצח או להגיע לגמר</p>

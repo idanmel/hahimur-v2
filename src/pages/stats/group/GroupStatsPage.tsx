@@ -5,6 +5,7 @@ import { computeGroupVotes, computeGroupVotePickers, computeGroupR32Pickers } fr
 import { USERS } from '../../../users/index'
 import { tournamentResults } from '../../../tournament-results'
 import PageLayout from '../../../shared/PageLayout'
+import GroupPicker from '../GroupPicker'
 import StandingsTable from '../../../formView/groupStage/StandingsTable'
 import GroupVoteMatrix from '../../group/GroupVoteMatrix'
 import GroupAdvanceTable from '../../group/GroupAdvanceTable'
@@ -30,8 +31,9 @@ export default function GroupStatsPage({ groupLetter }: Props) {
   return (
     <PageLayout title={`קבוצה ${hebrew}`}>
       <main>
+        <GroupPicker activeGroup={groupLetter} />
         <section>
-          <h2>טבלת הבית</h2>
+          <h2>טבלת הבית — בית {hebrew}</h2>
           <StandingsTable standings={standings} />
         </section>
 

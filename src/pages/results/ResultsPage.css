@@ -254,6 +254,14 @@
 
 /* ── Date band ───────────────────────────────────────────────── */
 
+/* The next match still to be played — scroll target in the date view */
+.pg-next-match {
+  scroll-margin-top: 84px;
+  scroll-margin-bottom: 84px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--gold, #c8b87a);
+}
+
 .pg-date-band {
   display: flex;
   align-items: center;

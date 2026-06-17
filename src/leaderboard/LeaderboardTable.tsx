@@ -235,13 +235,17 @@ export default function LeaderboardTable({ rows, me, trajectories }: { rows: Lea
         )}
       </div>
 
-      {/* Mobile: compact totals table */}
+      {/* Mobile: same round columns as desktop, but each cell shows the round
+          total only (no sub-breakdown) to stay compact on narrow screens */}
       <div className="lb-mobile">
         <table className="lb-table lb-table--mobile">
           <thead>
             <tr>
               <th className="lb-th lb-th--rank">#</th>
               <th className="lb-th lb-th--name">מהמר</th>
+              {roundColumns.map(({ key, label }) => (
+                <th key={key} className="lb-th lb-th--round">{label}</th>
+              ))}
               <th className="lb-th lb-th--total">סה"כ</th>
             </tr>
           </thead>
@@ -258,9 +262,17 @@ export default function LeaderboardTable({ rows, me, trajectories }: { rows: Lea
                   >
                     <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
                     {renderName(row, isMe)}
+                    {roundColumns.map(({ key }) => {
+                      const data = row[key] as unknown as Record<string, number>
+                      return (
+                        <td key={key} className="lb-td lb-td--detail">
+                          <span className="lb-td-total">{data.total || '—'}</span>
+                        </td>
+                      )
+                    })}
                     <td className="lb-td lb-td--total">{row.total}</td>
                   </tr>
-                  {renderDetailRow(row, 3)}
+                  {renderDetailRow(row, 3 + roundColumns.length)}
                 </React.Fragment>
               )
             })}
