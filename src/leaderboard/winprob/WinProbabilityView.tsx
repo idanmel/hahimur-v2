@@ -112,18 +112,26 @@ function RowDetail({ row, delta, reason, survival }: { row: Row; delta: number |
   )
 }
 
+// Sentinel "point in time" meaning before a single ball was kicked — the pure
+// pre-tournament priors, with everything simulated from team strength alone.
+const PRE_TOURNAMENT = '__pre__'
+
 export default function WinProbabilityView({ results, me }: { results: TournamentResults; me?: string }) {
   const chrono = useMemo(() => playedChrono(results), [results])
   const [openLabel, setOpenLabel] = useState<string | null>(null)
-  // selected "point in time" = a played match id; null follows the latest game.
+  // selected "point in time": a played match id, the PRE_TOURNAMENT sentinel, or
+  // null which follows the latest game.
   const [selId, setSelId] = useState<string | null>(null)
 
-  const effId = selId && chrono.some(m => m.id === selId)
-    ? selId
-    : (chrono.length ? chrono[chrono.length - 1].id : null)
-  const isLatest = !!effId && chrono.length > 0 && effId === chrono[chrono.length - 1].id
-  const last = useMemo(() => chrono.find(m => m.id === effId) ?? null, [chrono, effId])
-  const played = useMemo(() => (effId ? playedStateUpTo(chrono, effId) : {}), [chrono, effId])
+  const selectedPre = selId === PRE_TOURNAMENT
+  const effId = selectedPre
+    ? null
+    : selId && chrono.some(m => m.id === selId)
+      ? selId
+      : (chrono.length ? chrono[chrono.length - 1].id : null)
+  const isLatest = !selectedPre && !!effId && chrono.length > 0 && effId === chrono[chrono.length - 1].id
+  const last = useMemo(() => (selectedPre ? null : chrono.find(m => m.id === effId) ?? null), [chrono, effId, selectedPre])
+  const played = useMemo(() => (!selectedPre && effId ? playedStateUpTo(chrono, effId) : {}), [chrono, effId, selectedPre])
   const eliminations = useMemo(() => realEliminations(resultsUpTo(results, played)), [results, played])
   // Real golden-boot goals accrued up to the viewed point, so the projection and
   // current rank reward a picked scorer who's already scoring. `prev` excludes
@@ -159,22 +167,24 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
   return (
     <div className="lb-prob">
       <p className="lb-prob-caption">
-        הסיכוי לסיים ראשון מבין כל המהמרים {isLatest ? 'לפי התוצאות האמיתיות' : 'לפי המצב אחרי המשחק שנבחר'}
+        הסיכוי לסיים ראשון מבין כל המהמרים{' '}
+        {isLatest ? 'לפי התוצאות האמיתיות' : selectedPre ? 'לפי המצב לפני תחילת הטורניר' : 'לפי המצב אחרי המשחק שנבחר'}
         {last && <> · השינוי מאז <b>{last.label}</b></>}
       </p>
 
-      {chrono.length > 1 && (
+      {chrono.length >= 1 && (
         <div className="lb-prob-controls">
           <label className="wp-picker-label" htmlFor="wp-point">נקודת זמן</label>
           <select
             id="wp-point"
             className="wp-picker"
-            value={effId ?? ''}
+            value={selectedPre ? PRE_TOURNAMENT : (effId ?? '')}
             onChange={e => {
               const v = e.target.value
+              setOpenLabel(null)
+              if (v === PRE_TOURNAMENT) { setSelId(PRE_TOURNAMENT); return }
               const latestId = chrono[chrono.length - 1].id
               setSelId(v === latestId ? null : v)
-              setOpenLabel(null)
             }}
           >
             {pickerOptions.map((m, i) => (
@@ -182,6 +192,7 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
                 {i === 0 ? 'המשחק האחרון — ' : ''}{m.label}
               </option>
             ))}
+            <option value={PRE_TOURNAMENT}>לפני תחילת הטורניר</option>
           </select>
         </div>
       )}
