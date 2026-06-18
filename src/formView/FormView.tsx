@@ -5,6 +5,7 @@ import { isUnpredicted } from '../shared/types'
 import { GROUP_MATCHES, GROUPS, GROUP_HEBREW, ALL_GROUP_LETTERS, type GroupLetter } from '../shared/groups'
 import { calculateStandings } from '../shared/standings'
 import { useTournament } from '../shared/useTournament'
+import { reportUsage } from '../shared/reportUsage'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../shared/matchesByDate'
 import { singleMatchOutcome, singleMatchPoints, type MatchOutcome } from '../leaderboard/points'
 import { tournamentResults } from '../tournament-results'
@@ -27,14 +28,6 @@ const noop = () => {}
 
 // Frozen at load from the committed real scores — the by-date view scrolls here
 const NEXT_MATCH_ID = nextUnplayedMatchId(tournamentResults)
-
-// fire-and-forget usage signal for the chronological view; localhost clicks are
-// dev noise and never reach the counter, and failures must never break the view
-function reportDateView() {
-  if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-    fetch('/api/date-view-click', { method: 'POST' }).catch(() => {})
-  }
-}
 
 export default function FormView({
   predictions,
@@ -113,7 +106,7 @@ export default function FormView({
         <button
           type="button"
           className={`pg-group-btn${groupStageView === 'by-date' ? ' pg-group-btn--active' : ''}`}
-          onClick={() => { reportDateView(); setGroupStageView('by-date') }}
+          onClick={() => { reportUsage('/api/date-view-click'); setGroupStageView('by-date') }}
         >לפי תאריך</button>
       </div>
 

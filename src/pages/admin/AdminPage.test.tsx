@@ -2,6 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { vi, afterEach } from 'vitest'
 import AdminPage from './AdminPage'
 
+// AdminPage's PageLayout renders Nav -> UserPicker, which loads the 27-user
+// barrel. These tests only exercise the publish form, so stub the nav out.
+vi.mock('../../Nav', () => ({ default: () => null, USER_STORAGE_EVENT: 'userStorageUpdated' }))
+
 afterEach(() => vi.restoreAllMocks())
 
 function mockFetch(status: number, body: unknown = {}) {

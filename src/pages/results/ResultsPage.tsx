@@ -7,6 +7,7 @@ import KnockoutTable from '../../formView/knockout/KnockoutTable'
 import ThirdPlaceTable from '../../formView/thirdPlace/ThirdPlaceTable'
 import type { User } from '../../users/index'
 import ScopedLeaderboard from '../../leaderboard/ScopedLeaderboard'
+import { reportUsage } from '../../shared/reportUsage'
 import type { Scope } from '../../leaderboard/leaderboardRows'
 import { playedGroupMatchesChrono } from '../../leaderboard/leaderboardRows'
 import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
@@ -150,11 +151,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }, [liveOverlay])
 
   const randomize = () => {
-    // fire-and-forget click counter — must never affect the simulation itself;
-    // localhost clicks are dev noise and stay out of the tournament total
-    if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-      fetch('/api/sim-click', { method: 'POST' }).catch(() => {})
-    }
+    // fire-and-forget click counter — must never affect the simulation itself
+    reportUsage('/api/sim-click')
     const poisson = (lambda: number) => {
       const L = Math.exp(-lambda)
       let k = 0, p = 1
