@@ -19,6 +19,9 @@ type Props = {
 
 export default function MatchHeader({ match, home, away, homeScore, awayScore, onHomeScore, onAwayScore, realScore = null, live = false }: Props) {
   const showLive = live && !realScore
+  // A score that is showing while the match is still in progress is provisional,
+  // so it gets a "חי" badge instead of "נגמר".
+  const showLiveScore = !!realScore && live
   return (
     <div className="match-header">
       <a className="match-header__group-badge" href={`/stats/groups/${match.id[0].toLowerCase()}`}>בית {GROUPS[match.id[0]]?.he} · משחק {match.id[1]} ›</a>
@@ -30,13 +33,20 @@ export default function MatchHeader({ match, home, away, homeScore, awayScore, o
         </div>
 
         {realScore ? (
-          <div className="match-header__vs match-header__vs--final" data-testid="real-score">
+          <div className={`match-header__vs match-header__vs--final${showLiveScore ? ' match-header__vs--live' : ''}`} data-testid="real-score">
             <div className="match-header__final-score">
               <span className="match-header__final-digit">{realScore.away}</span>
               <span className="match-header__vs-text">–</span>
               <span className="match-header__final-digit">{realScore.home}</span>
             </div>
-            <span className="match-header__final-badge">נגמר</span>
+            {showLiveScore ? (
+              <span className="match-header__final-badge match-header__final-badge--live" data-testid="live-score-badge">
+                <span className="match-header__live-dot" />
+                חי
+              </span>
+            ) : (
+              <span className="match-header__final-badge">נגמר</span>
+            )}
           </div>
         ) : (
           <div className="match-header__vs">

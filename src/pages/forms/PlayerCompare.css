@@ -1,0 +1,947 @@
+.pc {
+  margin-top: 8px;
+}
+
+/* ── Share to WhatsApp ───────────────────────────────────────── */
+.pc-share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.pc-share__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #25d366;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.pc-share__btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.pc-share__btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.pc-share__btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.pc-share__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.pc-share__note {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Scoreboard ──────────────────────────────────────────────── */
+.pc-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pc-sb-card {
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 10px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pc-sb-card--lead {
+  border-color: var(--gold);
+  box-shadow: 0 2px 10px rgba(212, 160, 22, 0.15);
+}
+
+.pc-sb-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.pc-sb-name {
+  font-family: 'Heebo', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.pc-sb-total {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--navy);
+  margin-top: 4px;
+}
+
+.pc-sb-card--lead .pc-sb-total {
+  color: var(--gold);
+}
+
+.pc-sb-unit {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.pc-sb-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.pc-sb-vs__label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.pc-sb-vs__lead {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  text-align: center;
+  max-width: 90px;
+  line-height: 1.3;
+}
+
+/* ── Stat chips ──────────────────────────────────────────────── */
+.pc-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.pc-chip {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.pc-chip__num {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--navy);
+}
+
+.pc-chip__label {
+  display: block;
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.pc-chip__score {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pc-chip__dash {
+  color: var(--muted);
+}
+
+.pc-chip--btn {
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.pc-chip--btn:hover {
+  border-color: var(--gold);
+}
+
+.pc-chip--open {
+  border-color: var(--navy);
+  background: rgba(11, 34, 68, 0.04);
+}
+
+.pc-chip__caret {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--gold);
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+
+.pc-chip--open .pc-chip__caret {
+  transform: rotate(-90deg);
+}
+
+/* ── Chip detail list ────────────────────────────────────────── */
+.pc-dl {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: -12px 0 20px;
+}
+
+.pc-dl__explain {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.pc-dl__empty {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin: 4px 0;
+}
+
+.pc-dl__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pc-dl__item:last-child {
+  border-bottom: none;
+}
+
+.pc-dl__tag {
+  font-family: 'Heebo', sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: none;
+  opacity: 0.85;
+}
+
+.pc-dl__match {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.pc-dl__team {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pc-dl__team--home {
+  justify-content: flex-end;
+}
+
+.pc-dl__team--away {
+  justify-content: flex-start;
+}
+
+.pc-dl__match .pc-team {
+  min-width: 0;
+}
+
+.pc-dl__match .pc-team__flag {
+  flex-shrink: 0;
+}
+
+.pc-dl__match .pc-team__name {
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.pc-dl__dash {
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.pc-dl__meta {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pc-dl__val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--navy);
+}
+
+.pc-dl__val--label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.pc-dl__h2h {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-dl__sep {
+  color: var(--border);
+}
+
+.pc-dl__win {
+  color: var(--gold);
+  font-weight: 800;
+}
+
+/* ── Tables (breakdown + outright) ───────────────────────────── */
+.pc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 20px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pc-table th,
+.pc-table td {
+  padding: 9px 10px;
+  text-align: center;
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pc-table thead th {
+  background: var(--navy);
+  color: var(--cream);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pc-table__stage {
+  text-align: right;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pc-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.pc-num.pc-lead {
+  color: var(--gold);
+  font-weight: 700;
+  background: rgba(212, 160, 22, 0.08);
+}
+
+.pc-table__total td {
+  background: rgba(11, 34, 68, 0.04);
+  font-weight: 700;
+}
+
+.pc-table__total .pc-table__stage {
+  font-family: 'Heebo', sans-serif;
+}
+
+.pc-pick {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pc-pick--correct {
+  color: var(--green);
+  background: rgba(42, 126, 59, 0.08);
+}
+
+.pc-pick--wrong {
+  color: var(--muted);
+}
+
+.pc-pick--pending {
+  color: var(--ink);
+}
+
+/* ── Finalist chip diff ──────────────────────────────────────── */
+.pc-finalists {
+  margin: 0 0 16px;
+}
+
+.pc-finalists__label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.pc-finalists__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.pc-finalists__tag {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 64px;
+  text-align: left;
+}
+
+.pc-finalists__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pc-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.pc-fchip .pc-team__name {
+  font-size: 12px;
+}
+
+.pc-fchip--shared {
+  border-color: var(--gold);
+  background: rgba(212, 160, 22, 0.1);
+  color: #9a7210;
+}
+
+.pc-fchip--out {
+  border-color: rgba(178, 34, 34, 0.4);
+  background: rgba(178, 34, 34, 0.06);
+  color: var(--muted);
+}
+
+.pc-fchip--out .pc-team__name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(178, 34, 34, 0.7);
+}
+
+.pc-fchip--out .pc-team__flag {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.pc-fchip__out {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #b22222;
+  background: rgba(178, 34, 34, 0.12);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.pc-finalists__alive {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 6px;
+  padding-right: 2px;
+}
+
+/* ── Advancement agreement summary ───────────────────────────── */
+.pc-adv {
+  margin: 0 0 16px;
+}
+
+.pc-adv__title {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.pc-adv__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pc-adv__chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 58px;
+  padding: 5px 8px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.pc-adv__count {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--navy);
+}
+
+.pc-adv__stage {
+  font-family: 'Heebo', sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pc-adv__chip--yes {
+  border-color: var(--gold);
+  background: rgba(212, 160, 22, 0.1);
+}
+
+.pc-adv__chip--yes .pc-adv__count {
+  color: #9a7210;
+}
+
+.pc-adv__chip--no .pc-adv__count {
+  color: var(--muted);
+}
+
+/* ── Elimination marks (champion + caption) ──────────────────── */
+.pc-elim-caption {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.pc-elim {
+  text-decoration: line-through;
+  text-decoration-color: rgba(178, 34, 34, 0.7);
+  color: var(--muted);
+}
+
+.pc-elim-badge {
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #b22222;
+  background: rgba(178, 34, 34, 0.12);
+  border-radius: 3px;
+  padding: 1px 4px;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+/* ── Group standings diff ────────────────────────────────────── */
+.pc-gs-legend {
+  display: grid;
+  grid-template-columns: 1fr 44px 1fr;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+  padding: 0 4px;
+}
+
+.pc-gs-legend__side {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  text-align: center;
+}
+
+.pc-gs-legend__mid {
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pc-standings {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.pc-gs-card {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.pc-gs-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+}
+
+.pc-gs-group {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--navy);
+}
+
+.pc-gs-pts {
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pc-gs-row {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 2px;
+  border-radius: 3px;
+}
+
+.pc-gs-row--agree {
+  background: rgba(11, 34, 68, 0.05);
+}
+
+.pc-gs-pos {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pc-gs-team {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pc-gs-team .pc-team__flag {
+  flex-shrink: 0;
+}
+
+.pc-gs-team .pc-team__name {
+  font-size: 11px;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.pc-gs-team--correct {
+  position: relative;
+}
+
+.pc-gs-team--correct .pc-team__name {
+  color: #9a7210;
+  font-weight: 700;
+}
+
+.pc-gs-team--correct::after {
+  content: '✓';
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.pc-gs-empty {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+/* ── Match-by-match diff ─────────────────────────────────────── */
+.pc-matches-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pc-only-diff {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pc-only-diff input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--navy);
+  flex-shrink: 0;
+}
+
+.pc-match-header {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--cream);
+  border-bottom: 1.5px solid var(--navy);
+}
+
+.pc-match-header__side {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  text-align: center;
+}
+
+.pc-match-header__mid {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pc-group {
+  margin-top: 10px;
+}
+
+.pc-group__label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 8px 0 4px;
+}
+
+.pc-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pc-row--differ {
+  background: rgba(200, 184, 122, 0.1);
+  border-radius: 4px;
+}
+
+.pc-row__bet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.pc-row__score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.pc-row__bet--win .pc-row__score {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.pc-row__match {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.pc-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pc-team__flag {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.pc-team__name {
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pc-row__dash {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pc-row__actual {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: rgba(200, 184, 122, 0.15);
+  border: 1px solid rgba(200, 184, 122, 0.3);
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-top: 2px;
+}
+
+.pc-verdict {
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.pc-verdict--tzelifa {
+  color: #9a7210;
+  background: rgba(212, 160, 22, 0.15);
+}
+
+.pc-verdict--pgiya {
+  color: var(--green);
+  background: rgba(42, 126, 59, 0.12);
+}
+
+.pc-verdict--miss {
+  color: var(--muted);
+  background: rgba(122, 104, 69, 0.1);
+}
+
+/* ── Mode toggle (single vs compare) ─────────────────────────── */
+.pc-mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 24px 0 0;
+}
+
+.pc-mode-btn {
+  flex: 1;
+  padding: 9px 12px;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.pc-mode-btn--active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--cream);
+}
+
+.pc-pickers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+
+.pc-pickers .user-picker {
+  margin: 0;
+}
+
+.pc-hint {
+  text-align: center;
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin: 28px 0;
+}

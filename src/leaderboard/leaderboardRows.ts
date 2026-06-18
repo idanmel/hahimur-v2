@@ -6,7 +6,7 @@ import { matchSortKey } from '../shared/matchOrder'
 import { competitionRanks } from './rank'
 import type { User } from '../users'
 
-export type Scope = 'all' | GroupLetter | 'range'
+export type Scope = 'all' | GroupLetter | 'range' | 'prob'
 
 function scopeThirdPlace(q: ThirdPlaceQualification, scope: GroupLetter): ThirdPlaceQualification {
   const inScope = (teams: ThirdPlaceStanding[]) => teams.filter(t => t.group === scope)

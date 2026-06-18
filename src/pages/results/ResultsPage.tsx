@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import GoalScorerSection from './GoalScorerSection'
 import PageLayout from '../../shared/PageLayout'
 import MatchRow from '../../formView/groupStage/MatchRow'
@@ -14,6 +14,8 @@ import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
 import { useTournament } from '../../shared/useTournament'
 import { useCurrentUser } from '../../shared/useCurrentUser'
+import { useLiveScores } from '../../shared/useLiveScores'
+import { mergeLiveResults } from '../../shared/liveResults'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../../shared/matchesByDate'
@@ -104,6 +106,16 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }))
   const [goalScorerResetKey, setGoalScorerResetKey] = useState(0)
 
+  // Live overlay: while a match is in progress, its real score/goals flow into
+  // the leaderboard automatically. Matches the user has edited or simulated are
+  // recorded here so the live feed never overwrites their what-if scores.
+  const liveOverlay = useLiveScores()
+  const userEditedIds = useRef<Set<string>>(new Set())
+  const livePlayerMatchGoals = useMemo(
+    () => mergeLiveResults(realTournamentResults, liveOverlay).playerMatchGoals,
+    [liveOverlay],
+  )
+
   const players = predictedPlayers(users)
 
   const nextMatchRef = useRef<HTMLDivElement>(null)
@@ -114,8 +126,28 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }, [groupStageView])
 
   const updateMatch = (matchId: string, scores: MatchScores) => {
+    userEditedIds.current.add(matchId)
     setEditedResults(prev => ({ ...prev, [matchId]: scores }))
   }
+
+  // Apply live scores to matches the user hasn't touched (and that aren't
+  // already locked to a final baked score).
+  useEffect(() => {
+    if (Object.keys(liveOverlay.scores).length === 0) return
+    setEditedResults(prev => {
+      let changed = false
+      const next = { ...prev }
+      for (const [id, sc] of Object.entries(liveOverlay.scores)) {
+        if (userEditedIds.current.has(id) || LOCKED_MATCH_IDS.has(id)) continue
+        const cur = prev[id]
+        if (!cur || cur.home !== sc.home || cur.away !== sc.away) {
+          next[id] = { home: sc.home, away: sc.away }
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [liveOverlay])
 
   const randomize = () => {
     // fire-and-forget click counter — must never affect the simulation itself;
@@ -133,6 +165,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
     setEditedResults(prev =>
       Object.fromEntries(Object.keys(prev).map(id => {
         if (LOCKED_MATCH_IDS.has(id)) return [id, prev[id]]
+        // A simulated score is a user choice — keep the live feed from overwriting it.
+        userEditedIds.current.add(id)
         const teams = GROUP_MATCH_TEAMS[id]
         const avg = { att: 1.0, def: 1.0 }
         const homeStr = (teams && TEAM_STRENGTH[teams.homeTeam]) ?? avg
@@ -149,6 +183,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }
 
   const reset = () => {
+    // Back to the real results — let the live feed drive untouched matches again.
+    userEditedIds.current.clear()
     setEditedResults(getInitialState())
     setGoalScorerState({
       playerGoals: realTournamentResults.playerGoals ?? {},
@@ -204,8 +240,9 @@ export default function ResultsPage({ users }: { users: User[] }) {
     thirdPlaceWinner,
     goldenBootWinner: goalScorerState.goldenBootWinner.length > 0 ? goalScorerState.goldenBootWinner : undefined,
     playerGoals: goalScorerState.playerGoals,
-    // real per-match goals only — simulated tally bumps have no match to belong to
-    playerMatchGoals: realTournamentResults.playerMatchGoals,
+    // real per-match goals + any live in-progress goals — simulated tally bumps
+    // have no match to belong to, so they stay out of the per-match map
+    playerMatchGoals: livePlayerMatchGoals,
   }
 
   // chronological timeline the "טווח" selectors choose from (grows as you simulate)
@@ -233,7 +270,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
             rangeFrom={rangeFrom} rangeTo={rangeTo} onRangeFromChange={setRangeFrom} onRangeToChange={setRangeTo}
             playedMatchLabels={playedMatchLabels}
           />
-          <ScopedLeaderboard users={users} results={tournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} me={me} />
+          <ScopedLeaderboard users={users} results={tournamentResults} realResults={realTournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} me={me} />
         </section>
 
         {/* Simulation callout */}

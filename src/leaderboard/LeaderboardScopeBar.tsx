@@ -3,7 +3,7 @@ import { GROUPS, ALL_GROUP_LETTERS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import type { Scope } from './leaderboardRows'
 
-const NON_GROUP_SCOPES = ['all', 'range'] as const
+const NON_GROUP_SCOPES = ['all', 'range', 'prob'] as const
 const isGroupScope = (s: Scope): s is GroupLetter => !(NON_GROUP_SCOPES as readonly string[]).includes(s)
 
 export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, rangeTo, onRangeFromChange, onRangeToChange, playedMatchLabels }: {
@@ -45,6 +45,12 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, r
           aria-pressed={mode === 'range'}
           onClick={() => onScopeChange('range')}
         >טווח</button>
+        <button
+          type="button"
+          className={modeBtn(mode === 'prob')}
+          aria-pressed={mode === 'prob'}
+          onClick={() => onScopeChange('prob')}
+        >סיכויי זכייה</button>
       </div>
 
       {mode === 'group' && (

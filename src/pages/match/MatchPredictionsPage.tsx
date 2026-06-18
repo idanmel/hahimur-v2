@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import Nav from '../../Nav'
-import { tournamentResults } from '../../tournament-results'
-import type { Match, MatchScores, Score } from '../../shared/types'
+import type { Match, MatchScores, Score, TournamentResults } from '../../shared/types'
 import type { User } from '../../users/index'
 import { isLive } from '../../shared/matchOrder'
+import { useLiveResults } from '../../shared/useLiveResults'
 import MatchHeader from './MatchHeader'
 import PredictionSummary from './PredictionSummary'
 import ScoreFrequencyTable from './ScoreFrequencyTable'
@@ -19,14 +19,17 @@ type Props = {
   now?: Date
 }
 
-function realScoreFor(matchId: string): MatchScores | null {
-  const s = tournamentResults.groupMatches[matchId[0]]?.find(m => m.id === matchId)?.scores
+function realScoreFor(results: TournamentResults, matchId: string): MatchScores | null {
+  const s = results.groupMatches[matchId[0]]?.find(m => m.id === matchId)?.scores
   return s && s.home !== null && s.away !== null ? s : null
 }
 
 export default function MatchPredictionsPage({ match, home, away, users, now = new Date() }: Props) {
   const [homeScore, setHomeScore] = useState<Score>(null)
   const [awayScore, setAwayScore] = useState<Score>(null)
+  // Live-overlaid results: a live score/scorers appear here in real time while
+  // the match is in progress, then settle to the baked final when it ends.
+  const results = useLiveResults()
 
   if (!match || !home || !away) {
     return (
@@ -37,10 +40,11 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
     )
   }
 
-  const realScore = realScoreFor(match.id)
+  const live = isLive(match, now)
+  const realScore = realScoreFor(results, match.id)
   const actualScore = realScore ?? (homeScore !== null && awayScore !== null ? { home: homeScore, away: awayScore } : null)
   const scorers = realScore
-    ? Object.entries(tournamentResults.playerMatchGoals ?? {})
+    ? Object.entries(results.playerMatchGoals ?? {})
         .filter(([, byMatch]) => (byMatch[match.id] ?? 0) > 0)
         .map(([player, byMatch]) => ({ player, goals: byMatch[match.id] }))
     : []
@@ -51,7 +55,7 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
         match={match} home={home} away={away}
         homeScore={homeScore} awayScore={awayScore}
         onHomeScore={setHomeScore} onAwayScore={setAwayScore}
-        realScore={realScore} live={isLive(match, now)}
+        realScore={realScore} live={live}
       />
       <Nav />
 

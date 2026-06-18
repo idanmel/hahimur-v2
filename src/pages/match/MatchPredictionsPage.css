@@ -231,6 +231,18 @@
   background: linear-gradient(to left, transparent, rgba(212, 160, 22, 0.5));
 }
 
+.match-header__final-badge--live {
+  color: #ff7a7a;
+}
+
+.match-header__final-badge--live::before {
+  background: linear-gradient(to right, transparent, rgba(192, 39, 45, 0.5));
+}
+
+.match-header__final-badge--live::after {
+  background: linear-gradient(to left, transparent, rgba(192, 39, 45, 0.5));
+}
+
 .match-header__vs-line {
   width: 1px;
   height: 28px;

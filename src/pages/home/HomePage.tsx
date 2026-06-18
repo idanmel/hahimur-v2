@@ -5,17 +5,21 @@ import HomeFeed from './HomeFeed'
 import LeaderboardGlance from './LeaderboardGlance'
 import { USERS } from '../../users/index'
 import { tournamentResults } from '../../tournament-results'
+import { useLiveResults } from '../../shared/useLiveResults'
 import { OLEH_POINTS, PLACE_POINT } from '../../leaderboard/points'
 
 const FIRST_MATCH = new Date('2026-06-11T19:00:00Z')
 
 export default function HomePage() {
   const { currentUser } = useCurrentUser()
+  // Live-overlaid results so the leaderboard moves in real time during a match.
+  // Identical to the baked results whenever nothing is live.
+  const liveResults = useLiveResults()
 
   return (
     <PageLayout title="ההימור 2026">
       <Countdown targetDate={FIRST_MATCH} label="לשריקת הפתיחה" />
-      <LeaderboardGlance users={USERS} results={tournamentResults} currentUser={currentUser} />
+      <LeaderboardGlance users={USERS} results={liveResults} currentUser={currentUser} />
       <HomeFeed users={USERS} currentUser={currentUser} playerMatchGoals={tournamentResults.playerMatchGoals} />
 
       <main dir="rtl" style={{ maxWidth: '700px', margin: '0 auto', padding: '3rem 1.5rem', fontSize: '1.1rem', lineHeight: '1.9' }}>

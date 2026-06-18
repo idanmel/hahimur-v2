@@ -69,6 +69,39 @@ describe('Selected user shown first', () => {
   })
 })
 
+describe('Compare mode', () => {
+  function enterCompare() {
+    render(<FormsPage users={USERS} usersSorted={USERS_SORTED} />)
+    fireEvent.click(screen.getByRole('button', { name: 'השוואה' }))
+  }
+
+  test('switching to compare shows two player pickers', () => {
+    enterCompare()
+    expect(screen.getByText('שחקן ראשון')).toBeInTheDocument()
+    expect(screen.getByText('שחקן שני')).toBeInTheDocument()
+  })
+
+  test('prompts to pick two players before any are selected', () => {
+    enterCompare()
+    expect(screen.getByText('בחרו שני שחקנים כדי להשוות בין הטפסים')).toBeInTheDocument()
+  })
+
+  test('renders the comparison once both players are selected', () => {
+    enterCompare()
+    fireEvent.click(screen.getByRole('button', { name: /שחקן ראשון/ }))
+    fireEvent.click(screen.getByRole('option', { name: /טל ליכטר/ }))
+    fireEvent.click(screen.getByRole('button', { name: /שחקן שני/ }))
+    fireEvent.click(screen.getByRole('option', { name: /עידן מלמד/ }))
+    expect(screen.getByText('פירוט נקודות')).toBeInTheDocument()
+    expect(screen.getByText('השוואת ניחושים')).toBeInTheDocument()
+  })
+
+  test('the single-view picker is hidden in compare mode', () => {
+    enterCompare()
+    expect(screen.queryByText('בחר שחקן')).not.toBeInTheDocument()
+  })
+})
+
 describe('By-date toggle', () => {
   test('toggle buttons are visible after selecting a user', () => {
     selectUser('טל ליכטר')

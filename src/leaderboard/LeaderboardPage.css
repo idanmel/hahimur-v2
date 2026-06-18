@@ -748,8 +748,8 @@
 /* ── Always-visible stacked sub-fields (desktop) ── */
 
 .lb-td--detail {
-  vertical-align: top;
-  padding: 9px 8px 7px;
+  vertical-align: middle;
+  padding: 8px;
 }
 
 .lb-td-total {
@@ -931,6 +931,14 @@
 /* Rank cell stacks the number with the inline movement indicator on mobile */
 .lb-table--mobile .lb-td--rank {
   line-height: 1.1;
+}
+
+/* Mobile detail cells carry only the round total (no stacked sub-fields),
+   so center the number vertically instead of pinning it to the top. */
+.lb-table--mobile .lb-td--detail {
+  vertical-align: middle;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .lb-rank-num {
@@ -1317,4 +1325,310 @@
 .lb-mobile .lb-zone-hint {
   padding: 0 1rem;
   margin-top: 8px;
+}
+
+/* ── Win-probability view (סיכויי זכייה) ──────────────────────── */
+
+.lb-prob {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.lb-prob--msg {
+  padding: 28px 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Loading */
+.lb-prob--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 1rem;
+}
+
+.lb-prob-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(11, 34, 68, 0.15);
+  border-top-color: var(--gold);
+  animation: lb-prob-spin 0.9s linear infinite;
+}
+
+@keyframes lb-prob-spin { to { transform: rotate(360deg); } }
+
+.lb-prob-loading-text {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.lb-prob-caption {
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+  margin: 2px 2px 12px;
+  line-height: 1.5;
+}
+
+.lb-prob-caption b { color: var(--navy); font-weight: 700; }
+
+/* point-in-time picker */
+.lb-prob-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 2px 12px;
+  flex-wrap: wrap;
+}
+
+.wp-picker-label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.wp-picker {
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  color: var(--navy);
+  background: rgba(11, 34, 68, 0.04);
+  border: 1px solid rgba(200, 184, 122, 0.6);
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 100%;
+}
+
+.wp-picker:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+/* inline loading (keeps the picker + caption visible while recomputing) */
+.lb-prob-loading-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 1rem;
+}
+
+/* Table */
+.lb-prob-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Heebo', sans-serif;
+}
+
+.wp-th {
+  font-family: 'Heebo', sans-serif;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 6px 9px;
+  white-space: nowrap;
+  border-bottom: 1.5px solid rgba(200, 184, 122, 0.5);
+}
+
+.wp-th--name { text-align: right; }
+
+.wp-row { border-bottom: 1px solid rgba(200, 184, 122, 0.28); }
+
+.wp-row--rank-1 { background: linear-gradient(to left, rgba(212, 160, 22, 0.08), transparent 60%); }
+
+.wp-row--me {
+  background: linear-gradient(to left, rgba(11, 34, 68, 0.06), transparent 65%);
+}
+
+.wp-td {
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.wp-td--rank {
+  width: 30px;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.wp-row--rank-1 .wp-td--rank,
+.wp-row--rank-2 .wp-td--rank,
+.wp-row--rank-3 .wp-td--rank { font-size: 17px; }
+
+.wp-td--name {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wp-name {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.wp-row--rank-1 .wp-name { font-weight: 900; }
+
+.wp-flag {
+  display: inline-block;
+  margin-inline-start: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--red);
+  background: rgba(192, 39, 45, 0.09);
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+
+/* win% bar — the glanceable hero column */
+.wp-td--win { width: 48%; min-width: 150px; }
+
+.wp-bar-wrap {
+  position: relative;
+  height: 22px;
+  background: rgba(11, 34, 68, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wp-bar {
+  position: absolute;
+  inset: 0 0 0 auto;
+  height: 100%;
+  background: linear-gradient(to left, var(--gold), var(--medal-gold));
+  border-radius: 4px;
+  min-width: 2px;
+}
+
+.wp-bar-pct {
+  position: absolute;
+  inset: 0 9px 0 auto;
+  display: flex;
+  align-items: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* expected place */
+.wp-td--exp { width: 64px; text-align: center; white-space: nowrap; }
+
+.wp-exp {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px;
+  color: var(--navy);
+}
+
+.wp-exp-arrow { font-size: 10px; margin-inline-start: 3px; vertical-align: middle; }
+.wp-exp-arrow--up   { color: var(--green); }
+.wp-exp-arrow--down { color: var(--red); }
+
+/* delta since last game */
+.wp-td--delta {
+  width: 66px;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.wp-delta { display: inline-block; }
+.wp-delta--up   { color: var(--green); }
+.wp-delta--down { color: var(--red); }
+.wp-delta--flat { color: var(--muted); opacity: 0.55; }
+
+.lb-prob-note {
+  margin: 16px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.lb-prob-note b { color: var(--navy); }
+
+/* tap-to-open detail (mobile-first; replaces hover tooltips) */
+.wp-row { cursor: pointer; }
+.wp-row:hover { background: linear-gradient(to left, rgba(11, 34, 68, 0.04), transparent 70%); }
+.wp-row--open { background: linear-gradient(to left, rgba(11, 34, 68, 0.07), transparent 70%); }
+
+.wp-chevron {
+  display: inline-block;
+  margin-inline-start: 6px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+.wp-row--open .wp-chevron { transform: rotate(180deg); }
+
+.wp-detail-row > .wp-detail-cell { padding: 0; }
+
+.wp-detail-card {
+  margin: 0 0 8px;
+  padding: 12px 14px;
+  background: rgba(11, 34, 68, 0.035);
+  border: 1px solid rgba(200, 184, 122, 0.4);
+  border-radius: 10px;
+}
+
+.wp-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.wp-points li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wp-point-label {
+  flex: 0 0 96px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.wp-point-val { color: var(--ink); }
+.wp-point-val b { color: var(--navy); font-weight: 700; }
+
+.wp-point-move--up { color: var(--green); font-weight: 700; }
+.wp-point-move--down { color: var(--red); font-weight: 700; }
+.wp-point-move--flat { color: var(--muted); }
+
+.wp-point-reason { color: var(--muted); }
+
+.wp-detail-how {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(200, 184, 122, 0.5);
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 639px) {
+  .lb-prob { padding: 0 0.5rem; }
+  .wp-name { font-size: 13px; }
+  .wp-td { padding: 7px 6px; }
+  .wp-td--win { min-width: 120px; }
+  .wp-point-label { flex-basis: 84px; }
 }
