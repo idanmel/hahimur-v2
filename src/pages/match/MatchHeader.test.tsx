@@ -75,3 +75,15 @@ test('shows "נגמר", not "חי", once the match is finished even within its t
   expect(screen.getByText('נגמר')).toBeInTheDocument()
   expect(screen.queryByTestId('live-score-badge')).not.toBeInTheDocument()
 })
+
+test('renders prev/next chevrons linking to the adjacent matches', () => {
+  render(<MatchHeader match={match} home={home} away={away} {...scoreProps} prevId="A2" nextId="B1" />)
+  expect(screen.getByLabelText('המשחק הקודם')).toHaveAttribute('href', '/matches/a2')
+  expect(screen.getByLabelText('המשחק הבא')).toHaveAttribute('href', '/matches/b1')
+})
+
+test('omits a chevron at the schedule edge', () => {
+  render(<MatchHeader match={match} home={home} away={away} {...scoreProps} nextId="B1" />)
+  expect(screen.queryByLabelText('המשחק הקודם')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('המשחק הבא')).toBeInTheDocument()
+})

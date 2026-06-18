@@ -18,15 +18,27 @@ type Props = {
   // Set only while the match is actually in progress (from the live feed), so a
   // finished match never keeps the "חי" badge. `clock` is the match minute.
   liveScore?: { clock: string | null } | null
+  // Ids of the chronologically adjacent matches, or null at the schedule edges.
+  prevId?: string | null
+  nextId?: string | null
 }
 
-export default function MatchHeader({ match, home, away, homeScore, awayScore, onHomeScore, onAwayScore, realScore = null, live = false, liveScore = null }: Props) {
+export default function MatchHeader({ match, home, away, homeScore, awayScore, onHomeScore, onAwayScore, realScore = null, live = false, liveScore = null, prevId = null, nextId = null }: Props) {
   const showLive = live && !realScore
   // A score that is showing while the match is still in progress is provisional,
   // so it gets a "חי" badge (with the minute) instead of "נגמר".
   const showLiveScore = !!realScore && !!liveScore
   return (
     <div className="match-header">
+      {/* Step through matches in kickoff order. Previous sits on the right
+          (›, backwards), next on the left (‹, forwards). Hidden at the edges. */}
+      {prevId && (
+        <a className="match-header__nav match-header__nav--prev" href={`/matches/${prevId.toLowerCase()}`} aria-label="המשחק הקודם">›</a>
+      )}
+      {nextId && (
+        <a className="match-header__nav match-header__nav--next" href={`/matches/${nextId.toLowerCase()}`} aria-label="המשחק הבא">‹</a>
+      )}
+
       <a className="match-header__group-badge" href={`/stats/groups/${match.id[0].toLowerCase()}`}>בית {GROUPS[match.id[0]]?.he} · משחק {match.id[1]} ›</a>
 
       <div className="match-header__teams">

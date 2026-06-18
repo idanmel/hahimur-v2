@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, test, expect } from 'vitest'
-import { findMatch, resolveMatch, resultGroup, compareScores } from './matchUtils'
+import { findMatch, resolveMatch, resultGroup, compareScores, adjacentMatches, ORDERED_MATCHES } from './matchUtils'
 
 describe('resultGroup', () => {
   test('home win returns 0', () => expect(resultGroup(2, 0)).toBe(0))
@@ -52,5 +52,36 @@ describe('resolveMatch', () => {
     expect(match).toBeNull()
     expect(home).toBeNull()
     expect(away).toBeNull()
+  })
+})
+
+describe('adjacentMatches', () => {
+  test('first match has no prev, next is the following match', () => {
+    const firstId = ORDERED_MATCHES[0].id
+    const { prev, next } = adjacentMatches(firstId)
+    expect(prev).toBeNull()
+    expect(next?.id).toBe(ORDERED_MATCHES[1].id)
+  })
+
+  test('last match has no next, prev is the preceding match', () => {
+    const last = ORDERED_MATCHES.length - 1
+    const { prev, next } = adjacentMatches(ORDERED_MATCHES[last].id)
+    expect(next).toBeNull()
+    expect(prev?.id).toBe(ORDERED_MATCHES[last - 1].id)
+  })
+
+  test('middle match links to both neighbours', () => {
+    const { prev, next } = adjacentMatches(ORDERED_MATCHES[2].id)
+    expect(prev?.id).toBe(ORDERED_MATCHES[1].id)
+    expect(next?.id).toBe(ORDERED_MATCHES[3].id)
+  })
+
+  test('unknown id returns nulls', () => {
+    expect(adjacentMatches('DOESNOTEXIST')).toEqual({ prev: null, next: null })
+  })
+
+  test('matches are ordered chronologically', () => {
+    const ids = ORDERED_MATCHES.map(m => m.id)
+    expect(ids.indexOf('A1')).toBeLessThan(ids.indexOf('A2'))
   })
 })

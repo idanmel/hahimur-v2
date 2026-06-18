@@ -1,11 +1,28 @@
 import { GROUPS, TEAMS } from '../../shared/groups'
 import { isUnpredicted } from '../../shared/types'
+import type { Match } from '../../shared/types'
+import { matchSortKey } from '../../shared/matchOrder'
 import type { User } from '../../users/index'
 
 export const ALL_MATCHES = Object.values(GROUPS).flatMap(g => g.matches)
 
+// All matches in chronological (kickoff) order, used to step between matches.
+export const ORDERED_MATCHES = [...ALL_MATCHES].sort((a, b) =>
+  matchSortKey(a.matchDate, a.kickoffIST) - matchSortKey(b.matchDate, b.kickoffIST)
+)
+
 export function findMatch(matchId: string) {
   return ALL_MATCHES.find(m => m.id === matchId) ?? null
+}
+
+// The previous and next match around the given one in kickoff order.
+export function adjacentMatches(matchId: string): { prev: Match | null; next: Match | null } {
+  const i = ORDERED_MATCHES.findIndex(m => m.id === matchId)
+  if (i === -1) return { prev: null, next: null }
+  return {
+    prev: i > 0 ? ORDERED_MATCHES[i - 1] : null,
+    next: i < ORDERED_MATCHES.length - 1 ? ORDERED_MATCHES[i + 1] : null,
+  }
 }
 
 export function resolveMatch(matchId: string | null) {

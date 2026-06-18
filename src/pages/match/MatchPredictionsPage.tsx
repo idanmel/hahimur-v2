@@ -6,6 +6,7 @@ import { isLive } from '../../shared/matchOrder'
 import { useLiveResults } from '../../shared/useLiveResults'
 import { useCurrentUser } from '../../shared/useCurrentUser'
 import { GROUP_HEBREW, GROUP_MATCHES } from '../../shared/groups'
+import { adjacentMatches } from './matchUtils'
 import { calculateStandings, liveGroupScores } from '../../shared/standings'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
 import MatchHeader from './MatchHeader'
@@ -65,6 +66,9 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
   // live one so they can compare their call to how it's actually unfolding.
   const myGroupTable = currentUser?.groupTables[groupLetter]
 
+  // Step to the chronologically adjacent matches.
+  const { prev, next } = adjacentMatches(match.id)
+
   return (
     <PageLayout title="ההימור 2026">
       <MatchHeader
@@ -72,6 +76,7 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
         homeScore={homeScore} awayScore={awayScore}
         onHomeScore={setHomeScore} onAwayScore={setAwayScore}
         realScore={realScore} live={live} liveScore={liveScore}
+        prevId={prev?.id ?? null} nextId={next?.id ?? null}
       />
 
       <div className="match-predictions">
@@ -128,6 +133,7 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
         {users.length === 0
           ? <p className="match-predictions__empty">אין תחזיות למשחק זה</p>
           : <ScoreFrequencyTable matchId={match.id} users={users} actualScore={actualScore} />}
+
       </div>
     </PageLayout>
   )

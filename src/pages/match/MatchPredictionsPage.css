@@ -1067,3 +1067,39 @@
   border-radius: 999px;
   box-shadow: 0 1px 6px rgba(212, 160, 22, 0.4);
 }
+
+/* ── Previous / next match chevrons ─────────────────────────── */
+/* Small gold chevrons riding the edges of the scoreboard band, vertically
+   centred on the teams row. RTL: previous on the right, next on the left. */
+.match-header__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 30px;
+  line-height: 1;
+  /* the chevron glyphs are bidi-mirrored; keep them in an LTR run so they
+     point the way they're written instead of flipping in the RTL band */
+  direction: ltr;
+  color: var(--gold);
+  text-decoration: none;
+  border: 1px solid rgba(212, 160, 22, 0.35);
+  border-radius: 50%;
+  background: rgba(11, 34, 68, 0.4);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.match-header__nav:hover {
+  border-color: var(--gold);
+  background: rgba(212, 160, 22, 0.12);
+  color: #ffe9b0;
+}
+
+.match-header__nav--prev { right: 1rem; }
+.match-header__nav--next { left: 1rem; }
