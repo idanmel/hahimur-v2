@@ -1,7 +1,14 @@
-import type { Match, MatchScores, Standing } from './types'
+import type { Match, MatchScores, Standing, TournamentResults } from './types'
 
 export function goalDifference(s: Standing): number {
   return s.goalsFor - s.goalsAgainst
+}
+
+// A group's live/real scores keyed by match id, shaped for calculateStandings:
+// each fixture maps to its score, unplayed ones to { home: null, away: null }.
+export function liveGroupScores(results: TournamentResults, groupLetter: string): Record<string, MatchScores> {
+  const groupMatches = results.groupMatches[groupLetter] ?? []
+  return Object.fromEntries(groupMatches.map(m => [m.id, m.scores ?? { home: null, away: null }]))
 }
 
 function emptyStanding(team: string): Standing {

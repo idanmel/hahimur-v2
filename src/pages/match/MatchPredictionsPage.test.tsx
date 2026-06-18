@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { vi } from 'vitest'
 import MatchPredictionsPage from './MatchPredictionsPage'
 
@@ -49,6 +49,18 @@ test('shows not found message for unknown matchId', () => {
 test('shows Hebrew message when there are no users', () => {
   renderPage('A1', [])
   expect(screen.getByText('אין תחזיות למשחק זה')).toBeInTheDocument()
+})
+
+test('shows the group standings table on the match page', () => {
+  renderPage('B1', [])
+  expect(screen.getByTestId('live-group-table')).toBeInTheDocument()
+})
+
+test('highlights the two playing teams in the group standings table', () => {
+  renderPage('B1', [])
+  const table = screen.getByTestId('live-group-table')
+  expect(within(table).getByLabelText('קנדה')).toHaveClass('row-highlight')
+  expect(within(table).getByLabelText('בוסניה והרצגובינה')).toHaveClass('row-highlight')
 })
 
 test('shows correct teams when matchId is B1', () => {

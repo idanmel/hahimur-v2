@@ -4,6 +4,9 @@ import type { Match, MatchScores, Score, TournamentResults } from '../../shared/
 import type { User } from '../../users/index'
 import { isLive } from '../../shared/matchOrder'
 import { useLiveResults } from '../../shared/useLiveResults'
+import { GROUP_HEBREW, GROUP_MATCHES } from '../../shared/groups'
+import { calculateStandings, liveGroupScores } from '../../shared/standings'
+import StandingsTable from '../../formView/groupStage/StandingsTable'
 import MatchHeader from './MatchHeader'
 import PredictionSummary from './PredictionSummary'
 import ScoreFrequencyTable from './ScoreFrequencyTable'
@@ -49,6 +52,11 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
         .map(([player, byMatch]) => ({ player, goals: byMatch[match.id] }))
     : []
 
+  // The group table as it stands right now, with this match's live score folded
+  // in via useLiveResults — the two teams playing are highlighted.
+  const groupLetter = match.id[0]
+  const { standings } = calculateStandings(GROUP_MATCHES[groupLetter] ?? [], liveGroupScores(results, groupLetter))
+
   return (
     <>
       <MatchHeader
@@ -83,6 +91,14 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
         {users.length === 0
           ? <p className="match-predictions__empty">אין תחזיות למשחק זה</p>
           : <ScoreFrequencyTable matchId={match.id} users={users} actualScore={actualScore} />}
+
+        <header className="section-heading" dir="rtl">
+          <span className="section-heading__eyebrow">בית {GROUP_HEBREW[groupLetter]}</span>
+          <h2 className="section-heading__title">טבלת הבית</h2>
+        </header>
+        <div data-testid="live-group-table">
+          <StandingsTable standings={standings} highlightTeams={[match.homeTeam, match.awayTeam]} />
+        </div>
       </div>
     </>
   )

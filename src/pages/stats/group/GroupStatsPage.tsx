@@ -1,6 +1,6 @@
 import { GROUP_HEBREW, GROUP_MATCHES } from '../../../shared/groups'
 import type { GroupLetter } from '../../../shared/groups'
-import { calculateStandings } from '../../../shared/standings'
+import { calculateStandings, liveGroupScores } from '../../../shared/standings'
 import { computeGroupVotes, computeGroupVotePickers, computeGroupR32Pickers } from '../../group/groupVotes'
 import { USERS } from '../../../users/index'
 import { useLiveResults } from '../../../shared/useLiveResults'
@@ -22,8 +22,7 @@ export default function GroupStatsPage({ groupLetter }: Props) {
   const results = useLiveResults()
   const hebrew = GROUP_HEBREW[groupLetter]
   const matches = GROUP_MATCHES[groupLetter] ?? []
-  const groupMatches = results.groupMatches[groupLetter] ?? []
-  const scores = Object.fromEntries(groupMatches.map(m => [m.id, m.scores ?? { home: null, away: null }]))
+  const scores = liveGroupScores(results, groupLetter)
   const { standings } = calculateStandings(matches, scores)
   const votes = computeGroupVotes(USERS, groupLetter)
   const pickers = computeGroupVotePickers(USERS, groupLetter)

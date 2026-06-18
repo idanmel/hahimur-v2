@@ -5,11 +5,13 @@ import { goalDifference } from '../../shared/standings'
 interface Props {
   standings: Standing[]
   caption?: string
+  // Team keys to emphasize (e.g. the two teams playing the match being viewed).
+  highlightTeams?: string[]
 }
 
 const QUALIFY_COUNT = 2
 
-export default function StandingsTable({ standings, caption }: Props) {
+export default function StandingsTable({ standings, caption, highlightTeams }: Props) {
   return (
     <div className="standings-wrapper">
       <table className="standings">
@@ -32,6 +34,7 @@ export default function StandingsTable({ standings, caption }: Props) {
             const gd = goalDifference(s)
             const qualifies = i < QUALIFY_COUNT
             const isCutoff = i === QUALIFY_COUNT - 1
+            const highlighted = highlightTeams?.includes(s.team)
             return (
               <tr
                 key={s.team}
@@ -39,6 +42,7 @@ export default function StandingsTable({ standings, caption }: Props) {
                 className={[
                   qualifies ? 'row-qualifies' : 'row-out',
                   isCutoff ? 'row-cutoff' : '',
+                  highlighted ? 'row-highlight' : '',
                 ].filter(Boolean).join(' ')}
               >
                 <td className="col-rank">
