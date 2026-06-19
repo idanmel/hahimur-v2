@@ -37,6 +37,11 @@ function devLiveScoresApi(): PluginOption {
 export default defineConfig({
   plugins: [react(), devLiveScoresApi()],
   build: {
+    // Downlevel to a broadly-supported baseline so older mobile browsers can
+    // parse the bundle. Without this, esbuild keeps ES2021+ syntax (??=, ||=,
+    // &&=) verbatim, and any browser that can't parse it fails to start the
+    // whole app — a blank screen with no error. Covers iOS 14 / Chrome 87 (2020).
+    target: ['es2019', 'chrome87', 'edge88', 'firefox78', 'safari14', 'ios14'],
     // The bundle is mostly prediction data that gzips ~7:1 (~124 kB on the wire)
     chunkSizeWarningLimit: 1000,
   },
