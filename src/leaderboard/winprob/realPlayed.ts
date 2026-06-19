@@ -24,12 +24,12 @@ const teamHe = (team: string) => TEAMS[team]?.he ?? team
 // match number as a string for knockout. Manual "סימלוץ" edits never reach here.
 export function realPlayedState(results: TournamentResults): PredictionsState {
   const played: PredictionsState = {}
-  for (const matches of Object.values(results.groupMatches)) {
+  for (const matches of Object.values(results.groupMatches ?? {})) {
     for (const m of matches) {
       if (m.scores && !isUnpredicted(m.scores)) played[m.id] = m.scores
     }
   }
-  for (const matches of Object.values(results.knockoutStages)) {
+  for (const matches of Object.values(results.knockoutStages ?? {})) {
     for (const m of matches) {
       if (m.scores && !isUnpredicted(m.scores)) played[String(m.matchNum)] = m.scores
     }

@@ -7,8 +7,7 @@ import type { GroupMatch, MatchScores, TournamentResults } from '../../shared/ty
 const user = USERS[0]
 
 // Group A with the first `playedCount` matches scored, the rest open. Only the
-// pieces the engine reads (groupMatches scores) need to be present; the
-// simulation samples every other group from the canonical fixtures.
+// pieces the engine reads (groupMatches scores) need to be present.
 function resultsForGroupA(playedCount: number): TournamentResults {
   const score: MatchScores = { home: 1, away: 0 }
   const aMatches: GroupMatch[] = GROUP_MATCHES['A'].map((m, i) => ({
@@ -23,13 +22,9 @@ function resultsForGroupA(playedCount: number): TournamentResults {
   }
 }
 
-// Small but seeded so the suite is fast and deterministic; the invariants under
-// test hold for any sample size.
-const opts = { simBudget: 600, seed: 7 }
-
 describe('recommendMatchOutcome', () => {
   test('returns three scored outcomes for an open match', () => {
-    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4), opts)!
+    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
     expect(rec.decided).toBe(false)
     expect(rec.scored).toBe(true)
     expect(rec.outcomes).toHaveLength(3)
@@ -37,31 +32,38 @@ describe('recommendMatchOutcome', () => {
     expect(rec.naive).toBeDefined()
   })
 
-  test('outcomes are sorted best (most expected points) first', () => {
-    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4), opts)!
+  test('outcomes are sorted best (most points) first', () => {
+    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
     const pts = rec.outcomes.map(o => o.expPoints)
     expect([...pts].sort((a, b) => b - a)).toEqual(pts)
   })
 
   test('the recommended outcome never scores worse than the obvious one', () => {
-    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4), opts)!
+    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
     expect(rec.best!.expPoints).toBeGreaterThanOrEqual(rec.naive!.expPoints - 1e-9)
   })
 
   test('counterIntuitive iff the recommendation differs from the obvious pick', () => {
-    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4), opts)!
+    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
     expect(rec.counterIntuitive).toBe(rec.best!.want !== rec.naive!.want)
   })
 
-  test('is deterministic for a fixed seed', () => {
-    const a = recommendMatchOutcome(user, 'A5', resultsForGroupA(4), opts)!
-    const b = recommendMatchOutcome(user, 'A5', resultsForGroupA(4), opts)!
+  test('a counter-intuitive nudge always earns strictly more points', () => {
+    const rec = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
+    if (rec.counterIntuitive) {
+      expect(rec.best!.expPoints).toBeGreaterThan(rec.naive!.expPoints)
+    }
+  })
+
+  test('is deterministic — same input, same output', () => {
+    const a = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
+    const b = recommendMatchOutcome(user, 'A5', resultsForGroupA(4))!
     expect(a.best!.want).toBe(b.best!.want)
     expect(a.best!.expPoints).toBe(b.best!.expPoints)
   })
 
   test('a finished match is marked decided with nothing to advise', () => {
-    const rec = recommendMatchOutcome(user, 'A1', resultsForGroupA(4), opts)!
+    const rec = recommendMatchOutcome(user, 'A1', resultsForGroupA(4))!
     expect(rec.decided).toBe(true)
     expect(rec.scored).toBe(false)
   })
@@ -73,12 +75,12 @@ describe('recommendMatchOutcome', () => {
     results.groupMatches['A'] = results.groupMatches['A'].map(m =>
       m.id === 'A5' ? { ...m, scores: { home: 1, away: 0 } } : m,
     )
-    const rec = recommendMatchOutcome(user, 'A5', results, opts)!
+    const rec = recommendMatchOutcome(user, 'A5', results)!
     expect(rec.decided).toBe(false)
     expect(rec.scored).toBe(true)
   })
 
   test('returns null for an unknown match id', () => {
-    expect(recommendMatchOutcome(user, 'Z9', resultsForGroupA(4), opts)).toBeNull()
+    expect(recommendMatchOutcome(user, 'Z9', resultsForGroupA(4))).toBeNull()
   })
 })

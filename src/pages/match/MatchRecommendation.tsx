@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { TournamentResults } from '../../shared/types'
 import type { User } from '../../users'
-import type { MatchRecommendation as MatchReco, OutcomeEval, Want } from './matchReco'
-import type { MatchRecoRequest, MatchRecoResponse } from './matchRecoWorker'
+import { recommendMatchOutcome, type MatchRecommendation as MatchReco, type OutcomeEval, type Want } from './matchReco'
 
 interface Props {
   matchId: string
@@ -12,10 +11,9 @@ interface Props {
 }
 
 // The three outcomes ordered for display: the recommended one first, then the
-// rest by your expected points. Anchoring on `rec.best` (not a fresh sort) keeps
-// the table consistent with the headline — when a sub-threshold gain means we
-// kept you on your own predicted result, that result stays "הכי טוב לך" here too,
-// instead of the table silently crowning a different, barely-higher outcome.
+// rest by your points. Anchoring on `rec.best` (not a fresh sort) keeps the table
+// consistent with the headline — when staying on your own predicted result is the
+// best play, it stays "טוב לך" here too.
 function rankedOutcomes(rec: MatchReco): { o: OutcomeEval; label: string }[] {
   const bestWant = rec.best!.want
   const best = rec.outcomes.find(o => o.want === bestWant)!
@@ -23,19 +21,17 @@ function rankedOutcomes(rec: MatchReco): { o: OutcomeEval; label: string }[] {
     .filter(o => o.want !== bestWant)
     .sort((a, b) => b.expPoints - a.expPoints)
   return [
-    { o: best, label: 'הכי טוב לך' },
-    ...others.map((o, i) => ({ o, label: i === others.length - 1 ? 'הכי פחות טוב' : 'באמצע' })),
+    { o: best, label: 'טוב לך' },
+    ...others.map((o, i) => ({ o, label: i === others.length - 1 ? 'פחות טוב' : 'באמצע' })),
   ]
 }
 
-// The single label for one outcome, using the same best-anchored ordering.
 function labelFor(rec: MatchReco, want: Want): string {
   return rankedOutcomes(rec).find(r => r.o.want === want)?.label ?? 'באמצע'
 }
 
-// The "why" behind a clicked outcome: the concrete reasons the engine derived
-// from your own stake (your scoreline, your group ordering, the deep teams you
-// carry), each tinted plus/minus, ordered by what matters most.
+// The "why" behind a clicked outcome: the concrete reasons derived from your own
+// bet (your scoreline, your group order, your advancers), each tinted plus/minus.
 function OutcomeWhy({ rec, o }: { rec: MatchReco; o: OutcomeEval }) {
   const isBest = o.want === rec.best!.want
   return (
@@ -50,48 +46,25 @@ function OutcomeWhy({ rec, o }: { rec: MatchReco; o: OutcomeEval }) {
         </ul>
       )}
       {!isBest && o.matchesBracket && (
-        <p className="match-reco__modal-foot">שים לב: זו דווקא התוצאה שהברקט שלך ניחש — אבל בראייה הכוללת היא לא הכי טובה לך.</p>
+        <p className="match-reco__modal-foot">שים לב: זו דווקא התוצאה שניחשת — אבל בבית הזה יש תוצאה שמשתלמת לך יותר.</p>
       )}
     </>
   )
 }
 
-// "What's best for you?" on the match page — the result that gives the viewer
-// the best *finish across the field*, found by Monte-Carlo over the rest of the
-// tournament. Heavy, so it runs in a Web Worker and arrives asynchronously.
+// "What's best for you?" on the match page — the result that earns you the most
+// points from this group (your scoreline + your exact order + your advancers).
+// Deterministic and group-only, so it's computed inline, no other players.
 export default function MatchRecommendation({ matchId, currentUser, results, decided }: Props) {
-  const [rec, setRec] = useState<MatchReco | null>(null)
-  const [loading, setLoading] = useState(false)
-  // Which outcome's "why" modal is open (by its wanted direction), if any.
   const [whyWant, setWhyWant] = useState<Want | null>(null)
 
-  useEffect(() => {
-    if (!currentUser || decided) {
-      setRec(null)
-      setLoading(false)
-      setWhyWant(null)
-      return
-    }
-    // A fresh compute (e.g. a live score update) invalidates any open explanation.
-    setWhyWant(null)
-    // No Web Worker in test/SSR environments — skip the heavy compute rather
-    // than crash; the card just stays in its loading state.
-    if (typeof Worker === 'undefined') return
-    // Own a fresh worker per run and tear it down in this same cleanup. Crucial
-    // under React StrictMode (dev), which mounts → unmounts → remounts: a worker
-    // kept in a ref and terminated by a separate effect would be posted to *after*
-    // it was killed, and the response would never arrive (endless spinner).
-    const worker = new Worker(new URL('./matchRecoWorker.ts', import.meta.url), { type: 'module' })
-    setLoading(true)
-    const onMessage = (e: MessageEvent<MatchRecoResponse>) => {
-      setRec(e.data.rec)
-      setLoading(false)
-    }
-    worker.addEventListener('message', onMessage)
-    worker.addEventListener('error', () => setLoading(false))
-    worker.postMessage({ reqId: 1, userLabel: currentUser.label, matchId, results } satisfies MatchRecoRequest)
-    return () => worker.terminate()
-  }, [currentUser, matchId, results, decided])
+  const rec = useMemo<MatchReco | null>(
+    () => (currentUser && !decided ? recommendMatchOutcome(currentUser, matchId, results) : null),
+    [currentUser, matchId, results, decided],
+  )
+
+  // A fresh compute (e.g. a live score update) invalidates any open explanation.
+  useEffect(() => { setWhyWant(null) }, [matchId, currentUser, results])
 
   useEffect(() => {
     if (!whyWant) return
@@ -108,28 +81,26 @@ export default function MatchRecommendation({ matchId, currentUser, results, dec
     <>
       <header className="section-heading" dir="rtl">
         <span className="section-heading__eyebrow">ההמלצה שלך</span>
-        <h2 className="section-heading__title">מה הכי טוב לך?</h2>
+        <h2 className="section-heading__title">מה טוב לך?</h2>
       </header>
 
       <section className="match-reco" dir="rtl">
         {!currentUser ? (
-          <p className="match-reco__empty">בחרו את עצמכם (בורר המשתמש) כדי לראות איזו תוצאה הכי עוזרת לכם בדירוג.</p>
-        ) : loading || !rec ? (
-          <p className="match-reco__loading">מחשב את התוצאה הכי טובה עבורך…</p>
-        ) : !rec.scored || !rec.best ? (
+          <p className="match-reco__empty">בחרו את עצמכם (בורר המשתמש) כדי לראות איזו תוצאה טובה לכם בבית.</p>
+        ) : !rec || !rec.scored || !rec.best ? (
           <p className="match-reco__empty">אין מספיק מידע להמלצה על המשחק הזה.</p>
         ) : (
           <>
             {rec.noPreference ? (
               <p className="match-reco__lead">
-                כל תוצאה כאן כמעט שקולה עבורך — אין תוצאה שמשנה לך משמעותית בדירוג.
+                כל תוצאה כאן שקולה עבורך — אף תוצאה לא משנה לך נקודות בבית.
               </p>
             ) : (
               <>
                 <p className="match-reco__lead">
                   {rec.counterIntuitive
-                    ? 'לא מה שהיית מצפה — אבל ככה הכי טוב לך:'
-                    : 'התוצאה שהכי עוזרת לך:'}
+                    ? 'לא מה שהיית מצפה — אבל ככה טוב לך:'
+                    : 'התוצאה שעוזרת לך:'}
                 </p>
                 <p className="match-reco__pick">{rec.best.text}</p>
               </>
@@ -140,7 +111,7 @@ export default function MatchRecommendation({ matchId, currentUser, results, dec
                 <thead>
                   <tr>
                     <th>תוצאה</th>
-                    <th>למה זה טוב לך</th>
+                    <th>למה?</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,8 +135,9 @@ export default function MatchRecommendation({ matchId, currentUser, results, dec
             )}
 
             <p className="match-reco__note">
-              ההשוואה מבוססת על אלפי הגרלות של המשך הטורניר — איזו תוצאה שווה לך הכי הרבה נקודות
-              מההימור שלך. לחצו על "למה זה טוב לך" כדי לראות למה.
+              מבט על הבית שלך בלבד — איזו תוצאה שווה לך הרבה נקודות מההימור שלך: הניחוש על המשחק,
+              הסדר המדויק שניחשת, ומי שעולה מהבית (כולל מהמקום השלישי). החישוב מניח ששאר משחקי הבית
+              ייגמרו כפי שניחשת. לחצו על "למה?" כדי לראות את ההסבר.
             </p>
           </>
         )}
