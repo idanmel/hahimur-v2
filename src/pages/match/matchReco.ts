@@ -13,6 +13,7 @@ import {
   listTeams,
   topTwoExact,
   MIN_VIABLE_THIRD_POINTS,
+  SURE_THIRD_POINTS,
   type Want,
   type GroupScore,
   type SelfScoreContext,
@@ -40,8 +41,8 @@ export interface OutcomeEval {
   // The total points you'd earn from this group under this result (scoreline +
   // exact order + advancers).
   expPoints: number
-  // The solid table points (place + advancement) — what the table-first ranking
-  // maximizes first. Match points are only a tiebreak bonus on top.
+  // The solid table points (place + advancement). Total points decide the pick;
+  // these break ties, so we prefer the robust table when totals are equal.
   tablePoints: number
   // How many points worse this outcome is than the best one (0 for the best).
   gapFromBest: number
@@ -184,6 +185,10 @@ function buildReasons(
     const teamHe = he(cur.thirdPick)
     if (cur.thirdStatus === 'in') {
       reasons.push({ good: true, textHe: `${teamHe} תסיים שלישית עם ${cur.thirdPoints} נק' — וזה כבר מבטיח עלייה כאחת מ‑8 השלישיות הטובות (לפי הבתים שכבר נסגרו).` })
+    } else if (cur.thirdStatus === 'safe') {
+      reasons.push({ good: true, textHe: (cur.thirdPoints ?? 0) >= SURE_THIRD_POINTS
+        ? `${teamHe} תסיים שלישית עם ${cur.thirdPoints} נק' — כמות כזו תמיד מספיקה לעלייה כאחת מ‑8 השלישיות הטובות.`
+        : `${teamHe} תסיים שלישית עם ${cur.thirdPoints} נק' — כמות כזו כמעט תמיד מספיקה לעלייה כאחת מ‑8 השלישיות הטובות.` })
     } else if (cur.thirdStatus === 'out') {
       reasons.push({
         good: false,
@@ -192,7 +197,7 @@ function buildReasons(
           : `${teamHe} תסיים שלישית עם ${cur.thirdPoints} נק' — לא יספיק, כבר יש 8 שלישיות עם יותר נקודות.`,
       })
     } else {
-      reasons.push({ good: false, textHe: `${teamHe} תסיים שלישית עם ${cur.thirdPoints} נק' — העלייה כשלישית עדיין לא מובטחת ותלויה בבתים שטרם נסגרו.` })
+      reasons.push({ good: false, textHe: `${teamHe} תסיים שלישית עם ${cur.thirdPoints} נק' — על הגבול: 3 נק' לפעמים מספיקות לעלייה כשלישית, תלוי בבתים שטרם נסגרו.` })
     }
   }
 
@@ -263,19 +268,21 @@ export function recommendMatchOutcome(
   const naiveW: Want = dir(user.predictions[matchId]) ?? 'home'
   const tableOf = (w: Want) => scores.get(w)!.placePoints + scores.get(w)!.advPoints
   const matchOf = (w: Want) => scores.get(w)!.matchPoints
+  const totalOf = (w: Want) => scores.get(w)!.total
   const seedOf = (w: Want) => topTwoExact(scores.get(w)!.order, ctx.predOrder)
 
-  // Best for you is TABLE-FIRST: the result that banks the most place +
-  // advancement points. Exact scorelines are rare, so match points never beat a
-  // better table — they only break ties as a bonus. Order: table points, then
-  // knockout seeding (your predicted top-two in slot), then match points, then
-  // your own predicted direction, then the safer at-risk best-third.
+  // Best for you maximizes the TOTAL points you'd bank, so the pick is never worth
+  // fewer points than your own bet. Exact scorelines are rare while the table is
+  // solid, so ties break toward the placement/advancement points. Order: total
+  // points, then table points (prefer the solid ones when totals tie), then
+  // knockout seeding (your predicted top-two in slot), then your own predicted
+  // direction, then the safer at-risk best-third.
   const bestW = [...wants].sort((a, b) => {
+    const dTot = totalOf(b) - totalOf(a)
+    if (Math.abs(dTot) > CAT) return dTot
     const dt = tableOf(b) - tableOf(a)
     if (Math.abs(dt) > CAT) return dt
     if (seedOf(b) !== seedOf(a)) return seedOf(b) - seedOf(a)
-    const dm = matchOf(b) - matchOf(a)
-    if (Math.abs(dm) > CAT) return dm
     if (a === naiveW) return -1
     if (b === naiveW) return 1
     return (scores.get(b)!.thirdPoints ?? 0) - (scores.get(a)!.thirdPoints ?? 0)
@@ -300,11 +307,11 @@ export function recommendMatchOutcome(
     (s.thirdStatus ?? '') === (scoreList[0].thirdStatus ?? ''))
 
   // Reference for the best outcome: the worst alternative (what you secure),
-  // ranked the same table-first way (fewest table points, then match points).
+  // ranked the same way (fewest total points, then fewest table points).
   const worstAltW = [...wants].filter(w => w !== bestW).sort((a, b) => {
-    const dt = tableOf(a) - tableOf(b)
-    if (Math.abs(dt) > CAT) return dt
-    return matchOf(a) - matchOf(b)
+    const dTot = totalOf(a) - totalOf(b)
+    if (Math.abs(dTot) > CAT) return dTot
+    return tableOf(a) - tableOf(b)
   })[0]
   const bestScore = scores.get(bestW)!
 

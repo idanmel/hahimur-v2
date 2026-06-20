@@ -61,7 +61,7 @@ export default function BestResultCard({ result }: { result: BestResult }) {
                   return (
                     <li key={t}>
                       {he(t)} <span className="best-result__points-each">· 4 נק׳</span>
-                      {conditional && <span className="best-result__points-cond"> (מותנה — עלייה כשלישית עדיין לא מובטחת)</span>}
+                      {conditional && <span className="best-result__points-cond"> (מותנה — 3 נק' לא תמיד מספיקות לעלייה כשלישית)</span>}
                     </li>
                   )
                 })}
@@ -85,7 +85,7 @@ export default function BestResultCard({ result }: { result: BestResult }) {
             <li key={m.id} className="best-result__match">
               <span className="best-result__team">{he(m.homeTeam)}</span>
               <span className="best-result__scorewrap">
-                <span className="best-result__score" dir="ltr">{m.scores.away}:{m.scores.home}</span>
+                <span className={`best-result__score${same ? '' : ' best-result__score--differ'}`} dir="ltr">{m.scores.away}:{m.scores.home}</span>
                 <span className="best-result__pred">
                   {same
                     ? 'כמו שניחשת'

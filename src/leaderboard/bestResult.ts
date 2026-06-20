@@ -4,12 +4,14 @@ import { calculateStandings } from '../shared/standings'
 import {
   buildContextFromOrder,
   scoreGroupOutcome,
-  enumerateScores,
   boundedMaxGoals,
   topTwoExact,
+  displacedOwnThirds,
   he,
   type ThirdStatus,
+  type ProtectedThirds,
 } from '../pages/stats/group/selfScore'
+import { OLEH_POINTS } from './points'
 import {
   buildGroupReasons,
   buildGroupWhy,
@@ -78,6 +80,9 @@ export interface BestResult {
   /** Present only when the recommended result reshuffles your predicted top two:
    *  the bracket-faithful order you predicted and what it costs in group points. */
   alternativeOrder?: AlternativeOrder
+  /** Your own predicted best-thirds (other groups) that even the recommended
+   *  result still knocks out of the 8 that qualify — a cross-group cost to flag. */
+  displacedThirds?: string[]
 }
 
 export interface BestResultParams {
@@ -90,6 +95,9 @@ export interface BestResultParams {
   thirdPick?: string
   /** Settled real scores across ALL groups — drives the cross-group third-place outlook. */
   settledAll: PredictionsState
+  /** Your own best-third bets in OTHER groups, so we don't recommend a strong third
+   *  here that would knock one of them out of the 8 that qualify. Omit to disable. */
+  protectedThirds?: ProtectedThirds
 }
 
 const isPlayed = (s: MatchScores | undefined): s is MatchScores =>
@@ -111,20 +119,21 @@ function lexGreater(a: number[], b: number[]): boolean {
  *     and a best-third pick, judged 'in'/'open'/'out' against the real, already-
  *     settled third-place lines of the other groups.
  *
- * Ranking is TABLE-FIRST: the result that banks the most table points wins —
- * place points (your exact 1st…4th) plus advancement (your qualifiers). Exact
- * scorelines (צליפה) are rare, so match points never justify recommending a
- * worse table; they only break ties as a bonus. The lexicographic order is:
- *   1) table points (place + advancement) — the solid, likeliest points,
- *   2) topTwoExact — seed the knockout bracket the way you predicted,
- *   3) match points — grab the easy פגיעה/צליפה when it costs no table,
+ * Ranking maximizes the TOTAL points you'd actually bank, so the recommendation
+ * is never worth fewer points than your own bet. Because exact scorelines (צליפה)
+ * are rare while the table is solid, ties are broken toward the placement/
+ * advancement points — we only contort the result for a scoreline when it truly
+ * earns you more. The lexicographic order is:
+ *   1) total points (match + place + advancement, net of any cross-group cost),
+ *   2) table points (place + advancement) — prefer the solid points when totals tie,
+ *   3) topTwoExact — seed the knockout bracket the way you predicted,
  *   4) your own predicted scoreline, then
  *   5) fewer goals (a calmer, more plausible scoreline).
- * So we never trade a placement/advancement point for a long-shot scoreline, and
- * among table-equal results we prefer the bracket-faithful, prediction-faithful one.
+ * So among results that bank the same total we prefer the bracket-faithful,
+ * prediction-faithful, table-heavy one — but we never leave points on the table.
  */
 export function bestRemainingResult(params: BestResultParams): BestResult | null {
-  const { groupLetter, predictions, predictedOrder, thirdPick, settledAll } = params
+  const { groupLetter, predictions, predictedOrder, thirdPick, settledAll, protectedThirds } = params
   const matches: Match[] = GROUPS[groupLetter]?.matches ?? []
   if (matches.length === 0) return null
 
@@ -149,8 +158,44 @@ export function bestRemainingResult(params: BestResultParams): BestResult | null
   // Table value — the solid points we optimize for first: your exact placements
   // plus your advancers. Match points are a bonus that only breaks ties.
   const tableValue = (s: { placePoints: number; advPoints: number }) => s.placePoints + s.advPoints
+  // Cross-group own-goal cost: rooting for a strong third here can push one of YOUR
+  // OWN predicted best-thirds elsewhere out of the 8 that qualify. We treat those
+  // lost advancement points as a deduction from this group's table value, so the
+  // engine won't trade them away for a local placement or scoreline bonus.
+  const displacedBy = (s: { actualThird?: { team: string; line: { points: number; gd: number; gf: number } } }) =>
+    protectedThirds && s.actualThird ? displacedOwnThirds(s.actualThird, protectedThirds) : []
+  const netTable = (s: Parameters<typeof tableValue>[0] & { actualThird?: { team: string; line: { points: number; gd: number; gf: number } } }) =>
+    tableValue(s) - displacedBy(s).length * OLEH_POINTS.group
+  // Total points you'd bank under a candidate, net of the same cross-group cost —
+  // the quantity we maximize first so the pick is never worse than your own bet.
+  const netTotal = (s: Parameters<typeof netTable>[0] & { matchPoints: number }) =>
+    s.matchPoints + netTable(s)
   const topTwoMatches = (order: string[]) =>
     predictedOrder.length >= 2 && order[0] === predictedOrder[0] && order[1] === predictedOrder[1]
+
+  // Candidate scorelines per remaining match: the bounded goal grid, PLUS your
+  // own predicted scoreline whenever it lies outside that grid. Big groups cap
+  // the grid at 1–2 goals/side to stay fast, so without this a high-scoring
+  // צליפה like 3–1 would be unreachable and we'd wrongly suggest a lower-scoring
+  // result that only earns פגיעה — even when your exact score costs nothing on
+  // the table. Including your prediction keeps the exact-score option available
+  // whenever it's genuinely best.
+  const candidatesFor = (id: string): MatchScores[] => {
+    const list: MatchScores[] = []
+    for (let h = 0; h <= maxGoals; h++) for (let a = 0; a <= maxGoals; a++) list.push({ home: h, away: a })
+    const p = predictions[id]
+    if (p && p.home != null && p.away != null && (p.home > maxGoals || p.away > maxGoals)) {
+      list.push({ home: p.home, away: p.away })
+    }
+    return list
+  }
+  const allCombos = (ids: string[]): PredictionsState[] => {
+    if (ids.length === 0) return [{}]
+    const rest = allCombos(ids.slice(1))
+    const out: PredictionsState[] = []
+    for (const s of candidatesFor(ids[0])) for (const r of rest) out.push({ ...r, [ids[0]]: s })
+    return out
+  }
 
   let bestCombo: PredictionsState | null = null
   let bestScore = scoreGroupOutcome(predictions, ctx, { ...played })
@@ -161,13 +206,13 @@ export function bestRemainingResult(params: BestResultParams): BestResult | null
   let altScore: typeof bestScore | null = null
   let altKey: number[] = []
 
-  for (const combo of enumerateScores(remIds, maxGoals)) {
+  for (const combo of allCombos(remIds)) {
     const state = { ...played, ...combo }
     const score = scoreGroupOutcome(predictions, ctx, state)
     const key = [
-      tableValue(score),
+      netTotal(score),
+      netTable(score),
       topTwoExact(score.order, predictedOrder),
-      score.matchPoints,
       isPrediction(combo) ? 1 : 0,
       -goalSum(combo),
     ]
@@ -177,7 +222,7 @@ export function bestRemainingResult(params: BestResultParams): BestResult | null
       bestScore = score
     }
     if (topTwoMatches(score.order)) {
-      const aKey = [tableValue(score), score.matchPoints, isPrediction(combo) ? 1 : 0, -goalSum(combo)]
+      const aKey = [netTotal(score), netTable(score), isPrediction(combo) ? 1 : 0, -goalSum(combo)]
       if (altScore === null || lexGreater(aKey, altKey)) {
         altKey = aKey
         altScore = score
@@ -211,11 +256,33 @@ export function bestRemainingResult(params: BestResultParams): BestResult | null
     ? buildGroupWhy(bestScore, predictedOrder, remaining, predictions)
     : buildGroupReasons(bestScore, naiveScore, predictedOrder)
 
+  // Cross-group guard. Two honest notes:
+  //  • if even the recommended result still pushes one of your own best-third bets
+  //    out of the top-8, say so;
+  //  • if your own predicted scoreline WOULD have, but the recommendation steps
+  //    around it, explain that we're trading this match's prediction points to
+  //    protect an advancement point worth more.
+  const displacedThirds = displacedBy(bestScore)
+  const naiveDisplaced = protectedThirds && naiveScore.actualThird
+    ? displacedOwnThirds(naiveScore.actualThird, protectedThirds)
+    : []
+  if (displacedThirds.length > 0) {
+    reasons.push({
+      good: false,
+      textHe: `שים לב: ${he(standings[2]?.team ?? '')} במקום השלישי כאן עדיין דוחפת את ${displacedThirds.map(he).join(' ו')} שניחשת שתעלה — מבין השלישיות, מחוץ ל‑8 העולות.`,
+    })
+  } else if (naiveDisplaced.length > 0 && naiveScore.actualThird) {
+    reasons.push({
+      good: true,
+      textHe: `עדיף ש${he(naiveScore.actualThird.team)} לא תסיים חזק במקום השלישי כאן — אחרת היא דוחפת את ${naiveDisplaced.map(he).join(' ו')} שניחשת שתעלה כשלישית אל מחוץ ל‑8, ושמירה על ${naiveDisplaced.length * OLEH_POINTS.group} נק' העלייה הזו שווה יותר מנקודות הניחוש כאן.`,
+    })
+  }
+
   // Offer the bracket-faithful order only when the recommended result actually
   // reshuffles your predicted top two and a faithful alternative exists at a cost.
   let alternativeOrder: AlternativeOrder | undefined
   if (!topTwoMatches(order) && altScore && predictedOrder.length >= 2) {
-    const tableCost = tableValue(bestScore) - tableValue(altScore)
+    const tableCost = netTotal(bestScore) - netTotal(altScore)
     if (tableCost > 0) {
       alternativeOrder = {
         orderHe: [he(predictedOrder[0]), he(predictedOrder[1])],
@@ -252,5 +319,6 @@ export function bestRemainingResult(params: BestResultParams): BestResult | null
     thirdTeamPoints: standings[2]?.points ?? 0,
     reasons,
     alternativeOrder,
+    displacedThirds: displacedThirds.length > 0 ? displacedThirds : undefined,
   }
 }

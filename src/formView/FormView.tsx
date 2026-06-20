@@ -10,6 +10,7 @@ import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../shared/matchesByD
 import { singleMatchOutcome, singleMatchPoints, type MatchOutcome } from '../leaderboard/points'
 import { tournamentResults } from '../tournament-results'
 import { bestRemainingResult } from '../leaderboard/bestResult'
+import { protectedThirdsForGroup } from '../pages/stats/group/selfScore'
 import type { User } from '../users'
 import MatchRow from './groupStage/MatchRow'
 import StandingsTable from './groupStage/StandingsTable'
@@ -89,7 +90,8 @@ export default function FormView({
     const order = activeStandings.map(s => s.team)
     const quals = user?.thirdPlaceQualification.resolved ? user.thirdPlaceQualification.qualifiers : []
     const thirdPick = quals.find(t => t.team === order[2])?.team
-    return bestRemainingResult({ groupLetter: activeGroup, predictions, predictedOrder: order, thirdPick, settledAll: actualScores })
+    const protectedThirds = user ? protectedThirdsForGroup(user.thirdPlaceQualification, activeGroup) : undefined
+    return bestRemainingResult({ groupLetter: activeGroup, predictions, predictedOrder: order, thirdPick, settledAll: actualScores, protectedThirds })
   }, [activeGroup, predictions, activeStandings, actualScores, user])
 
   const nextMatchRef = useRef<HTMLDivElement>(null)

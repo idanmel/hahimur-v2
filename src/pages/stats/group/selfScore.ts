@@ -4,7 +4,7 @@
 // points you'd earn from this group: your scoreline (צליפה/פגיעה), your exact
 // standings order (goal-difference aware) and your advancers (top-2 and, when it
 // applies, a best-third pick). Same input ⇒ same output, every time.
-import type { MatchScores, PredictionsState, Standing } from '../../../shared/types'
+import type { MatchScores, PredictionsState, Standing, ThirdPlaceQualification } from '../../../shared/types'
 import type { User } from '../../../users'
 import { GROUP_MATCHES, ALL_GROUP_LETTERS, TEAMS } from '../../../shared/groups'
 import { calculateStandings, goalDifference } from '../../../shared/standings'
@@ -25,6 +25,19 @@ const TOTAL_GROUPS = ALL_GROUP_LETTERS.length
 // a third below this floor. A clinched ('in') third is never downgraded — that's
 // guaranteed by the real, settled numbers, not a projection.
 export const MIN_VIABLE_THIRD_POINTS = 3
+
+// Upper floor for confidence: a third on this many points realistically always
+// advances. With only 4 of 12 thirds eliminated in 2026, being knocked out on 4+
+// points would need five other groups to each produce a stronger third — which
+// has never happened. So we still don't claim a mathematical clinch ('in'), but
+// we stop hedging ("not guaranteed / depends on other groups") and report it as
+// the near-certain advance it is ('safe').
+export const SAFE_THIRD_POINTS = 4
+
+// Within 'safe', this is where confidence goes from "almost always enough" (4–5
+// points) to "always enough" (6+): a 3rd on 6 points has never failed to make the
+// best-thirds cut. Only the phrasing changes — both tiers count as advancing.
+export const SURE_THIRD_POINTS = 6
 
 export function dir(s?: MatchScores): Want | null {
   if (!s || s.home == null || s.away == null) return null
@@ -74,8 +87,10 @@ function thirdAdvancerPick(user: User, groupLetter: string): string | undefined 
 // 'in'   = clinched among the 8 best thirds (can't be pushed out by the groups
 //          that haven't closed yet)
 // 'out'  = already behind 8 other thirds — mathematically can't advance as a third
-// 'open' = still undecided; depends on groups that haven't finished
-export type ThirdStatus = 'in' | 'open' | 'out'
+// 'safe' = not mathematically clinched yet, but on enough points (4+) that it
+//          realistically always advances
+// 'open' = genuinely undecided (3 points, on the bubble); depends on other groups
+export type ThirdStatus = 'in' | 'safe' | 'open' | 'out'
 
 export interface ThirdLine { points: number; gd: number; gf: number }
 
@@ -88,6 +103,46 @@ function betterThird(a: ThirdLine, b: ThirdLine): boolean {
   if (a.points !== b.points) return a.points > b.points
   if (a.gd !== b.gd) return a.gd > b.gd
   return a.gf > b.gf
+}
+
+// A team finishing 3rd in some group, with its 3rd-place comparison line.
+export interface PredictedThird { team: string; group: string; line: ThirdLine }
+
+// The bettor's own best-third bets from groups OTHER than the one being optimized,
+// used to catch a cross-group own-goal: rooting for a strong 3rd here can push one
+// of YOUR OWN predicted best-thirds elsewhere out of the 8 that qualify.
+export interface ProtectedThirds {
+  others: PredictedThird[]      // your predicted 3rd-place lines for the other 11 groups
+  qualifiers: string[]          // teams (other groups) you bet to qualify as best-thirds
+}
+
+// Which of your protected best-third bets get knocked out of the top-8 if THIS
+// group's third ends on `candidate`. Measured against your own predicted world,
+// so a result no stronger than you predicted costs nothing; only strengthening a
+// non-qualifying third above your own picks displaces them.
+export function displacedOwnThirds(
+  candidate: { team: string; line: ThirdLine },
+  prot: ProtectedThirds,
+): string[] {
+  if (prot.qualifiers.length === 0) return []
+  const pool = [...prot.others.map(o => ({ team: o.team, line: o.line })), candidate]
+  pool.sort((a, b) => (betterThird(a.line, b.line) ? -1 : betterThird(b.line, a.line) ? 1 : 0))
+  const top = new Set(pool.slice(0, QUALIFY_COUNT).map(e => e.team))
+  return prot.qualifiers.filter(t => !top.has(t))
+}
+
+// Build the protected-thirds input from a resolved bettor's qualification table.
+// Returns undefined for an unresolved form (no committed 8) — the guard then no-ops.
+export function protectedThirdsForGroup(
+  qual: ThirdPlaceQualification,
+  groupLetter: string,
+): ProtectedThirds | undefined {
+  if (!qual.resolved) return undefined
+  const others = qual.all
+    .filter(t => t.group !== groupLetter)
+    .map(t => ({ team: t.team, group: t.group, line: { points: t.points, gd: t.goalsFor - t.goalsAgainst, gf: t.goalsFor } }))
+  const qualifiers = qual.qualifiers.filter(t => t.group !== groupLetter).map(t => t.team)
+  return { others, qualifiers }
 }
 
 // Final 3rd-place lines of the OTHER groups that are fully settled for real.
@@ -126,6 +181,9 @@ export function thirdPlaceOutlook(line: ThirdLine, field: ThirdField): ThirdStat
   // Still mathematically open, but apply judgement: a third on 0–2 points is
   // realistically out, so we don't bank its 4 points on a near-zero chance.
   if (line.points < MIN_VIABLE_THIRD_POINTS) return 'out'
+  // A third on 4+ points realistically always advances — report it confidently
+  // rather than hedging. Only the 3-point bubble stays genuinely 'open'.
+  if (line.points >= SAFE_THIRD_POINTS) return 'safe'
   return 'open'
 }
 
@@ -174,6 +232,9 @@ export interface GroupScore {
   thirdPick?: string
   thirdStatus?: ThirdStatus
   thirdPoints?: number       // tiebreak hint: more points = a safer third
+  // Whoever actually finishes 3rd here (regardless of your bet) and its 3rd-place
+  // line — so the engine can weigh the cross-group cost of strengthening it.
+  actualThird?: { team: string; line: ThirdLine }
 }
 
 // 1st → 'ראשון', 2nd → 'שני', etc. — for naming the exact slot a result locks in.
@@ -277,5 +338,6 @@ export function scoreGroupOutcome(predictions: PredictionsState, ctx: SelfScoreC
     order, advancers,
     thirdPick: thirdAtThird ?? thirdPick,
     thirdStatus, thirdPoints,
+    actualThird: standings[2] ? { team: standings[2].team, line: lineOf(standings[2]) } : undefined,
   }
 }

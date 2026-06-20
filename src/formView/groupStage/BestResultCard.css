@@ -173,6 +173,14 @@
   padding: 0.05rem 0.45rem;
   border-radius: 6px;
   background: #e3f1e3;
+  color: #1b5e2a;
+}
+
+/* The recommendation diverges from your own bet — flag it in amber so it stands
+   apart from the green "same as you predicted" results. */
+.best-result__score--differ {
+  background: #fbe6cf;
+  color: #8a5320;
 }
 
 .best-result__pred {

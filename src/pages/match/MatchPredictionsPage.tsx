@@ -17,7 +17,7 @@ import BestResultCard from '../../formView/groupStage/BestResultCard'
 import MatchRecommendation from './MatchRecommendation'
 import { bestRemainingResult } from '../../leaderboard/bestResult'
 import { settledState } from '../stats/group/recommendation'
-import { thirdPickFromQualification } from '../stats/group/selfScore'
+import { thirdPickFromQualification, protectedThirdsForGroup } from '../stats/group/selfScore'
 import './MatchPredictionsPage.css'
 
 type Team = { iso: string; he: string }
@@ -56,6 +56,10 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
   // Present only while the match is actually being played (from the live feed),
   // which is how the header tells "in progress" from "finished".
   const liveScore = results.live?.[match.id] ?? null
+  // "Decided" means a FINAL result — not a live, still-changing score. While the
+  // match is in progress the recommendation stays useful (the result isn't locked
+  // yet), so we only treat it as decided once it's final and no longer live.
+  const decided = !!realScore && !liveScore
   const actualScore = realScore ?? (homeScore !== null && awayScore !== null ? { home: homeScore, away: awayScore } : null)
   const scorers = realScore
     ? Object.entries(results.playerMatchGoals ?? {})
@@ -80,6 +84,7 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
         predictedOrder: myOrder,
         thirdPick: thirdPickFromQualification(currentUser, groupLetter),
         settledAll: settledState(results),
+        protectedThirds: protectedThirdsForGroup(currentUser.thirdPlaceQualification, groupLetter),
       })
     : null
 
@@ -121,7 +126,7 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
           matchId={match.id}
           currentUser={currentUser ?? undefined}
           results={results}
-          decided={!!realScore}
+          decided={decided}
         />
 
         {bestResult && (

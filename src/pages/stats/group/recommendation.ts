@@ -16,6 +16,7 @@ import {
   listTeams,
   topTwoExact,
   MIN_VIABLE_THIRD_POINTS,
+  SURE_THIRD_POINTS,
   type Want,
   type GroupScore,
 } from './selfScore'
@@ -81,8 +82,8 @@ export interface ScenarioEval {
   order: string[]          // team codes in final group order (1st, 2nd, 3rd, 4th)
   orderHe: string[]
   points: number           // total points you'd earn from this group
-  // The solid table points (place + advancement) — what the table-first ranking
-  // actually maximizes. Match points are only a tiebreak bonus on top.
+  // The solid table points (place + advancement). Total points decide the pick;
+  // these break ties, so we prefer the robust table when totals are equal.
   tablePoints: number
 }
 
@@ -240,6 +241,10 @@ export function buildGroupReasons(best: GroupScore, naive: GroupScore, predOrder
     const teamHe = he(best.thirdPick)
     if (best.thirdStatus === 'in') {
       reasons.push({ good: true, textHe: `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — וזה כבר מבטיח עלייה כאחת מ‑8 השלישיות הטובות (לפי הבתים שכבר נסגרו).` })
+    } else if (best.thirdStatus === 'safe') {
+      reasons.push({ good: true, textHe: (best.thirdPoints ?? 0) >= SURE_THIRD_POINTS
+        ? `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — כמות כזו תמיד מספיקה לעלייה כאחת מ‑8 השלישיות הטובות.`
+        : `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — כמות כזו כמעט תמיד מספיקה לעלייה כאחת מ‑8 השלישיות הטובות.` })
     } else if (best.thirdStatus === 'out') {
       reasons.push({
         good: false,
@@ -248,7 +253,7 @@ export function buildGroupReasons(best: GroupScore, naive: GroupScore, predOrder
           : `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — לא יספיק לעלייה.`,
       })
     } else {
-      reasons.push({ good: false, textHe: `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — העלייה כשלישית עדיין לא מובטחת ותלויה בבתים שטרם נסגרו.` })
+      reasons.push({ good: false, textHe: `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — על הגבול: 3 נק' לפעמים מספיקות לעלייה כשלישית, תלוי בבתים שטרם נסגרו.` })
     }
   }
 
@@ -305,6 +310,10 @@ export function buildGroupWhy(
     const teamHe = he(best.thirdPick)
     if (best.thirdStatus === 'in') {
       reasons.push({ good: true, textHe: `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — וזה כבר מבטיח עלייה כאחת מ‑8 השלישיות הטובות (לפי הבתים שכבר נסגרו).` })
+    } else if (best.thirdStatus === 'safe') {
+      reasons.push({ good: true, textHe: (best.thirdPoints ?? 0) >= SURE_THIRD_POINTS
+        ? `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — כמות כזו תמיד מספיקה לעלייה כאחת מ‑8 השלישיות הטובות.`
+        : `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — כמות כזו כמעט תמיד מספיקה לעלייה כאחת מ‑8 השלישיות הטובות.` })
     } else if (best.thirdStatus === 'out') {
       reasons.push({
         good: false,
@@ -313,7 +322,7 @@ export function buildGroupWhy(
           : `${teamHe} תסיים שלישית — לא תעלה כשלישית, אז העלייה שלה כבר לא בתמונה.`,
       })
     } else {
-      reasons.push({ good: false, textHe: `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — העלייה כשלישית עדיין לא מובטחת ותלויה בבתים שטרם נסגרו.` })
+      reasons.push({ good: false, textHe: `${teamHe} תסיים שלישית עם ${best.thirdPoints} נק' — על הגבול: 3 נק' לפעמים מספיקות לעלייה כשלישית, תלוי בבתים שטרם נסגרו.` })
     }
   }
 
@@ -361,15 +370,16 @@ export function recommendGroupOutcomes(
   const naiveWants: Want[] = remaining.map(m => dir(user.predictions[m.id]) ?? 'home')
   const deviations = (w: Want[]) => w.reduce((n, x, i) => n + (x === naiveWants[i] ? 0 : 1), 0)
 
-  // Best for you is TABLE-FIRST: maximize place + advancement points (the solid,
-  // likeliest points). Exact scorelines are rare, so match points never beat a
-  // better table — they only break ties. Order: table points, then knockout
-  // seeding (your predicted top-two in slot), then match points, then staying on
-  // your own predicted results, then the safer at-risk third.
+  // Best for you maximizes the TOTAL points you'd bank, so the pick is never worth
+  // fewer points than your own bet. Exact scorelines are rare while the table is
+  // solid, so ties break toward the placement/advancement points. Order: total
+  // points, then table points (prefer the solid ones when totals tie), then
+  // knockout seeding (your predicted top-two in slot), then staying on your own
+  // predicted results, then the safer at-risk third.
   const keyOf = (s: GroupScore, wants: Want[]): number[] => [
+    s.total,
     s.placePoints + s.advPoints,
     topTwoExact(s.order, predOrder),
-    s.matchPoints,
     -deviations(wants),
     s.thirdPoints ?? 0,
   ]

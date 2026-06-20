@@ -5,7 +5,7 @@ import { GROUP_MATCHES, ALL_GROUP_LETTERS } from '../../shared/groups'
 import { realPlayedState } from '../../leaderboard/winprob/realPlayed'
 import { recommendMatchOutcome } from './matchReco'
 import { recommendGroupOutcomes } from '../stats/group/recommendation'
-import { buildContext, scoreGroupOutcome, repScore, dir, he, groupTeams, SLOT_WORD, MIN_VIABLE_THIRD_POINTS, type Want, type GroupScore } from '../stats/group/selfScore'
+import { buildContext, scoreGroupOutcome, repScore, dir, he, groupTeams, SLOT_WORD, MIN_VIABLE_THIRD_POINTS, SAFE_THIRD_POINTS, SURE_THIRD_POINTS, type Want, type GroupScore } from '../stats/group/selfScore'
 import type { PredictionsState } from '../../shared/types'
 import type { User } from '../../users'
 
@@ -40,9 +40,13 @@ function checkMatchReasonText(tag: string, reasons: { textHe: string }[], cur: G
       }
     }
     if (t.includes('מבטיח עלייה כאחת מ') && cur.thirdStatus !== 'in') v.push(`${tag} [THIRD-IN] vs ${cur.thirdStatus}`)
+    if (t.includes('תמיד מספיקה לעלייה') && cur.thirdStatus !== 'safe') v.push(`${tag} [THIRD-SAFE] vs ${cur.thirdStatus}`)
+    if (t.includes('תמיד מספיקה לעלייה') && (cur.thirdPoints ?? 0) < SAFE_THIRD_POINTS) v.push(`${tag} [THIRD-SAFE-PTS] vs ${cur.thirdPoints}`)
+    // "always enough" (no כמעט) is reserved for the 6+ sub-tier.
+    if (t.includes('כמות כזו תמיד מספיקה') && (cur.thirdPoints ?? 0) < SURE_THIRD_POINTS) v.push(`${tag} [THIRD-SURE-PTS] vs ${cur.thirdPoints}`)
     if (t.includes('ריאלית לא מספיק') && (cur.thirdStatus !== 'out' || (cur.thirdPoints ?? 0) >= MIN_VIABLE_THIRD_POINTS)) v.push(`${tag} [THIRD-FLOOR] vs ${cur.thirdStatus}/${cur.thirdPoints}`)
     if ((t.includes('כבר יש 8 שלישיות')) && cur.thirdStatus !== 'out') v.push(`${tag} [THIRD-OUT] vs ${cur.thirdStatus}`)
-    if (t.includes('עדיין לא מובטחת') && cur.thirdStatus !== 'open') v.push(`${tag} [THIRD-OPEN] vs ${cur.thirdStatus}`)
+    if (t.includes('על הגבול') && cur.thirdStatus !== 'open') v.push(`${tag} [THIRD-OPEN] vs ${cur.thirdStatus}`)
   }
   return v
 }
@@ -100,11 +104,11 @@ describe('recommendation engine correctness (exhaustive)', () => {
           const bestScore = scores.get(rec.best.want)!
           const bestStanding = bestScore.placePoints + bestScore.advPoints
 
-          // Table-first optimality: the recommended direction banks the most
-          // place + advancement points (match points are only a tiebreak bonus).
-          const maxStanding = Math.max(...WANTS.map(w => scores.get(w)!.placePoints + scores.get(w)!.advPoints))
-          if (bestStanding < maxStanding - EPS) {
-            violations.push(`[OPT] ${user.label} ${m.id}: best table ${bestStanding} < max ${maxStanding}`)
+          // Total-first optimality: the recommended direction banks the most TOTAL
+          // points (match + place + advancement) of the three — never fewer.
+          const maxTotal = Math.max(...WANTS.map(w => scores.get(w)!.total))
+          if (bestScore.total < maxTotal - EPS) {
+            violations.push(`[OPT] ${user.label} ${m.id}: best total ${bestScore.total} < max ${maxTotal}`)
           }
 
           const heToTeam = new Map(groupTeams(letter).map(t => [he(t), t]))
@@ -165,12 +169,11 @@ describe('recommendation engine correctness (exhaustive)', () => {
         const bestScore = scoreCombo(bestWants)
         const naiveScore = scoreCombo(remaining.map(m => dir(user.predictions[m.id]) ?? 'home'))
 
-        // Table-first optimality: no combination of remaining results banks more
-        // place + advancement points than the recommended scenario.
-        const tableOf = (s: GroupScore) => s.placePoints + s.advPoints
-        const maxTable = Math.max(...allWantCombos(remaining.length).map(w => tableOf(scoreCombo(w))))
-        if (tableOf(bestScore) < maxTable - EPS) {
-          violations.push(`[GRP-OPT] ${user.label} ${letter}: best table ${tableOf(bestScore)} < achievable ${maxTable}`)
+        // Total-first optimality: no combination of remaining results banks more
+        // TOTAL points (match + place + advancement) than the recommended scenario.
+        const maxTotal = Math.max(...allWantCombos(remaining.length).map(w => scoreCombo(w).total))
+        if (bestScore.total < maxTotal - EPS) {
+          violations.push(`[GRP-OPT] ${user.label} ${letter}: best total ${bestScore.total} < achievable ${maxTotal}`)
         }
 
         if (Math.abs(bestScore.total - rec.best.points) > EPS) {

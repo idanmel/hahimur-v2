@@ -114,7 +114,9 @@ describe('scoreGroupOutcome — hand-computed group A scenario', () => {
     const ctx = buildContext(user, 'A', {})
     const s = scoreGroupOutcome(user.predictions, ctx, actual)
     expect(s.thirdPick).toBe('South Korea')
-    expect(s.thirdStatus).toBe('open') // no other groups settled yet
+    // 4 points and no other groups settled yet: not mathematically clinched, but
+    // enough points that it realistically always advances ⇒ 'safe', not 'open'.
+    expect(s.thirdStatus).toBe('safe')
   })
 })
 
@@ -156,6 +158,12 @@ describe('thirdPlaceOutlook — clinch / open / out math (8 best thirds qualify)
     const bubble: ThirdLine = { points: 3, gd: -2, gf: 1 }
     const field: ThirdField = { otherThirds: [], unknownOthers: 11 }
     expect(thirdPlaceOutlook(bubble, field)).toBe('open')
+  })
+
+  it('open zone with 4+ points ⇒ safe (near-certain, not just "open")', () => {
+    const field: ThirdField = { otherThirds: [], unknownOthers: 11 }
+    expect(thirdPlaceOutlook({ points: 4, gd: 0, gf: 2 }, field)).toBe('safe')
+    expect(thirdPlaceOutlook({ points: 6, gd: 3, gf: 5 }, field)).toBe('safe')
   })
 
   it('a clinched third on 2 points is NEVER downgraded by the floor', () => {

@@ -8,13 +8,15 @@ import { settledState } from '../pages/stats/group/recommendation'
 import {
   buildContextFromOrder,
   scoreGroupOutcome,
-  enumerateScores,
   boundedMaxGoals,
   thirdPickFromQualification,
+  protectedThirdsForGroup,
+  displacedOwnThirds,
   groupTeams,
   he,
   SLOT_WORD,
   MIN_VIABLE_THIRD_POINTS,
+  SURE_THIRD_POINTS,
   type GroupScore,
 } from '../pages/stats/group/selfScore'
 
@@ -23,23 +25,39 @@ const settled = settledState(tournamentResults)
 
 const orderOf = (u: typeof USERS[number], g: string) => (u.groupTables[g] ?? []).map(s => s.team)
 
-// Re-derive the maximum achievable TABLE points (place + advancement) over EVERY
-// remaining-scoreline combo, independently of the engine. The engine is now
-// table-first — it maximizes the solid table points before match points — so this
-// is the quantity the recommendation must always hit.
-function maxTablePoints(u: typeof USERS[number], g: string): number {
+// Re-derive the maximum achievable TOTAL points (match + place + advancement) over
+// EVERY candidate the engine considers, independently of it. The engine is now
+// total-first — it maximizes the points you'd actually bank — so this is the
+// quantity the recommendation must always hit. We mirror the engine's candidate
+// set per match: the bounded goal grid PLUS your own predicted scoreline whenever
+// it lies outside that grid (so a high-scoring צליפה stays reachable).
+function maxTotalPoints(u: typeof USERS[number], g: string): number {
   const matches = GROUPS[g]?.matches ?? []
-  const isPlayed = (s: MatchScores | undefined) => !!s && s.home != null && s.away != null
-  const remIds = matches.filter(m => !isPlayed(settled[m.id])).map(m => m.id)
+  const isPlayedHere = (s: MatchScores | undefined) => !!s && s.home != null && s.away != null
+  const remIds = matches.filter(m => !isPlayedHere(settled[m.id])).map(m => m.id)
   const played: PredictionsState = {}
-  for (const m of matches) if (isPlayed(settled[m.id])) played[m.id] = settled[m.id]
+  for (const m of matches) if (isPlayedHere(settled[m.id])) played[m.id] = settled[m.id]
   const order = orderOf(u, g)
   const ctx = buildContextFromOrder(g, order, thirdPickFromQualification(u, g), settled)
+  const maxGoals = boundedMaxGoals(remIds.length)
+  const candidatesFor = (id: string): MatchScores[] => {
+    const list: MatchScores[] = []
+    for (let h = 0; h <= maxGoals; h++) for (let a = 0; a <= maxGoals; a++) list.push({ home: h, away: a })
+    const p = u.predictions[id]
+    if (p && p.home != null && p.away != null && (p.home > maxGoals || p.away > maxGoals)) list.push({ home: p.home, away: p.away })
+    return list
+  }
+  const combos = (ids: string[]): PredictionsState[] => {
+    if (ids.length === 0) return [{}]
+    const rest = combos(ids.slice(1))
+    const out: PredictionsState[] = []
+    for (const s of candidatesFor(ids[0])) for (const r of rest) out.push({ ...r, [ids[0]]: s })
+    return out
+  }
   let max = -Infinity
-  for (const combo of enumerateScores(remIds, boundedMaxGoals(remIds.length))) {
+  for (const combo of combos(remIds)) {
     const s = scoreGroupOutcome(u.predictions, ctx, { ...played, ...combo })
-    const table = s.placePoints + s.advPoints
-    if (table > max) max = table
+    if (s.total > max) max = s.total
   }
   return max
 }
@@ -163,8 +181,13 @@ function checkCardReasons(
     if (t.includes('לא תעלה כשלישית') || t.includes('לא יספיק לעלייה')) {
       if (best.thirdStatus !== 'out') v.push(`${tag} [THIRD-OUT] text says out but status=${best.thirdStatus}`)
     }
-    if (t.includes('עדיין לא מובטחת')) {
+    if (t.includes('על הגבול')) {
       if (best.thirdStatus !== 'open') v.push(`${tag} [THIRD-OPEN] text says open but status=${best.thirdStatus}`)
+    }
+    // "always enough" (no כמעט) is reserved for the 6+ sub-tier of 'safe'.
+    if (t.includes('כמות כזו תמיד מספיקה')) {
+      if (best.thirdStatus !== 'safe' || (best.thirdPoints ?? 0) < SURE_THIRD_POINTS)
+        v.push(`${tag} [THIRD-SURE] text says always-enough but status=${best.thirdStatus} pts=${best.thirdPoints}`)
     }
   }
   return v
@@ -174,7 +197,7 @@ describe('bestRemainingResult — the unified holistic engine', () => {
   // Full re-enumeration is expensive, so prove optimality on a spread of users
   // across every group; the integrity test below still runs over ALL users.
   const sample = USERS.filter((_, i) => i % 4 === 0)
-  it('returns a table-points-optimal result across a spread of users × groups', () => {
+  it('returns a total-points-optimal result across a spread of users × groups', () => {
     for (const u of sample) {
       for (const g of ALL_GROUPS) {
         const order = orderOf(u, g)
@@ -187,12 +210,71 @@ describe('bestRemainingResult — the unified holistic engine', () => {
           settledAll: settled,
         })
         if (!res) continue // no remaining matches in this group
-        // Table-first contract: the recommendation banks the maximum achievable
-        // place + advancement points (match points are only a tiebreak bonus).
-        expect(res.placePoints + res.advancementPoints, `${u.label} / group ${g}`).toBe(maxTablePoints(u, g))
+        // Total-first contract: the recommendation banks the maximum achievable
+        // total points (match + place + advancement). With no protectedThirds here
+        // there's no cross-group deduction, so groupPoints is exactly that maximum.
+        expect(res.groupPoints, `${u.label} / group ${g}`).toBe(maxTotalPoints(u, g))
       }
     }
   }, 60000)
+
+  it('offers your exact high-scoring prediction when it costs nothing on the table', () => {
+    // Eyal predicted Netherlands 3–1 Tunisia in F6. Holland is 1st and Tunisia
+    // 4th either way, so 3–1 earns the same table points as a 1–0 PLUS the צליפה.
+    // The goal-grid caps at 2 goals/side for a 4-match group, so this used to be
+    // unreachable and we wrongly suggested 1–0; your prediction must now be offered.
+    const u = USERS.find(x => x.label === 'אייל ארז')!
+    const res = bestRemainingResult({
+      groupLetter: 'F',
+      predictions: u.predictions,
+      predictedOrder: orderOf(u, 'F'),
+      thirdPick: thirdPickFromQualification(u, 'F'),
+      settledAll: settled,
+    })!
+    const f6 = res.ideal.find(m => m.id === 'F6')!
+    expect(f6.predicted).toEqual({ home: 1, away: 3 }) // guards the fixture assumption
+    expect(f6.scores).toEqual(f6.predicted)
+  })
+
+  it('does not root for a third that knocks out your own predicted best-third (Idan, group B)', () => {
+    // Idan predicted Bosnia 3rd in B (non-advancing) and Scotland/Czech (3 pts) as
+    // his qualifying thirds. Rooting for Bosnia to WIN B6 lifts it to 4 pts, which
+    // would bump his own Scotland/Czech out of the 8. The guard must avoid that.
+    const u = USERS.find(x => x.label === 'עידן מלמד')!
+    const params = {
+      groupLetter: 'B',
+      predictions: u.predictions,
+      predictedOrder: orderOf(u, 'B'),
+      thirdPick: thirdPickFromQualification(u, 'B'),
+      settledAll: settled,
+    }
+    const guarded = bestRemainingResult({ ...params, protectedThirds: protectedThirdsForGroup(u.thirdPlaceQualification, 'B') })!
+    const unguarded = bestRemainingResult(params)!
+
+    // Without the guard the engine grabs the local צליפה (Bosnia wins → 4 pts),
+    // which in reality would knock out one of his own predicted thirds.
+    expect(unguarded.thirdTeam).toBe('Bosnia and Herzegovina')
+    expect(unguarded.thirdTeamPoints).toBeGreaterThanOrEqual(4)
+
+    // With the guard it avoids that: the recommended third is weak enough that no
+    // own pick is displaced, even at the cost of the B6 צליפה.
+    expect(guarded.displacedThirds ?? []).toEqual([])
+    expect(guarded.thirdTeamPoints).toBeLessThan(unguarded.thirdTeamPoints)
+  })
+
+  it('flags own-thirds the guarded engine still cannot protect', () => {
+    // displacedOwnThirds is the building block: a 4-point third entering a pool
+    // whose 8th qualifier sits on 3 points pushes that 3-point pick out.
+    const prot = {
+      others: [
+        { team: 'Scotland', group: 'C', line: { points: 3, gd: 0, gf: 3 } },
+        ...Array.from({ length: 7 }, (_, i) => ({ team: `Q${i}`, group: 'X', line: { points: 5, gd: 2, gf: 5 } })),
+      ],
+      qualifiers: ['Scotland', 'Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'],
+    }
+    expect(displacedOwnThirds({ team: 'Bosnia and Herzegovina', line: { points: 4, gd: -1, gf: 4 } }, prot)).toEqual(['Scotland'])
+    expect(displacedOwnThirds({ team: 'Bosnia and Herzegovina', line: { points: 2, gd: -3, gf: 2 } }, prot)).toEqual([])
+  })
 
   it('keeps every reported field internally consistent', () => {
     for (const u of USERS) {

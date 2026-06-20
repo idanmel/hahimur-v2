@@ -9,7 +9,7 @@ import PageLayout from '../../../shared/PageLayout'
 import BestResultCard from '../../../formView/groupStage/BestResultCard'
 import { bestRemainingResult } from '../../../leaderboard/bestResult'
 import { settledState } from './recommendation'
-import { thirdPickFromQualification } from './selfScore'
+import { thirdPickFromQualification, protectedThirdsForGroup } from './selfScore'
 import GroupPicker from '../GroupPicker'
 import StandingsTable from '../../../formView/groupStage/StandingsTable'
 import GroupVoteMatrix from '../../group/GroupVoteMatrix'
@@ -67,6 +67,7 @@ export default function GroupStatsPage({ groupLetter }: Props) {
         predictedOrder: myOrder,
         thirdPick: thirdPickFromQualification(currentUser, groupLetter),
         settledAll: settledState(results),
+        protectedThirds: protectedThirdsForGroup(currentUser.thirdPlaceQualification, groupLetter),
       })
     : null
 
