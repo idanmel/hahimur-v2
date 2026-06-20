@@ -22,7 +22,9 @@ export default function HomePage() {
       <Countdown targetDate={FIRST_MATCH} label="לשריקת הפתיחה" />
       <LeaderboardGlance users={USERS} results={liveResults} currentUser={currentUser} />
       <RivalryEntry users={USERS} results={liveResults} />
-      <HomeFeed users={USERS} currentUser={currentUser} playerMatchGoals={tournamentResults.playerMatchGoals} />
+      {/* `?? {}` keeps it defined even when nothing is live, so the feed's badge
+          tracks the live feed (not a wall-clock window) — a finished match drops out. */}
+      <HomeFeed users={USERS} currentUser={currentUser} playerMatchGoals={tournamentResults.playerMatchGoals} liveMatches={liveResults.live ?? {}} />
 
       <main dir="rtl" style={{ maxWidth: '700px', margin: '0 auto', padding: '3rem 1.5rem', fontSize: '1.1rem', lineHeight: '1.9' }}>
         <p>ברוכים הבאים להימור המסורתי שלנו!</p>

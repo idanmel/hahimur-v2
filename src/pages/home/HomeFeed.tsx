@@ -13,12 +13,16 @@ type Props = {
   now?: Date
   matches?: GroupMatch[]
   playerMatchGoals?: Record<string, Record<string, number>>
+  // The live feed's in-progress matches (match id → status). Drives the "live"
+  // badge so it tracks the feed (and disappears the moment a match finishes)
+  // rather than a 3h wall-clock window. Absent in tests / when no feed is wired up.
+  liveMatches?: Record<string, { clock: string | null }>
 }
 
 // The home page's match feed: one tap swaps between the last few results and the
 // next few fixtures, so the two never stack into a scroll wall. Opens on the
 // upcoming fixtures — the "what's next" view.
-export default function HomeFeed({ users, currentUser, now = new Date(), matches = SCORED_MATCHES, playerMatchGoals }: Props) {
+export default function HomeFeed({ users, currentUser, now = new Date(), matches = SCORED_MATCHES, playerMatchGoals, liveMatches }: Props) {
   const [view, setView] = useState<View>('fixtures')
   const list = view === 'results' ? recentMatches(matches, now) : nextMatches(matches, now)
 
@@ -46,7 +50,7 @@ export default function HomeFeed({ users, currentUser, now = new Date(), matches
       ) : view === 'results' ? (
         <RecentMatchesCard users={users} currentUser={currentUser} now={now} matches={matches} playerMatchGoals={playerMatchGoals} />
       ) : (
-        <NextMatchCard users={users} currentUser={currentUser} now={now} matches={matches} />
+        <NextMatchCard users={users} currentUser={currentUser} now={now} matches={matches} liveMatches={liveMatches} />
       )}
     </section>
   )

@@ -39,6 +39,21 @@ test('marks a match in progress with a live indicator instead of the kickoff tim
   expect(screen.getByTestId('live-indicator')).toHaveTextContent('משחק חי')
 })
 
+test('shows the live badge when the live feed lists the match as in progress', () => {
+  const live = new Date('2026-06-12T03:00:00Z')
+  render(<NextMatchCard users={users} now={live} matches={MATCHES} liveMatches={{ A2: { clock: "30'" } }} />)
+  expect(screen.getByTestId('live-indicator')).toHaveTextContent('משחק חי')
+})
+
+test('hides the live badge once the live feed no longer lists the match, even within the kickoff window', () => {
+  // A2 is still inside the 3h wall-clock window, but the live feed (liveMatches)
+  // has dropped it — the match has finished — so it must not show "live" anymore.
+  const live = new Date('2026-06-12T03:00:00Z')
+  render(<NextMatchCard users={users} now={live} matches={MATCHES} liveMatches={{}} />)
+  expect(screen.queryByTestId('live-indicator')).not.toBeInTheDocument()
+  expect(screen.getByText(/05:00/)).toBeInTheDocument() // falls back to showing kickoff time
+})
+
 test('shows the most common prediction', () => {
   render(<NextMatchCard users={users} now={NOW} matches={MATCHES} />)
   expect(screen.getByTestId('consensus')).toHaveTextContent('1–2')

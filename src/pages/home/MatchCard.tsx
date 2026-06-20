@@ -18,9 +18,14 @@ type Props = {
   playerMatchGoals?: Record<string, Record<string, number>>
   // "Now" for deciding whether the match is in progress; injectable for tests.
   now?: Date
+  // The live feed's in-progress matches (match id → status). When supplied, it is
+  // the source of truth for "live" — a finished match drops out of it immediately,
+  // so the badge can't linger like the wall-clock window does. Absent (tests /
+  // no feed) we fall back to the kickoff window.
+  liveMatches?: Record<string, { clock: string | null }>
 }
 
-export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date() }: Props) {
+export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date(), liveMatches }: Props) {
   const home = TEAMS[match.homeTeam]
   const away = TEAMS[match.awayTeam]
   const consensus = topPrediction(users, match.id)
@@ -29,8 +34,9 @@ export default function MatchCard({ users, match, currentUser, isNext = false, r
   const points = result && mine ? singleMatchPoints(match.id, mine, result) : 0
   const scorerGoals = currentUser ? playerMatchGoals[currentUser.topGoalscorer]?.[match.id] ?? 0 : 0
   const scorerPoints = scorerGoals * POINTS_PER_GOAL
-  // The match has kicked off but no final score is in yet: it's in progress.
-  const live = !result && isLive(match, now)
+  // The match is in progress: the live feed is authoritative when present,
+  // otherwise fall back to the kickoff window. Never live once a final score is in.
+  const live = !result && (liveMatches ? !!liveMatches[match.id] : isLive(match, now))
 
   return (
     <div dir="rtl" className={`next-match${live ? ' next-match--live' : ''}`} data-testid="next-match">
