@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest'
 import type { Match, MatchScores, Standing, ThirdPlaceStanding } from '../../shared/types'
 import { calculateStandings } from '../../shared/standings'
-import { getThirdPlaceTeams, qualifyBestThirdPlace } from './thirdPlace'
+import { getThirdPlaceTeams, qualifyBestThirdPlace, sortThirdPlaceTeams } from './thirdPlace'
 
 function st(team: string, points: number, goalsFor: number, goalsAgainst: number): Standing {
   return { team, points, played: 3, won: 0, drawn: 0, lost: 0, goalsFor, goalsAgainst }
@@ -46,8 +46,18 @@ describe('getThirdPlaceTeams', () => {
       grp('B', st('Uno', 9, 5, 0), st('Dos', 6, 4, 2), st('Tres', 3, 2, 3), st('Cuatro', 0, 0, 6)),
     ]
     const result = getThirdPlaceTeams(input)
-    expect(result[0].team).toBe('Gamma')
-    expect(result[1].team).toBe('Tres')
+    expect(result.map(t => t.team).sort()).toEqual(['Gamma', 'Tres'])
+  })
+
+  test('returns the teams already ranked against each other', () => {
+    // Gamma (group A) and Tres (group B) both have 3pts and GD -1, but Tres
+    // scored more, so it must rank ahead.
+    const input = [
+      grp('A', st('Alpha', 9, 6, 0), st('Beta', 6, 3, 1), st('Gamma', 3, 1, 2), st('Delta', 0, 0, 7)),
+      grp('B', st('Uno', 9, 5, 0), st('Dos', 6, 4, 2), st('Tres', 3, 2, 3), st('Cuatro', 0, 0, 6)),
+    ]
+    const result = getThirdPlaceTeams(input)
+    expect(result.map(t => t.team)).toEqual(['Tres', 'Gamma'])
   })
 
   test('labels each team with their source group', () => {
@@ -56,8 +66,8 @@ describe('getThirdPlaceTeams', () => {
       grp('B', st('Uno', 9, 5, 0), st('Dos', 6, 4, 2), st('Tres', 3, 2, 3), st('Cuatro', 0, 0, 6)),
     ]
     const result = getThirdPlaceTeams(input)
-    expect(result[0].group).toBe('A')
-    expect(result[1].group).toBe('B')
+    expect(result.find(t => t.team === 'Gamma')?.group).toBe('A')
+    expect(result.find(t => t.team === 'Tres')?.group).toBe('B')
   })
 
   test('returns one entry per group', () => {
@@ -107,6 +117,30 @@ function makeDistinct12(): ThirdPlaceStanding[] {
 function makeFillerTeams(): ThirdPlaceStanding[] {
   return 'CDEFGHIJKL'.split('').map((g, i) => ({ ...st(`T${g}`, i, i, 0), group: g }))
 }
+
+describe('sortThirdPlaceTeams', () => {
+  // Regression: during the group stage (before all groups are filled) the table
+  // still has to show third-placed teams ranked, not in raw group order.
+  test('ranks unsorted teams by points, then GD, then goals scored', () => {
+    const teams: ThirdPlaceStanding[] = [
+      { ...st('GroupA', 3, 1, 0), group: 'A' }, // 3pts
+      { ...st('GroupB', 9, 4, 0), group: 'B' }, // 9pts
+      { ...st('GroupC', 6, 2, 0), group: 'C' }, // 6pts, GD +2
+      { ...st('GroupD', 6, 5, 1), group: 'D' }, // 6pts, GD +4
+    ]
+    const sorted = sortThirdPlaceTeams(teams)
+    expect(sorted.map(t => t.team)).toEqual(['GroupB', 'GroupD', 'GroupC', 'GroupA'])
+  })
+
+  test('does not mutate the input array', () => {
+    const teams: ThirdPlaceStanding[] = [
+      { ...st('GroupA', 3, 1, 0), group: 'A' },
+      { ...st('GroupB', 9, 4, 0), group: 'B' },
+    ]
+    sortThirdPlaceTeams(teams)
+    expect(teams[0].team).toBe('GroupA')
+  })
+})
 
 describe('qualifyBestThirdPlace', () => {
   describe('given all teams have distinct stats', () => {
