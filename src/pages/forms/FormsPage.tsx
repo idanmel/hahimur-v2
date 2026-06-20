@@ -100,6 +100,7 @@ export default function FormsPage({ users, usersSorted }: Props) {
                   thirdPlaceQualification={selected.thirdPlaceQualification}
                   knockoutStages={selected.knockoutStages}
                   predictedChampion={selected.predictedChampion}
+                  user={selected}
                 />
               </section>
             )}

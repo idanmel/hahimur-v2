@@ -9,8 +9,11 @@ import { reportUsage } from '../shared/reportUsage'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../shared/matchesByDate'
 import { singleMatchOutcome, singleMatchPoints, type MatchOutcome } from '../leaderboard/points'
 import { tournamentResults } from '../tournament-results'
+import { bestRemainingResult } from '../leaderboard/bestResult'
+import type { User } from '../users'
 import MatchRow from './groupStage/MatchRow'
 import StandingsTable from './groupStage/StandingsTable'
+import BestResultCard from './groupStage/BestResultCard'
 import ThirdPlaceTable from './thirdPlace/ThirdPlaceTable'
 import KnockoutTable from './knockout/KnockoutTable'
 import ChampionBanner from './knockout/ChampionBanner'
@@ -22,6 +25,7 @@ interface Props {
   thirdPlaceQualification?: ThirdPlaceQualification
   knockoutStages?: KnockoutStages
   predictedChampion?: string
+  user?: User
 }
 
 const noop = () => {}
@@ -36,6 +40,7 @@ export default function FormView({
   thirdPlaceQualification,
   knockoutStages,
   predictedChampion,
+  user,
 }: Props) {
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A')
   const [groupStageView, setGroupStageView] = useState<'by-group' | 'by-date'>('by-group')
@@ -76,6 +81,15 @@ export default function FormView({
     () => calculateStandings(activeMatches, actualScores),
     [activeMatches, actualScores]
   )
+
+  // What result to root for in the active group's remaining matches — the one
+  // that lands each predicted qualifier in the exact slot it was tipped for
+  const bestResult = useMemo(() => {
+    const order = activeStandings.map(s => s.team)
+    const quals = user?.thirdPlaceQualification.resolved ? user.thirdPlaceQualification.qualifiers : []
+    const thirdQualifies = quals.some(t => t.team === order[2])
+    return bestRemainingResult(activeGroup, predictions, order, actualScores, { thirdQualifies })
+  }, [activeGroup, predictions, activeStandings, actualScores, user])
 
   const nextMatchRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -138,6 +152,7 @@ export default function FormView({
           <>
             <StandingsTable standings={activeStandings} caption="התחזית" />
             <StandingsTable standings={actualStandings} caption="בפועל" />
+            {bestResult && <BestResultCard result={bestResult} />}
             {activeMatches.map(match => {
               const { outcome, points } = getOutcomeAndPoints(match.id)
               const actual = actualScores[match.id]
