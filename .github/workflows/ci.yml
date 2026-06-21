@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: 'Exact commit to build and deploy. Set by the auto-score job to dodge the push-vs-dispatch race where `master` still resolves to the pre-push commit.'
+        required: false
 
 jobs:
   test:
@@ -15,6 +19,8 @@ jobs:
       VERCEL_PROJECT_ID: prj_PGz0hI2855tVFPKGFOiqgf3Hwnh5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.deploy_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24

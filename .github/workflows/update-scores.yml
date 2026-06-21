@@ -50,6 +50,9 @@ jobs:
             git commit -m "auto: update match scores"
             git push
             # Pushes made with GITHUB_TOKEN don't trigger the CI workflow,
-            # so dispatch it explicitly to test, build, and deploy.
-            gh workflow run ci.yml --ref master
+            # so dispatch it explicitly to test, build, and deploy. Pin the
+            # dispatch to the exact commit we just pushed: `--ref master` alone
+            # occasionally resolves to the pre-push tip (replication lag),
+            # deploying stale source.
+            gh workflow run ci.yml --ref master -f deploy_sha="$(git rev-parse HEAD)"
           fi
