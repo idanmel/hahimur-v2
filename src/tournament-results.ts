@@ -49,6 +49,7 @@ const realGoals: Record<string, Record<string, number>> = {
   'קאי האברץ': { E1: 2 },
   'קיליאן אמבפה': { I1: 2 },
   'הארי קיין': { L1: 2 },
+  'לאמין ימאל': { H3: 1 },
 }
 
 export function derivePlayerGoals(perMatch: Record<string, Record<string, number>>): Record<string, number> {

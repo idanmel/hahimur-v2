@@ -23,7 +23,7 @@ export const SCORER_ALIASES: Record<string, string> = {
   'Harry Kane': 'הארי קיין',
   'Kai Havertz': 'קאי האברץ',
   'Ferran Torres': 'פראן טורס',
-  'Lamin Yamal': 'לאמין ימאל',
+  'Lamine Yamal': 'לאמין ימאל',
   'Florian Wirtz': 'פלוריאן וירץ',
   'Vinícius Júnior': 'ויניסיוס ג׳וניור',
 }
