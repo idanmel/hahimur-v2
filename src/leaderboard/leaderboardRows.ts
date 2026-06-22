@@ -1,12 +1,14 @@
 import { computeUserPoints, computeGroupBreakdown, isGroupComplete, singleMatchOutcome, singleMatchPoints, POINTS_PER_GOAL } from './points'
+import { ALL_GROUP_LETTERS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import { isUnpredicted } from '../shared/types'
-import type { GroupMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
+import type { GroupMatch, KnockoutMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import { matchSortKey, latestBySortKey } from '../shared/matchOrder'
+import { isPlayerParticipatingInKOMatch } from '../formView/knockout/knockout'
 import { competitionRanks } from './rank'
 import type { User } from '../users'
 
-export type Scope = 'all' | GroupLetter | 'range' | 'prob'
+export type Scope = 'all' | GroupLetter | 'range' | 'prob' | 'summary'
 
 function scopeThirdPlace(q: ThirdPlaceQualification, scope: GroupLetter): ThirdPlaceQualification {
   const inScope = (teams: ThirdPlaceStanding[]) => teams.filter(t => t.group === scope)
@@ -38,9 +40,12 @@ export interface GroupScopeRow {
   // Full-tournament total, independent of any scope/range — context for where a
   // bettor stands overall while reading the in-range form numbers.
   tournamentTotal: number
+  // How many actual R32 matches the bettor "participates" in (predicted both
+  // teams). Only populated for the all-groups summary; 0 elsewhere.
+  r32Count?: number
 }
 
-export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'placePoints' | 'goalsPoints' | 'total' | 'tournamentTotal'
+export type GroupSortBy = 'pgiya' | 'tzelifa' | 'combined' | 'matchPoints' | 'advancementPoints' | 'placePoints' | 'goalsPoints' | 'total' | 'tournamentTotal' | 'r32Count'
 
 const combinedHits = (r: GroupScopeRow) => r.tzelifaCount + r.pgiyaCount
 
@@ -54,6 +59,7 @@ export const GROUP_SORTERS: Record<GroupSortBy, (a: GroupScopeRow, b: GroupScope
   goalsPoints: (a, b) => b.goalsPoints - a.goalsPoints || b.total - a.total,
   total: (a, b) => b.total - a.total || combinedHits(b) - combinedHits(a),
   tournamentTotal: (a, b) => b.tournamentTotal - a.tournamentTotal || b.total - a.total || combinedHits(b) - combinedHits(a),
+  r32Count: (a, b) => (b.r32Count ?? 0) - (a.r32Count ?? 0) || b.total - a.total,
 }
 
 export function playedGroupMatchesChrono(results: TournamentResults): GroupMatch[] {
@@ -167,6 +173,49 @@ export function rankTrajectories(users: User[], results: TournamentResults): Rec
 export function hitStats(users: User[], results: TournamentResults): Record<string, { pgiya: number; tzelifa: number }> {
   const rows = rowsForMatches(users, results, playedGroupMatchesChrono(results), false)
   return Object.fromEntries(rows.map(r => [r.label, { pgiya: r.pgiyaCount, tzelifa: r.tzelifaCount }]))
+}
+
+// How many actual R32 matches a bettor "participates" in — they predicted both
+// teams that actually reached that matchup (regardless of which side). Fills in
+// as the bracket firms up; unresolved slots don't count.
+export function countR32Participation(userR32: KnockoutMatch[], actualR32: KnockoutMatch[]): number {
+  return actualR32.reduce((n, actual) => {
+    const um = userR32.find(m => m.matchNum === actual.matchNum)
+    return n + (um && isPlayerParticipatingInKOMatch(actual, um) ? 1 : 0)
+  }, 0)
+}
+
+// Group-stage summary: every group's hits and points folded into one row per
+// bettor, so the board can show a single "all groups" table with the same
+// columns as the per-group (לפי בית) view, plus the R32-participation count.
+// tournamentTotal is full-tournament already, so it's taken as-is not summed.
+export function buildGroupSummaryRows(users: User[], results: TournamentResults): GroupScopeRow[] {
+  const byLabel = new Map<string, GroupScopeRow>()
+  for (const letter of ALL_GROUP_LETTERS) {
+    for (const row of buildGroupScopeRows(users, results, letter)) {
+      const acc = byLabel.get(row.label)
+      if (!acc) {
+        byLabel.set(row.label, { ...row })
+        continue
+      }
+      acc.tzelifaCount += row.tzelifaCount
+      acc.pgiyaCount += row.pgiyaCount
+      acc.matchPoints += row.matchPoints
+      acc.advancementPoints += row.advancementPoints
+      acc.placePoints += row.placePoints
+      acc.goalsPoints += row.goalsPoints
+      acc.total += row.total
+    }
+  }
+  const actualR32 = results.knockoutStages?.r32 ?? []
+  return users
+    .map(u => {
+      const row = byLabel.get(u.label)
+      if (!row) return undefined
+      row.r32Count = countR32Participation(u.knockoutStages?.r32 ?? [], actualR32)
+      return row
+    })
+    .filter((r): r is GroupScopeRow => !!r)
 }
 
 type MatchResult = TournamentResults['groupMatches'][string][number]

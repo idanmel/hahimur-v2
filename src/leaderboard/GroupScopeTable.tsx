@@ -32,6 +32,13 @@ const POINT_COLS: Col[] = [
   { key: 'total',             label: 'סה"כ',    value: r => r.total,             zone: 'points' },
 ]
 
+// Summary-only: how many R32 matches the bettor is heading into (predicted both
+// teams). A count, not points — sits past the total as its own column.
+const SUMMARY_POINT_COLS: Col[] = [
+  ...POINT_COLS,
+  { key: 'r32Count',          label: 'משחקי 32', value: r => r.r32Count ?? 0,    zone: 'points', zoneEdge: true },
+]
+
 const LASTX_POINT_COLS: Col[] = [
   ...MATCH_ADV_PLACE_COLS,
   { key: 'goalsPoints',       label: 'שערים',   value: r => r.goalsPoints,       zone: 'points' },
@@ -55,6 +62,11 @@ function makeVariant(pointCols: Col[], defaultSort: GroupSortBy, mobilePointCols
 const COLS = {
   group: makeVariant(POINT_COLS, 'total', [
     { ...POINT_COLS[POINT_COLS.length - 1], label: 'נקודות', zoneEdge: true },
+  ]),
+  // all-groups summary — per-group columns plus the R32-participation count
+  summary: makeVariant(SUMMARY_POINT_COLS, 'total', [
+    { ...POINT_COLS[POINT_COLS.length - 1], label: 'נקודות', zoneEdge: true },
+    { key: 'r32Count', label: '32', value: r => r.r32Count ?? 0, zone: 'points' },
   ]),
   // window scopes (last-X, as-of game N, range) split points into in-range
   // (משחקים/שערים/בטווח) plus the full-tournament total (בטורניר) for context

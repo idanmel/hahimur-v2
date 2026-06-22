@@ -3,8 +3,10 @@ import { GROUPS, ALL_GROUP_LETTERS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import type { Scope } from './leaderboardRows'
 
-const NON_GROUP_SCOPES = ['all', 'range', 'prob'] as const
+const NON_GROUP_SCOPES = ['all', 'range', 'prob', 'summary'] as const
 const isGroupScope = (s: Scope): s is GroupLetter => !(NON_GROUP_SCOPES as readonly string[]).includes(s)
+// "summary" (all groups together) lives inside the לפי בית tab next to the groups
+const isGroupMode = (s: Scope): boolean => isGroupScope(s) || s === 'summary'
 
 export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, rangeTo, onRangeFromChange, onRangeToChange, playedMatchLabels }: {
   scope: Scope
@@ -18,7 +20,7 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, r
   // remembered so re-entering "לפי בית" lands on the group you were viewing
   const [lastGroup, setLastGroup] = useState<GroupLetter>(isGroupScope(scope) ? scope : 'A')
   // for non-group scopes the mode is just the scope name itself
-  const mode = isGroupScope(scope) ? 'group' : scope
+  const mode = isGroupMode(scope) ? 'group' : scope
   const playedCount = playedMatchLabels.length
 
   const modeBtn = (active: boolean) =>
@@ -55,6 +57,12 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, r
 
       {mode === 'group' && (
         <div className="lb-scope-row">
+          <button
+            type="button"
+            className={`lb-scope-group${scope === 'summary' ? ' lb-scope-group--active' : ''}`}
+            aria-pressed={scope === 'summary'}
+            onClick={() => onScopeChange('summary')}
+          >סיכום</button>
           {ALL_GROUP_LETTERS.map(letter => (
             <button
               key={letter}

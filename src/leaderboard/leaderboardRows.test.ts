@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
 import type { GroupMatch, Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { buildGroupScopeRows, buildRangeRows, rangePlaceMovement, rankTrajectories, GROUP_SORTERS } from './leaderboardRows'
+import { buildGroupScopeRows, buildGroupSummaryRows, countR32Participation, buildRangeRows, rangePlaceMovement, rankTrajectories, GROUP_SORTERS } from './leaderboardRows'
+import type { KnockoutMatch } from '../shared/types'
 import { OLEH_POINTS, PLACE_POINT } from './points'
 import type { GroupScopeRow } from './leaderboardRows'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
@@ -102,6 +103,46 @@ test('buildGroupScopeRows merges hit counts with match points for the scoped gro
     { label: 'Yossi', tzelifaCount: 2, pgiyaCount: 0, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8, tournamentTotal: 8 },
     { label: 'Dana', tzelifaCount: 1, pgiyaCount: 2, matchPoints: 8, advancementPoints: 0, placePoints: 0, goalsPoints: 0, total: 8, tournamentTotal: 12 },
   ])
+})
+
+test('buildGroupSummaryRows aggregates hits and points across every group', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: {
+      A: [grpMatch('m1', 2, 1), grpMatch('m2', 1, 1)],
+      B: [grpMatch('b1', 1, 0)],
+    },
+  }
+  // Dana: A → m1 exact (tzelifa, 4), m2 draw (pgiya, 2); B → b1 exact (tzelifa, 4)
+  const dana = makeUser({
+    label: 'Dana',
+    groupMatches: {
+      A: [grpMatch('m1', 2, 1), grpMatch('m2', 0, 0)],
+      B: [grpMatch('b1', 1, 0)],
+    },
+  })
+
+  const [row] = buildGroupSummaryRows([dana], results)
+  expect(row).toMatchObject({
+    label: 'Dana',
+    tzelifaCount: 2,
+    pgiyaCount: 1,
+    matchPoints: 10,
+    total: 10,
+  })
+})
+
+const koM = (matchNum: number, home: string, away: string, resolved = true): KnockoutMatch =>
+  ({ matchNum, home, away, resolved })
+
+test('countR32Participation counts R32 matches where the bettor predicted both teams', () => {
+  const actual = [koM(73, 'Brazil', 'England'), koM(74, 'France', 'Spain'), koM(75, 'Italy', 'Croatia')]
+  const user = [
+    koM(73, 'England', 'Brazil'),   // same pair, reversed → counts
+    koM(74, 'France', 'Germany'),   // wrong opponent → no
+    koM(75, 'Italy', 'Croatia', false), // unresolved → no
+  ]
+  expect(countR32Participation(user, actual)).toBe(1)
 })
 
 const mkRow = (label: string, over: Partial<GroupScopeRow>): GroupScopeRow =>
