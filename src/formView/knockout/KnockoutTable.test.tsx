@@ -17,7 +17,7 @@ const unresolvedMatch: KnockoutMatch = {
 
 // Partially resolved set: one known team, one placeholder (match unresolved overall)
 const PARTIAL_MATCHES: KnockoutMatch[] = [
-  { matchNum: 73, home: 'Mexico', away: 'סגן-אלוף ב', resolved: false },
+  { matchNum: 73, home: 'Mexico', away: 'סגנית ב', resolved: false },
   { matchNum: 74, home: 'Germany', away: 'Haiti', resolved: true },
   { matchNum: 75, home: 'מנצח קבוצה ו', away: '?', resolved: false },
 ]
@@ -41,7 +41,7 @@ describe('KnockoutTable — team name display', () => {
 
   test('shows Hebrew placeholder text for unresolved slots', () => {
     render(<KnockoutTable matches={PARTIAL_MATCHES} predictions={emptyPredictions} onChange={noop} />)
-    expect(screen.getByText('סגן-אלוף ב')).toBeInTheDocument()
+    expect(screen.getByText('סגנית ב')).toBeInTheDocument()
     expect(screen.getByText('מנצח קבוצה ו')).toBeInTheDocument()
   })
 

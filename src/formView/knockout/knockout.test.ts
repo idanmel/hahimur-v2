@@ -198,7 +198,7 @@ describe('resolveRound32', () => {
 
     const m73 = result.find(m => m.matchNum === 73)!
     expect(m73.resolved).toBe(false)
-    expect(m73.home).toMatch(/מנצח|סגן/)
+    expect(m73.home).toMatch(/מנצח|סגנית/)
 
     const m79 = result.find(m => m.matchNum === 79)!
     expect(m79.resolved).toBe(false)

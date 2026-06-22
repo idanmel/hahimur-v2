@@ -15,7 +15,7 @@ export interface KnockoutStages {
   final: KnockoutMatch
 }
 
-const POSITION_LABELS = ['מנצח', 'סגן-אלוף', 'שלישי'] as const
+const POSITION_LABELS = ['מנצח', 'סגנית', 'שלישי'] as const
 
 const KO_DATES: Record<number, { matchDate: string; kickoffIST: string }> = {
   // Round of 32

@@ -3,6 +3,7 @@ import UpdatesPage from './pages/updates/UpdatesPage'
 import FormsPage from './pages/forms/FormsPage'
 import HomePage from './pages/home/HomePage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
+import KnockoutMatchPage from './pages/match/KnockoutMatchPage'
 import ResultsPage from './pages/results/ResultsPage'
 import RivalryPage from './pages/rivalry/RivalryPage'
 import StatsPage from './pages/stats/StatsPage'
@@ -24,13 +25,16 @@ export default function App() {
   const interval = new URLSearchParams(window.location.search).has('fastCheck') ? FAST_CHECK : FIVE_MINUTES
   const { updateAvailable } = useUpdateCheck(interval)
   const matchId = pathname.startsWith('/matches/') ? pathname.slice('/matches/'.length).toUpperCase() : null
+  // Just match 73 for now — the first knockout page. More follow in later slices.
+  const koMatchNum = matchId === '73' ? 73 : null
   const groupStatsMatch = GROUP_STATS_RE.exec(pathname)
   const groupStatsLetter = groupStatsMatch ? (groupStatsMatch[1].toUpperCase() as GroupLetter) : null
 
   return (
     <>
       <UpdateBanner updateAvailable={updateAvailable} />
-      {matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
+      {koMatchNum !== null                                ? <KnockoutMatchPage matchNum={koMatchNum} /> :
+       matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :
        pathname === '/stats'                             ? <StatsPage users={USERS} /> :
