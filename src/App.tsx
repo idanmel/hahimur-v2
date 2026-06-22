@@ -33,7 +33,7 @@ export default function App() {
   return (
     <>
       <UpdateBanner updateAvailable={updateAvailable} />
-      {koMatchNum !== null                                ? <KnockoutMatchPage matchNum={koMatchNum} /> :
+      {koMatchNum !== null                                ? <KnockoutMatchPage matchNum={koMatchNum} users={USERS_SORTED} /> :
        matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :

@@ -1,58 +1,76 @@
 import { isUnpredicted, type MatchScores } from '../../shared/types'
 import type { User } from '../../users/index'
-import { singleMatchPoints } from '../../leaderboard/points'
+import { singleMatchPoints, singleMatchOutcome } from '../../leaderboard/points'
 import { compareScores, resultGroup } from './matchUtils'
 
-type Props = { matchId: string; users: User[]; actualScore?: MatchScores | null }
+type Props = {
+  matchId: string
+  users: User[]
+  actualScore?: MatchScores | null
+  // How to read a user's predicted score for this match. Defaults to the flat
+  // predictions map; knockout pages pass an orientation-corrected lookup so a
+  // bettor who had the two teams reversed still groups under the real scoreline.
+  scoreFor?: (u: User) => MatchScores | null | undefined
+  // Team labels, used to name the penalty-shootout winner on a drawn knockout
+  // scoreline. Group matches never carry a drawWinner, so they go unused there.
+  homeLabel?: string
+  awayLabel?: string
+}
 
-export default function ScoreFrequencyTable({ matchId, users, actualScore = null }: Props) {
-  const byScore = new Map<string, string[]>()
+export default function ScoreFrequencyTable({ matchId, users, actualScore = null, scoreFor, homeLabel, awayLabel }: Props) {
+  const getScore = scoreFor ?? ((u: User) => u.predictions[matchId])
+  // Group by the full predicted score, drawWinner included — so on a knockout
+  // draw, "1-1 home on pens" and "1-1 away on pens" are distinct calls that
+  // score differently. Group matches never carry a drawWinner, so the key
+  // collapses to the plain scoreline there.
+  const groups = new Map<string, { score: MatchScores; names: string[] }>()
   const unpredicted: string[] = []
   for (const u of users) {
-    const p = u.predictions[matchId]
+    const p = getScore(u)
     if (!p || isUnpredicted(p)) { unpredicted.push(u.label); continue }
-    const key = `${p.home}-${p.away}`
-    byScore.set(key, [...(byScore.get(key) ?? []), u.label])
+    const key = `${p.home}-${p.away}-${p.drawWinner ?? ''}`
+    const g = groups.get(key) ?? { score: p, names: [] }
+    g.names.push(u.label)
+    groups.set(key, g)
   }
   unpredicted.sort((a, b) => a.localeCompare(b, 'he'))
 
-  const total = [...byScore.values()].reduce((s, names) => s + names.length, 0)
-  const parseKey = (key: string) => { const [h, aw] = key.split('-').map(Number); return { h, aw } }
-  const maxCount = Math.max(...[...byScore.values()].map(names => names.length))
-  const rows = [...byScore.entries()]
-    .sort((a, b) => { const pa = parseKey(a[0]), pb = parseKey(b[0]); return compareScores(pa.h, pa.aw, pb.h, pb.aw) })
-    .map(([key, names]) => {
-      const { h, aw } = parseKey(key)
-      return {
-        key,
-        names: [...names].sort((a, b) => a.localeCompare(b, 'he')),
-        count: names.length,
-        pct: Math.round((names.length / total) * 100),
-        isLeader: names.length === maxCount,
-        pts: actualScore ? singleMatchPoints(matchId, { home: h, away: aw }, actualScore) : null,
-      }
-    })
+  const total = [...groups.values()].reduce((s, g) => s + g.names.length, 0)
+  const maxCount = Math.max(...[...groups.values()].map(g => g.names.length))
+  const rows = [...groups.entries()]
+    .sort(([, a], [, b]) => compareScores(a.score.home!, a.score.away!, b.score.home!, b.score.away!))
+    .map(([key, g]) => ({
+      key,
+      score: g.score,
+      names: [...g.names].sort((a, b) => a.localeCompare(b, 'he')),
+      count: g.names.length,
+      pct: Math.round((g.names.length / total) * 100),
+      isLeader: g.names.length === maxCount,
+      outcome: actualScore ? singleMatchOutcome(g.score, actualScore) : null,
+      pts: actualScore ? singleMatchPoints(matchId, g.score, actualScore) : null,
+    }))
 
   if (rows.length === 0 && unpredicted.length === 0) return null
 
   const recap = { exact: 0, partial: 0, miss: 0 }
   if (actualScore) {
     for (const r of rows) {
-      const { h, aw } = parseKey(r.key)
-      if (h === actualScore.home && aw === actualScore.away) recap.exact += r.count
-      else if (r.pts! > 0) recap.partial += r.count
+      if (r.outcome === 'tzelifa') recap.exact += r.count
+      else if (r.outcome === 'pgiya') recap.partial += r.count
       else recap.miss += r.count
     }
   }
 
-  const rowClass = (key: string, isLeader: boolean) => {
-    const { h, aw } = parseKey(key)
-    const group = ` score-freq__row--g${resultGroup(h, aw)}`
+  const rowClass = (score: MatchScores, outcome: typeof rows[number]['outcome'], isLeader: boolean) => {
+    const group = ` score-freq__row--g${resultGroup(score.home!, score.away!)}`
     if (!actualScore) return group + (isLeader ? ' score-freq__row--leader' : '')
-    if (h === actualScore.home && aw === actualScore.away) return group + ' score-freq__row--exact'
-    if (resultGroup(h, aw) === resultGroup(actualScore.home!, actualScore.away!)) return group + ' score-freq__row--outcome'
+    if (outcome === 'tzelifa') return group + ' score-freq__row--exact'
+    if (outcome === 'pgiya') return group + ' score-freq__row--outcome'
     return group + ' score-freq__row--miss'
   }
+
+  const penWinner = (score: MatchScores): string | undefined =>
+    score.drawWinner === 'home' ? homeLabel : score.drawWinner === 'away' ? awayLabel : undefined
 
   return (
     <>
@@ -66,16 +84,23 @@ export default function ScoreFrequencyTable({ matchId, users, actualScore = null
         </div>
       )}
       <div data-testid="score-freq-table" className="score-freq">
-        {rows.map(({ key, names, count, pct, isLeader, pts }, i) => (
+        {rows.map(({ key, score, names, count, pct, isLeader, outcome, pts }, i) => (
           <div
             key={key}
             data-testid="score-freq-row"
-            className={`score-freq__row${rowClass(key, isLeader)}`}
+            className={`score-freq__row${rowClass(score, outcome, isLeader)}`}
             style={{ '--bar-pct': `${pct}%`, '--row-delay': `${i * 80}ms`, animationDelay: `${i * 80}ms` } as React.CSSProperties}
           >
             <div className="score-freq__fill" />
             <div className="score-freq__content">
-              <span className="score-freq__score">{key.split('-').reverse().join('–')}</span>
+              <span className="score-freq__score">
+                {score.away}–{score.home}
+                {score.drawWinner && (
+                  <span className="score-freq__pens">
+                    {penWinner(score) ? `פנדלים ל${penWinner(score)}` : 'פנדלים'}
+                  </span>
+                )}
+              </span>
               <div className="score-freq__names">
                 {names.map(name => <span key={name} className="score-freq__name">{name}</span>)}
               </div>

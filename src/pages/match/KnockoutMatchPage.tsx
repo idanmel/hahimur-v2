@@ -1,5 +1,7 @@
 import PageLayout from '../../shared/PageLayout'
+import type { User } from '../../users/index'
 import { findKnockoutMatch, roundLabel } from './koMatch'
+import KnockoutScoreFrequencyTable from './KnockoutScoreFrequencyTable'
 import './MatchPredictionsPage.css'
 
 // One team slot. While unresolved it's a descriptor string ("סגנית א") with
@@ -12,7 +14,7 @@ function TeamSlot({ slot }: { slot: string }) {
   )
 }
 
-export default function KnockoutMatchPage({ matchNum }: { matchNum: number }) {
+export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: number; users?: User[] }) {
   const match = findKnockoutMatch(matchNum)
 
   if (!match) {
@@ -44,6 +46,16 @@ export default function KnockoutMatchPage({ matchNum }: { matchNum: number }) {
           </div>
         )}
       </div>
+
+      {match.resolved && (
+        <div className="match-predictions">
+          <header className="section-heading" dir="rtl">
+            <span className="section-heading__eyebrow">סטטיסטיקה</span>
+            <h2 className="section-heading__title">התפלגות תוצאות</h2>
+          </header>
+          <KnockoutScoreFrequencyTable actualMatch={match} users={users} />
+        </div>
+      )}
     </PageLayout>
   )
 }

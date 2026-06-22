@@ -607,6 +607,19 @@
   text-shadow: 0 0 24px rgba(212, 160, 22, 0.5);
 }
 
+/* penalty-shootout winner on a drawn knockout scoreline, tucked under the score */
+.score-freq__pens {
+  display: block;
+  margin-top: 2px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: rgba(212, 160, 22, 0.7);
+  direction: rtl;
+}
+
 /* names of users who predicted this scoreline */
 .score-freq__names {
   flex: 1;
@@ -881,6 +894,180 @@
 
 .prediction-row--exact .prediction-row__sep {
   color: rgba(212, 160, 22, 0.45);
+}
+
+/* ── Knockout predictions — a survivor ledger ──────────────────────────────
+   Every bracket sends a different pair into this match, so a per-bettor row is
+   normalised to one shape: who you sent through. The score chip is a fixed
+   central spine that lines up down the whole column; the eliminated side is a
+   dimmed flag, the survivor a gold-ringed flag with its name gilded. */
+.ko-preds {
+  background: linear-gradient(180deg, #0d2550 0%, var(--navy) 100%);
+  border-radius: 6px;
+  overflow: hidden;
+  border-top: 2px solid rgba(212, 160, 22, 0.65);
+  box-shadow:
+    0 0 0 1px rgba(212, 160, 22, 0.12),
+    0 8px 28px rgba(0, 0, 0, 0.28);
+  position: relative;
+}
+
+.ko-preds::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* five tracks shared by every row: bettor · loser flag · score · winner flag ·
+   survivor. The two 1fr ends balance, so the score column is a true vertical
+   spine no matter how long the names are. */
+.ko-preds__row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(3.25rem, 1fr) 30px auto 30px minmax(3.25rem, 1fr);
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.5rem 1.05rem;
+  direction: rtl;
+  border-bottom: 1px solid rgba(212, 160, 22, 0.08);
+  /* staggered reveal, row by row, on first paint */
+  opacity: 0;
+  transform: translateY(6px);
+  animation: ko-row-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 30ms);
+  transition: background 0.18s ease;
+}
+
+@keyframes ko-row-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ko-preds__row:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+.ko-preds__row:last-child { border-bottom: none; }
+.ko-preds__row:hover { background: rgba(212, 160, 22, 0.06); }
+
+/* the bettor — anchored to the reading edge with a thin gold ticket stub */
+.ko-preds__name {
+  position: relative;
+  min-width: 0;
+  padding-inline-start: 0.6rem;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgba(239, 228, 184, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ko-preds__name::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 3px;
+  height: 0.95em;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: rgba(212, 160, 22, 0.55);
+}
+
+.ko-preds__flag-cell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.ko-preds__flag {
+  width: 28px;
+  height: 19px;
+  border-radius: 3px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+  display: block;
+}
+
+/* the eliminated side recedes — desaturated and dimmed */
+.ko-preds__flag-cell--out .ko-preds__flag {
+  filter: grayscale(0.45) brightness(0.72);
+  opacity: 0.6;
+}
+
+/* the survivor's flag is lit and ringed in gold */
+.ko-preds__flag-cell--adv .ko-preds__flag {
+  box-shadow:
+    0 0 0 1.5px var(--gold),
+    0 0 12px rgba(212, 160, 22, 0.5);
+}
+
+/* penalty badge: a gold token clipped to the survivor's flag corner, so a level
+   scoreline still says who went through without widening the spine */
+.ko-preds__pen {
+  position: absolute;
+  top: -6px;
+  inset-inline-start: -6px;
+  width: 15px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 9px rgba(212, 160, 22, 0.6);
+}
+
+/* the recessed scoreboard chip — a miniature of the match-header scoreline.
+   normalised winner : loser, so the left digit always rides with the survivor */
+.ko-preds__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.1rem;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: rgba(0, 5, 18, 0.5);
+  border: 1px solid rgba(212, 160, 22, 0.22);
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.5);
+}
+
+.ko-preds__digit {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.45rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #ffe9b0;
+  min-width: 0.7ch;
+  text-align: center;
+}
+
+.ko-preds__sep {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: rgba(212, 160, 22, 0.55);
+  padding: 0 3px;
+  transform: translateY(-1px);
+}
+
+/* the survivor's name — gilded, the warm landing point at the end of the row */
+.ko-preds__team-name {
+  min-width: 0;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── per-match leaderboard: a standings card, sorted by running total ─────── */
