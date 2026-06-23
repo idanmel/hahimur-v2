@@ -153,7 +153,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
 
   const randomize = () => {
     // fire-and-forget click counter — must never affect the simulation itself
-    reportUsage('/api/sim-click')
+    reportUsage('sim', me)
     const poisson = (lambda: number) => {
       const L = Math.exp(-lambda)
       let k = 0, p = 1
@@ -186,7 +186,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
   // true "best case" — locked results can reseed a group and reshuffle the
   // derived bracket; see allTzelifotResults for the caveat.)
   const showAllTzelifot = () => {
-    reportUsage('/api/all-tzelifot-click')
+    reportUsage('all-tzelifot', me)
     if (!myUser) return
     setEditedResults(prev => {
       const next = allTzelifotResults(prev, myUser.predictions, LOCKED_MATCH_IDS)

@@ -1,29 +1,42 @@
-# Sim Click Counter
+# Click Counters
 
-Every click of the סימלוץ button on the results page is recorded as one row
-in the `sim_clicks` table on Neon (Vercel → Storage → Neon → Open in Neon →
-SQL Editor). Rows hold only a timestamp — no user data.
+Every tracked button (sim, "הכל צליפות", לפי תאריך) records one row in the
+unified `clicks` table on Neon (Vercel → Storage → Neon → Open in Neon → SQL
+Editor). Each row carries a `feature` tag, a `who` (the participant the viewer
+identified as, or NULL when anonymous), and a `clicked_at` timestamp.
 
-## The headline number
+## The headline number (sim)
 
 ```sql
-SELECT count(*) FROM sim_clicks;
+SELECT count(*) FROM clicks WHERE feature = 'sim';
 ```
 
 > "We ran X simulations during WC 2026."
 
-## Clicks per day
+## Clicks per day, per feature
 
 ```sql
-SELECT clicked_at::date AS day, count(*)
-FROM sim_clicks
-GROUP BY day
-ORDER BY day;
+SELECT feature, clicked_at::date AS day, count(*)
+FROM clicks
+GROUP BY feature, day
+ORDER BY feature, day;
+```
+
+## Who clicked the most
+
+```sql
+SELECT feature, coalesce(who, '(anonymous)') AS who, count(*)
+FROM clicks
+GROUP BY feature, who
+ORDER BY feature, count(*) DESC;
 ```
 
 ## How it works
 
-- `api/sim-click.ts` — POST inserts one row.
-- `randomize()` in `src/pages/results/ResultsPage.tsx` fires a
+- `api/click.ts` — POST `{ feature, who }` inserts one row.
+- `reportUsage(feature, who)` in `src/shared/reportUsage.ts` fires a
   fire-and-forget `fetch` to it; failures are swallowed so the counter can
-  never break the simulator.
+  never break the feature it measures.
+- Call sites: `randomize()` and `showAllTzelifot()` in
+  `src/pages/results/ResultsPage.tsx` (feature `sim` / `all-tzelifot`), and the
+  by-date toggle in `src/formView/FormView.tsx` (feature `date-view`).

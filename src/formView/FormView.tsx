@@ -123,7 +123,7 @@ export default function FormView({
         <button
           type="button"
           className={`pg-group-btn${groupStageView === 'by-date' ? ' pg-group-btn--active' : ''}`}
-          onClick={() => { reportUsage('/api/date-view-click'); setGroupStageView('by-date') }}
+          onClick={() => { reportUsage('date-view', user?.label ?? ''); setGroupStageView('by-date') }}
         >לפי תאריך</button>
       </div>
 

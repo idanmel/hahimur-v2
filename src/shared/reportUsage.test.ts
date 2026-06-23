@@ -7,14 +7,32 @@ declare global {
 
 afterEach(() => vi.unstubAllGlobals())
 
-test('POSTs to the endpoint from a real host', () => {
+test('POSTs the feature and who to /api/click from a real host', () => {
   window.happyDOM.setURL('https://hahimur.vercel.app/')
   const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}'))
   vi.stubGlobal('fetch', fetchMock)
 
-  reportUsage('/api/date-view-click')
+  reportUsage('date-view', 'idan')
 
-  expect(fetchMock).toHaveBeenCalledWith('/api/date-view-click', { method: 'POST' })
+  expect(fetchMock).toHaveBeenCalledWith('/api/click', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feature: 'date-view', who: 'idan' }),
+  })
+})
+
+test('defaults who to empty string when the viewer is anonymous', () => {
+  window.happyDOM.setURL('https://hahimur.vercel.app/')
+  const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}'))
+  vi.stubGlobal('fetch', fetchMock)
+
+  reportUsage('sim')
+
+  expect(fetchMock).toHaveBeenCalledWith('/api/click', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feature: 'sim', who: '' }),
+  })
 })
 
 test('does not POST from localhost', () => {
@@ -22,7 +40,7 @@ test('does not POST from localhost', () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}'))
   vi.stubGlobal('fetch', fetchMock)
 
-  reportUsage('/api/sim-click')
+  reportUsage('sim', 'idan')
 
   expect(fetchMock).not.toHaveBeenCalled()
 })
@@ -31,5 +49,5 @@ test('swallows a failed report instead of throwing', () => {
   window.happyDOM.setURL('https://hahimur.vercel.app/')
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
 
-  expect(() => reportUsage('/api/sim-click')).not.toThrow()
+  expect(() => reportUsage('sim', 'idan')).not.toThrow()
 })

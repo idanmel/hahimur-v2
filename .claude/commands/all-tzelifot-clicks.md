@@ -2,7 +2,7 @@ Report how many times the "הכל צליפות" button was clicked, straight fro
 
 ## Context
 
-Every click on the "הכל צליפות" button in the results page fires a POST to `/api/all-tzelifot-click` ([api/all-tzelifot-click.ts](../../api/all-tzelifot-click.ts)), which inserts a row into the `all_tzelifot_clicks` table in Neon Postgres. Each row has a `clicked_at` timestamp. This is the usage signal for the "הכל צליפות" feature (see "Validate Value First").
+Every click on the "הכל צליפות" button in the results page fires a POST to `/api/click` ([api/click.ts](../../api/click.ts)) with `{ feature: 'all-tzelifot', who }`, which inserts a row into the unified `clicks` table in Neon Postgres. Each row has a `feature` tag, a `who` (the participant the viewer identified as, or null when anonymous), and a `clicked_at` timestamp. This is the usage signal for the "הכל צליפות" feature (see "Validate Value First").
 
 ## Steps
 
@@ -14,12 +14,17 @@ Run this from the repo root — it loads `DATABASE_URL` from `.env.development.l
 set -a && . ./.env.development.local && set +a && node -e "
 const { neon } = require('@neondatabase/serverless');
 const sql = neon(process.env.DATABASE_URL);
-sql\`SELECT count(*)::int AS total,
-         count(*) FILTER (WHERE clicked_at > now() - interval '24 hours')::int AS last_24h,
-         min(clicked_at) AS first,
-         max(clicked_at) AS last
-     FROM all_tzelifot_clicks\`
-  .then(r => console.log(JSON.stringify(r[0], null, 2)));
+Promise.all([
+  sql\`SELECT count(*)::int AS total,
+           count(*) FILTER (WHERE clicked_at > now() - interval '24 hours')::int AS last_24h,
+           count(*) FILTER (WHERE who IS NOT NULL)::int AS identified,
+           min(clicked_at) AS first,
+           max(clicked_at) AS last
+       FROM clicks WHERE feature = 'all-tzelifot'\`,
+  sql\`SELECT coalesce(who, '(anonymous)') AS who, count(*)::int AS n
+       FROM clicks WHERE feature = 'all-tzelifot'
+       GROUP BY who ORDER BY n DESC LIMIT 10\`,
+]).then(([h, byWho]) => console.log(JSON.stringify({ headline: h[0], byWho }, null, 2)));
 "
 ```
 
@@ -28,6 +33,7 @@ sql\`SELECT count(*)::int AS total,
 Tell the user:
 - The total click count
 - How many in the last 24 hours
+- Who clicked the most (top few participants by count), and how many were anonymous
 - When the first and last clicks happened, converted to Israel time (UTC+3 in summer)
 
 Keep it to a few sentences. If the trend is notable (e.g. zero clicks since launch night), say so — that's the whole point of the signal.
