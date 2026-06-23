@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import MatchPredictionsPage from './MatchPredictionsPage'
 import { findMatch } from './matchUtils'
@@ -49,19 +49,8 @@ test('played match shows the real score as fixed text with a final badge, no inp
   expect(scoreArea).toHaveTextContent('0–2')
 })
 
-test('played match scores each scoreline row against the real result', () => {
-  renderPage('A1', [
-    u('מדויק', { A1: { home: 2, away: 0 } }),
-    u('כיוון', { A1: { home: 1, away: 0 } }),
-    u('פספוס', { A1: { home: 0, away: 3 } }),
-  ])
-  const freq = within(screen.getByTestId('score-freq-table'))
-  const pts = (name: string) => freq.getByText(name).closest('[data-testid="score-freq-row"]')!.querySelector('.score-freq__pts')!.textContent
-  expect(pts('מדויק')).toBe('4')
-  expect(pts('כיוון')).toBe('2')
-  expect(pts('פספוס')).toBe('0')
-})
-
+// Per-row points are covered by scoreFrequency.test.ts; the outcome→DOM wiring
+// is proven by the highlight/recap tests below.
 test('unplayed match keeps the editable what-if inputs and shows no badge', () => {
   renderPage('A3', [])
   expect(screen.getAllByRole('textbox')).toHaveLength(2)

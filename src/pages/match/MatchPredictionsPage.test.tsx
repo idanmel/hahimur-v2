@@ -141,17 +141,8 @@ test('shows summary counts: 2 home wins, 1 draw, 0 away wins', () => {
   expect(getCounts()).toEqual(['0', '1', '2'])
 })
 
-test('sorts predictions: home wins, draws, away wins, unpredicted last', () => {
-  renderPage('A1', [
-    u('מנחה', { A1: { home: null, away: null } }),
-    u('אורן', { A1: { home: 0, away: 2 } }),
-    u('טל',   { A1: { home: 1, away: 1 } }),
-    u('עידן', { A1: { home: 2, away: 0 } }),
-  ])
-  const names = freq().getAllByText(/עידן|טל|אורן|מנחה/).map(el => el.textContent)
-  expect(names).toEqual(['עידן', 'טל', 'אורן', 'מנחה'])
-})
-
+// Row ordering (incl. unpredicted-last) is covered by scoreFrequency.test.ts;
+// the page test only confirms the frequency table is mounted on the page.
 test('shows a score frequency table above the predictions list', () => {
   renderPage('A1', [
     u('א', { A1: { home: 2, away: 1 } }),
@@ -159,15 +150,4 @@ test('shows a score frequency table above the predictions list', () => {
     u('ג', { A1: { home: 1, away: 0 } }),
   ])
   expect(screen.getByTestId('score-freq-table')).toBeInTheDocument()
-})
-
-test('sorts home wins by home goals asc, then draws, then away wins', () => {
-  renderPage('A1', [
-    u('רון', { A1: { home: 2, away: 0 } }),
-    u('אבי', { A1: { home: 3, away: 1 } }),
-    u('תמר', { A1: { home: 1, away: 1 } }),
-    u('דן',  { A1: { home: 0, away: 1 } }),
-  ])
-  const names = freq().getAllByText(/אבי|רון|תמר|דן/).map(el => el.textContent)
-  expect(names).toEqual(['רון', 'אבי', 'תמר', 'דן'])
 })

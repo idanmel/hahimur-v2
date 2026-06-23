@@ -1,7 +1,7 @@
-import { isUnpredicted, type MatchScores } from '../../shared/types'
+import type { MatchScores } from '../../shared/types'
 import type { User } from '../../users/index'
-import { singleMatchPoints, singleMatchOutcome } from '../../leaderboard/points'
-import { compareScores, resultGroup } from './matchUtils'
+import { resultGroup } from './matchUtils'
+import { buildScoreFrequency, type ScoreFreqRow } from './scoreFrequency'
 
 type Props = {
   matchId: string
@@ -18,50 +18,11 @@ type Props = {
 }
 
 export default function ScoreFrequencyTable({ matchId, users, actualScore = null, scoreFor, homeLabel, awayLabel }: Props) {
-  const getScore = scoreFor ?? ((u: User) => u.predictions[matchId])
-  // Group by the full predicted score, drawWinner included — so on a knockout
-  // draw, "1-1 home on pens" and "1-1 away on pens" are distinct calls that
-  // score differently. Group matches never carry a drawWinner, so the key
-  // collapses to the plain scoreline there.
-  const groups = new Map<string, { score: MatchScores; names: string[] }>()
-  const unpredicted: string[] = []
-  for (const u of users) {
-    const p = getScore(u)
-    if (!p || isUnpredicted(p)) { unpredicted.push(u.label); continue }
-    const key = `${p.home}-${p.away}-${p.drawWinner ?? ''}`
-    const g = groups.get(key) ?? { score: p, names: [] }
-    g.names.push(u.label)
-    groups.set(key, g)
-  }
-  unpredicted.sort((a, b) => a.localeCompare(b, 'he'))
-
-  const total = [...groups.values()].reduce((s, g) => s + g.names.length, 0)
-  const maxCount = Math.max(...[...groups.values()].map(g => g.names.length))
-  const rows = [...groups.entries()]
-    .sort(([, a], [, b]) => compareScores(a.score.home!, a.score.away!, b.score.home!, b.score.away!))
-    .map(([key, g]) => ({
-      key,
-      score: g.score,
-      names: [...g.names].sort((a, b) => a.localeCompare(b, 'he')),
-      count: g.names.length,
-      pct: Math.round((g.names.length / total) * 100),
-      isLeader: g.names.length === maxCount,
-      outcome: actualScore ? singleMatchOutcome(g.score, actualScore) : null,
-      pts: actualScore ? singleMatchPoints(matchId, g.score, actualScore) : null,
-    }))
+  const { rows, unpredicted, recap } = buildScoreFrequency(matchId, users, actualScore, scoreFor)
 
   if (rows.length === 0 && unpredicted.length === 0) return null
 
-  const recap = { exact: 0, partial: 0, miss: 0 }
-  if (actualScore) {
-    for (const r of rows) {
-      if (r.outcome === 'tzelifa') recap.exact += r.count
-      else if (r.outcome === 'pgiya') recap.partial += r.count
-      else recap.miss += r.count
-    }
-  }
-
-  const rowClass = (score: MatchScores, outcome: typeof rows[number]['outcome'], isLeader: boolean) => {
+  const rowClass = (score: MatchScores, outcome: ScoreFreqRow['outcome'], isLeader: boolean) => {
     const group = ` score-freq__row--g${resultGroup(score.home!, score.away!)}`
     if (!actualScore) return group + (isLeader ? ' score-freq__row--leader' : '')
     if (outcome === 'tzelifa') return group + ' score-freq__row--exact'
