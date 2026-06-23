@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import handler from './bestcase-click'
+import handler from './all-tzelifot-click'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const sqlMock = vi.fn().mockResolvedValue([])
@@ -16,7 +16,7 @@ const makeRes = () => {
   return res as unknown as VercelResponse & { status: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn> }
 }
 
-describe('POST /api/bestcase-click', () => {
+describe('POST /api/all-tzelifot-click', () => {
   beforeEach(() => {
     sqlMock.mockClear()
   })
@@ -27,7 +27,7 @@ describe('POST /api/bestcase-click', () => {
 
     expect(sqlMock).toHaveBeenCalledOnce()
     const [strings] = sqlMock.mock.calls[0]
-    expect(strings.join('')).toMatch(/INSERT INTO bestcase_clicks/i)
+    expect(strings.join('')).toMatch(/INSERT INTO all_tzelifot_clicks/i)
     expect(res.status).toHaveBeenCalledWith(200)
   })
 

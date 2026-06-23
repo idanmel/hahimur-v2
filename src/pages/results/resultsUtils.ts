@@ -4,19 +4,20 @@ export function clampGoals(real: number, entered: number): number {
   return Math.max(real, entered)
 }
 
-// Your "best case" result-set: every match not already decided resolves exactly
-// as YOU predicted, while played (locked) matches keep their real outcome.
+// "הכל צליפות": every match not already decided resolves exactly as YOU
+// predicted, while played (locked) matches keep their real outcome. The name
+// says what it does — your whole bet comes true, so you score צליפה on every
+// undecided match — and deliberately NOT "best case", because it is neither a
+// guaranteed points-maximum nor a guarantee of finishing first.
 //
-// Why your own bet — and not a points-max search like bestRemainingResult — is
-// the right answer once the knockout is in scope: knockout points (r32 5–7 … sf
-// 12–16, champion 25) dwarf group place points (1 each), and you only collect
-// them when your predicted bracket actually materialises. Deviating a group
-// scoreline to grab a stray place point can reshuffle your top-two and blow up
-// those big knockout points. So reproducing your whole bet keeps the bracket you
-// predicted intact and banks every knockout point — a correct joint near-optimum.
-// (A later refinement can still swap in bracket-faithful group results that earn
-// strictly more group points without disturbing the bracket.)
-export function bestCaseResults(
+// Caveat worth remembering: the knockout bracket is re-derived from the group
+// tables, and locked real results can flip a group's seeding versus the table
+// you predicted. When that happens a team can slide into a bracket slot you
+// meant for someone else and inherit the scorelines you stored there — so the
+// played-out bracket may not be the one you pictured, and may even bank points
+// for a team you never expected to advance (e.g. Colombia riding Portugal's
+// winner-path once its real 3–1 makes it top group K instead of runner-up).
+export function allTzelifotResults(
   base: PredictionsState,
   myPredictions: PredictionsState,
   lockedIds: Set<string>,

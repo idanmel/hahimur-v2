@@ -193,7 +193,7 @@
   background: rgba(11, 34, 68, 0.05);
 }
 
-.pg-bestcase-btn {
+.pg-all-tzelifot-btn {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.05rem;
   letter-spacing: 0.14em;
@@ -207,12 +207,12 @@
   transition: box-shadow 0.1s ease, transform 0.1s ease;
 }
 
-.pg-bestcase-btn:hover {
+.pg-all-tzelifot-btn:hover {
   box-shadow: 4px 4px 0 var(--navy);
   transform: translate(-1px, -1px);
 }
 
-.pg-bestcase-btn:active {
+.pg-all-tzelifot-btn:active {
   box-shadow: 0 0 0 var(--navy);
   transform: translate(3px, 3px);
 }

@@ -1,8 +1,8 @@
-Report how many times the "התרחיש הטוב ביותר שלי" button was clicked, straight from the production database.
+Report how many times the "הכל צליפות" button was clicked, straight from the production database.
 
 ## Context
 
-Every click on the "התרחיש הטוב ביותר שלי" button in the results page fires a POST to `/api/bestcase-click` ([api/bestcase-click.ts](../../api/bestcase-click.ts)), which inserts a row into the `bestcase_clicks` table in Neon Postgres. Each row has a `clicked_at` timestamp. This is the usage signal for the best-case scenario feature (see "Validate Value First").
+Every click on the "הכל צליפות" button in the results page fires a POST to `/api/all-tzelifot-click` ([api/all-tzelifot-click.ts](../../api/all-tzelifot-click.ts)), which inserts a row into the `all_tzelifot_clicks` table in Neon Postgres. Each row has a `clicked_at` timestamp. This is the usage signal for the "הכל צליפות" feature (see "Validate Value First").
 
 ## Steps
 
@@ -18,7 +18,7 @@ sql\`SELECT count(*)::int AS total,
          count(*) FILTER (WHERE clicked_at > now() - interval '24 hours')::int AS last_24h,
          min(clicked_at) AS first,
          max(clicked_at) AS last
-     FROM bestcase_clicks\`
+     FROM all_tzelifot_clicks\`
   .then(r => console.log(JSON.stringify(r[0], null, 2)));
 "
 ```

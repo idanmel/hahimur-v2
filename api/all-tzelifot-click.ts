@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sql = neon(process.env.DATABASE_URL!)
-  await sql`INSERT INTO bestcase_clicks DEFAULT VALUES`
+  await sql`INSERT INTO all_tzelifot_clicks DEFAULT VALUES`
 
   return res.status(200).json({ ok: true })
 }

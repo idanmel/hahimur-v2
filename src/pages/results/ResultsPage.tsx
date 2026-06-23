@@ -21,7 +21,7 @@ import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../../shared/matchesByDate'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
-import { getLockedMatchIds, bestCaseResults } from './resultsUtils'
+import { getLockedMatchIds, allTzelifotResults } from './resultsUtils'
 import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
 import '../../pages/form/FormPage.css'
@@ -181,14 +181,16 @@ export default function ResultsPage({ users }: { users: User[] }) {
     )
   }
 
-  // "Your best case": paint every unplayed match with your own prediction, so
-  // your predicted bracket plays out and you bank every point your bet can earn.
-  const showBestCase = () => {
-    reportUsage('/api/bestcase-click')
+  // "הכל צליפות": paint every unplayed match with your own prediction, so your
+  // whole bet comes true and you score צליפה on every undecided match. (Not a
+  // true "best case" — locked results can reseed a group and reshuffle the
+  // derived bracket; see allTzelifotResults for the caveat.)
+  const showAllTzelifot = () => {
+    reportUsage('/api/all-tzelifot-click')
     if (!myUser) return
     setEditedResults(prev => {
-      const next = bestCaseResults(prev, myUser.predictions, LOCKED_MATCH_IDS)
-      // A best-case score is the user's choice — keep the live feed from overwriting it.
+      const next = allTzelifotResults(prev, myUser.predictions, LOCKED_MATCH_IDS)
+      // A painted score is the user's choice — keep the live feed from overwriting it.
       for (const id of Object.keys(next)) {
         if (!LOCKED_MATCH_IDS.has(id)) userEditedIds.current.add(id)
       }
@@ -292,7 +294,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
           <span className="pg-sim-note-label">סימולטור תוצאות</span>
           <p className="pg-sim-note-body">
             ערכו תוצאות ידנית בכל שלב — הניקוד מתעדכן בזמן אמת.
-            לחצו <strong>התרחיש הטוב ביותר שלי</strong> כדי למלא את כל המשחקים בתוצאות שמזכות אתכם במקסימום נקודות,
+            לחצו <strong>הכל צליפות</strong> כדי למלא את כל המשחקים בניחושים שלכם — צליפה בכל משחק,
             <strong>סימלוץ</strong> לתוצאות אקראיות, או <strong>איפוס</strong> לחזרה לתוצאות האמיתיות.
           </p>
         </aside>
@@ -300,7 +302,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
         {/* Simulation actions — always visible, affect all stages */}
         <div className="pg-sim-actions">
           {myUser && (
-            <button type="button" className="pg-bestcase-btn" onClick={showBestCase}>התרחיש הטוב ביותר שלי</button>
+            <button type="button" className="pg-all-tzelifot-btn" onClick={showAllTzelifot}>הכל צליפות</button>
           )}
           <button type="button" className="pg-random-btn" onClick={randomize}>סימלוץ</button>
           <button type="button" className="pg-reset-btn" onClick={reset}>איפוס</button>
