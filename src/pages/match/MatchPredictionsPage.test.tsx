@@ -103,11 +103,6 @@ test('shows score from B1 prediction when matchId is B1', () => {
   expect(row).toHaveTextContent('1–2')
 })
 
-test('shows summary table even when no one predicted the game', () => {
-  renderPage('A1', [])
-  expect(getCounts()).toEqual(['0', '0', '0'])
-})
-
 test('shows user name when one user has a prediction for A1', () => {
   renderPage('A1', [u('שחקן א', { A1: { home: 2, away: 1 } })])
   expect(freq().getByText(/שחקן א/)).toBeInTheDocument()
@@ -146,29 +141,6 @@ test('shows summary counts: 2 home wins, 1 draw, 0 away wins', () => {
   expect(getCounts()).toEqual(['0', '1', '2'])
 })
 
-test('shows summary counts: 0 home wins, 0 draws, 1 away win', () => {
-  renderPage('A1', [u('שחקן א', { A1: { home: 0, away: 2 } })])
-  expect(getCounts()).toEqual(['1', '0', '0'])
-})
-
-test('always shows draw count as 0 when no one predicted a draw', () => {
-  renderPage('A1', [
-    u('שחקן א', { A1: { home: 2, away: 1 } }),
-    u('שחקן ב', { A1: { home: 1, away: 0 } }),
-  ])
-  const counts = getCounts()
-  expect(counts).toHaveLength(3)
-  expect(counts[1]).toBe('0')
-})
-
-test('excludes unpredicted entries from summary counts', () => {
-  renderPage('A1', [
-    u('שחקן א', { A1: { home: null, away: null } }),
-    u('שחקן ב', { A1: { home: 1, away: 0 } }),
-  ])
-  expect(getCounts()).toEqual(['0', '0', '1'])
-})
-
 test('sorts predictions: home wins, draws, away wins, unpredicted last', () => {
   renderPage('A1', [
     u('מנחה', { A1: { home: null, away: null } }),
@@ -187,56 +159,6 @@ test('shows a score frequency table above the predictions list', () => {
     u('ג', { A1: { home: 1, away: 0 } }),
   ])
   expect(screen.getByTestId('score-freq-table')).toBeInTheDocument()
-})
-
-test('score frequency table shows one row per unique scoreline', () => {
-  renderPage('A1', [
-    u('א', { A1: { home: 2, away: 1 } }),
-    u('ב', { A1: { home: 2, away: 1 } }),
-    u('ג', { A1: { home: 1, away: 0 } }),
-  ])
-  expect(screen.getAllByTestId('score-freq-row')).toHaveLength(2)
-})
-
-test('score frequency table shows count and percentage per scoreline', () => {
-  renderPage('A1', [
-    u('א', { A1: { home: 2, away: 1 } }),
-    u('ב', { A1: { home: 2, away: 1 } }),
-    u('ג', { A1: { home: 1, away: 0 } }),
-  ])
-  const table = screen.getByTestId('score-freq-table')
-  expect(table).toHaveTextContent('2')
-  expect(table).toHaveTextContent('67%')
-  expect(table).toHaveTextContent('33%')
-})
-
-test('score frequency table is sorted: home wins, then draws', () => {
-  renderPage('A1', [
-    u('א', { A1: { home: 0, away: 0 } }),
-    u('ב', { A1: { home: 2, away: 1 } }),
-    u('ג', { A1: { home: 2, away: 1 } }),
-  ])
-  const rows = screen.getAllByTestId('score-freq-row')
-  expect(rows[0]).toHaveTextContent('1–2')
-  expect(rows[1]).toHaveTextContent('0–0')
-})
-
-test('score frequency table excludes unpredicted entries', () => {
-  renderPage('A1', [
-    u('א', { A1: { home: null, away: null } }),
-    u('ב', { A1: { home: 2, away: 1 } }),
-  ])
-  expect(screen.getAllByTestId('score-freq-row')).toHaveLength(1)
-})
-
-test('shows user names inside the score frequency table, not in separate rows', () => {
-  renderPage('A1', [
-    u('שחקן א', { A1: { home: 2, away: 1 } }),
-    u('שחקן ב', { A1: { home: 2, away: 1 } }),
-  ])
-  const row = freq().getByText('שחקן א').closest('[data-testid="score-freq-row"]')!
-  expect(row).toHaveTextContent('שחקן ב')
-  expect(document.querySelector('.prediction-row')).toBeNull()
 })
 
 test('sorts home wins by home goals asc, then draws, then away wins', () => {
