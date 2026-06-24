@@ -188,6 +188,23 @@ describe('KnockoutTable — read-only draw winner display', () => {
   })
 })
 
+describe('KnockoutTable — link to the knockout match page', () => {
+  test('each card links to /matches/<matchNum>', () => {
+    render(<KnockoutTable matches={PARTIAL_MATCHES} predictions={emptyPredictions} onChange={noop} />)
+    const links = document.querySelectorAll<HTMLAnchorElement>('a.ko-card-hint')
+    expect(links).toHaveLength(3)
+    expect([...links].map(a => a.getAttribute('href'))).toEqual([
+      '/matches/73', '/matches/74', '/matches/75',
+    ])
+  })
+
+  test('link is present in read-only mode too', () => {
+    render(<KnockoutTable matches={[resolvedMatch]} predictions={emptyPredictions} onChange={noop} readOnly />)
+    const link = document.querySelector<HTMLAnchorElement>('a.ko-card-hint')
+    expect(link?.getAttribute('href')).toBe('/matches/89')
+  })
+})
+
 describe('KnockoutTable — onChange', () => {
   test('fires with correct matchNum key and scores when home score typed', () => {
     const onChange = vi.fn()

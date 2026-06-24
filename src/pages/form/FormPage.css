@@ -910,6 +910,27 @@ a.match-card-hint {
   opacity: 0.7;
 }
 
+.ko-card-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(200, 184, 122, 0.3);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.ko-card-hint:hover .match-card-hint__label,
+a.ko-card-hint:hover .match-card-hint__chevron {
+  opacity: 1;
+}
+
+a.ko-card-hint:hover .match-card-hint__chevron {
+  transform: translateX(-3px);
+}
+
 .ko-slot {
   display: flex;
   align-items: center;

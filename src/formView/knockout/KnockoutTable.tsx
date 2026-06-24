@@ -86,6 +86,10 @@ export default function KnockoutTable({ matches, predictions, onChange, readOnly
                 : <ScoreInput label={m.away} value={pred.away} disabled={!m.resolved} onChange={v => onChange(id, { home: pred.home, away: v })} />
               }
             </div>
+            <a href={`/matches/${id}`} className="ko-card-hint" onClick={e => e.stopPropagation()}>
+              <span className="match-card-hint__label">לפרטים</span>
+              <span className="match-card-hint__chevron">›</span>
+            </a>
           </div>
         )
       })}
