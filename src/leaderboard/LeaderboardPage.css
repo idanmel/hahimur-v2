@@ -1561,6 +1561,19 @@
   color: var(--ink);
 }
 
+/* secondary "top 5" reading on the opposite end of the same bar (stays legible
+   over both the light track and the gold fill, which can reach this end) */
+.wp-bar-top5 {
+  position: absolute;
+  inset: 0 auto 0 9px;
+  display: flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+}
+
 /* expected place */
 .wp-td--exp { width: 64px; text-align: center; white-space: nowrap; }
 

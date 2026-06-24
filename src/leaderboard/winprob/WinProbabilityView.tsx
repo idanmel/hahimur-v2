@@ -254,6 +254,7 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
                       <div className="wp-bar-wrap">
                         <div className="wp-bar" style={{ width: `${barW.toFixed(1)}%` }} />
                         <span className="wp-bar-pct">{fmtPct(r.winPct)}</span>
+                        <span className="wp-bar-top5">טופ 5: {fmtPct(r.top5Pct)}</span>
                       </div>
                     </td>
                     <td className="wp-td wp-td--exp">
