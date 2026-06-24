@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
-import type { Row, EliminatedBackedPick, AdvancementSummary, StageReach } from '../../../sim-core'
-import { realEliminations, effectiveEliminations, explainLastMatch, eliminatedBackedPickInMatch, advancementSummaryForLabel, reachAtRank } from '../../../sim-core'
+import type { Row, AdvancementSummary, StageReach } from '../../../sim-core'
+import { realEliminations, effectiveEliminations, advancementSummaryForLabel, reachAtRank } from '../../../sim-core'
 import { playedChrono, playedStateUpTo } from './realPlayed'
 import { useWinProbabilities } from './useWinProbabilities'
 
@@ -72,6 +72,24 @@ function groupPicksClause(s: AdvancementSummary): string | null {
   return parts.join(' · ')
 }
 
+// Where this bettor gains or loses points against the field, by tournament stage —
+// the actual scoring model talking (group advance + place, the round-of-32 cross,
+// each knockout round, the golden boot). Each stage's value is the bettor's mean
+// points there minus the field mean, so this is the personal edge that decides the
+// pool, not a generic recap. Only stages with a meaningful gap are named.
+const EDGE_MIN = 4
+function edgeClause(row: Row): string | null {
+  const sig = row.stages.filter(s => Math.abs(s.edge) >= EDGE_MIN)
+  if (!sig.length) return null
+  const fmt = (s: Row['stages'][number]) => `${s.label} (${s.edge > 0 ? '+' : '−'}${Math.abs(s.edge).toFixed(0)})`
+  const strong = sig.filter(s => s.edge > 0).sort((a, b) => b.edge - a.edge).slice(0, 3).map(fmt)
+  const weak = sig.filter(s => s.edge < 0).sort((a, b) => a.edge - b.edge).slice(0, 2).map(fmt)
+  const parts: string[] = []
+  if (strong.length) parts.push(`מרוויח על המתחרים ב${strong.join(', ')}`)
+  if (weak.length) parts.push(`מפסיד להם ב${weak.join(', ')}`)
+  return parts.join(' · ')
+}
+
 // Expected final place + an arrow when it differs from the current standing
 // (green = projected to climb, red = projected to slip).
 function ExpectedPlace({ curRank, expRank }: { curRank: number; expRank: number }) {
@@ -88,7 +106,7 @@ function ExpectedPlace({ curRank, expRank }: { curRank: number; expRank: number 
 }
 
 // Tap-to-open key points for one bettor — plain Hebrew, no tooltips (mobile-first).
-function RowDetail({ row, winRank, reason, eliminatedPick, advancement, stageReach }: { row: Row; winRank: number; reason?: string; eliminatedPick?: EliminatedBackedPick | null; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach> }) {
+function RowDetail({ row, winRank, advancement, stageReach }: { row: Row; winRank: number; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach> }) {
   const exp = Math.round(row.expRank)
   const dirWord = exp < row.curRank ? 'עלייה' : exp > row.curRank ? 'ירידה' : 'ללא שינוי'
   const moveCls = exp < row.curRank ? 'up' : exp > row.curRank ? 'down' : 'flat'
@@ -104,21 +122,9 @@ function RowDetail({ row, winRank, reason, eliminatedPick, advancement, stageRea
   if (gap >= 3 && row.winPct >= 5) spreadNote = `שים לב: הסיכוי לזכות גבוה ביחס למקום הממוצע (${exp}) — ברקט בסיכון-תשואה גבוה, שמזנק לראש בחלק מהתרחישים אך בממוצע נוחת באמצע`
   else if (gap <= -3 && row.top5Pct >= 20) spreadNote = `שים לב: ברקט יציב — מסיים בממוצע במקום ${exp}, אך לעיתים רחוקות לבד בראש, ולכן הסיכוי לזכות נמוך יחסית`
 
-  // The last match's effect on the bettor's picks — purely the facts (a backed team
-  // knocked out, or how their teams fared), with no fragile win% delta number.
-  let impact: string | undefined
-  if (eliminatedPick) {
-    const ep = eliminatedPick
-    const why = ep.backers / ep.total >= 0.4
-      ? `${ep.backers} מתוך ${ep.total} המהמרים בחרו אותה גם הם, כך שהמכה דומה אצל כמעט כולם`
-      : `המודל ממילא נתן לה סיכוי נמוך להגיע רחוק`
-    impact = `${ep.teamHe}, מבחירותיך, הודחה במשחק האחרון — ${why}`
-  } else if (reason && reason.trim()) {
-    impact = reason
-  }
-
   const deepClause = advancement && advancement.total > 0 ? deepPicksClause(advancement, stageReach) : null
   const groupClause = advancement && advancement.total > 0 ? groupPicksClause(advancement) : null
+  const edge = edgeClause(row)
 
   return (
     <div className="wp-detail-card">
@@ -152,16 +158,16 @@ function RowDetail({ row, winRank, reason, eliminatedPick, advancement, stageRea
             </span>
           </li>
         )}
-        {impact && (
+        {edge && (
           <li>
-            <span className="wp-point-label">השפעת המשחק האחרון</span>
-            <span className="wp-point-val">{impact}</span>
+            <span className="wp-point-label">מול הממוצע</span>
+            <span className="wp-point-val">
+              {edge}
+              <span className="wp-point-reason"> (הפרש הניקוד הצפוי שלך מממוצע המהמרים, לפי שלב)</span>
+            </span>
           </li>
         )}
       </ul>
-      <p className="wp-detail-how">
-        הסיכוי הוא לסיים <b>ראשון מבין כל המהמרים</b>. לכן תוצאה שעוזרת גם ליריבים שבחרו אותה קבוצה יכולה דווקא להוריד אותך.
-      </p>
     </div>
   )
 }
@@ -184,7 +190,6 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
       ? selId
       : (chrono.length ? chrono[chrono.length - 1].id : null)
   const isLatest = !selectedPre && !!effId && chrono.length > 0 && effId === chrono[chrono.length - 1].id
-  const last = useMemo(() => (selectedPre ? null : chrono.find(m => m.id === effId) ?? null), [chrono, effId, selectedPre])
   const played = useMemo(() => (!selectedPre && effId ? playedStateUpTo(chrono, effId) : {}), [chrono, effId, selectedPre])
   const eliminations = useMemo(() => realEliminations(resultsUpTo(results, played)), [results, played])
   // Real golden-boot goals accrued up to the viewed point, so the projection and
@@ -305,8 +310,6 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
                         <RowDetail
                           row={r}
                           winRank={i + 1}
-                          reason={last ? explainLastMatch(r.label, last.home, last.away, last.homeScore, last.awayScore, eliminationsEff) : undefined}
-                          eliminatedPick={last ? eliminatedBackedPickInMatch(r.label, last.home, last.away, eliminationsEff) : null}
                           advancement={advancementSummaryForLabel(r.label, reachByTeam, groupFirstByTeam, eliminationsEff)}
                           stageReach={stageReachByTeam}
                         />
