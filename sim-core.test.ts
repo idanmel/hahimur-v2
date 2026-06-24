@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { KnockoutMatch, PredictionsState, Standing, TournamentResults } from './src/shared/types'
 import { makeUser } from './src/leaderboard/testFixtures'
 import { USERS } from './src/users'
-import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg } from './sim-core'
+import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg } from './sim-core'
 
 const standing = (team: string): Standing =>
   ({ team, played: 3, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 })
@@ -121,6 +121,64 @@ describe('runSims knockout-reach', () => {
     expect(agg.reachR32.get('Turkey')).toBe(0)
     expect((agg.reachR32.get('United States') ?? 0)).toBeGreaterThan(0)
   })
+
+  test('group-first counts are tracked and never exceed reach', () => {
+    const played: PredictionsState = {
+      D1: { home: 4, away: 1 }, D2: { home: 2, away: 0 },
+      D3: { home: 2, away: 0 }, D4: { home: 0, away: 1 },
+    }
+    const agg = runSims(played, 200, 12345)
+    // every group team has an explicit group-first count (0 for the doomed side)
+    expect(agg.groupFirst.has('Turkey')).toBe(true)
+    expect(agg.groupFirst.get('Turkey')).toBe(0)
+    // finishing 1st implies reaching the knockouts, so first ≤ reach for all teams
+    for (const [team, first] of agg.groupFirst)
+      expect(first).toBeLessThanOrEqual(agg.reachR32.get(team) ?? 0)
+    // exactly one winner per group per sim → total firsts == groups × sims
+    const totalFirst = [...agg.groupFirst.values()].reduce((a, b) => a + b, 0)
+    expect(totalFirst).toBe(12 * 200)
+  })
+
+  test('stage-reach is cumulative: deeper rounds are reached no more often than shallower', () => {
+    const agg = runSims({ A1: { home: 1, away: 0 } }, 150, 12345)
+    const teams = new Set([...agg.reachR32.keys(), ...agg.reachR16.keys()])
+    for (const t of teams) {
+      const r32 = agg.reachR32.get(t) ?? 0
+      const r16 = agg.reachR16.get(t) ?? 0
+      const qf = agg.reachQF.get(t) ?? 0
+      const sf = agg.reachSF.get(t) ?? 0
+      const fin = agg.reachFinal.get(t) ?? 0
+      const champ = agg.champFreq.get(t) ?? 0
+      expect(r16).toBeLessThanOrEqual(r32)
+      expect(qf).toBeLessThanOrEqual(r16)
+      expect(sf).toBeLessThanOrEqual(qf)
+      expect(fin).toBeLessThanOrEqual(sf)
+      expect(champ).toBeLessThanOrEqual(fin)
+    }
+    // round-by-round totals equal teams-per-round × sims (32,16,8,4,2 reachers)
+    const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0)
+    expect(sum(agg.reachR32)).toBe(32 * 150)
+    expect(sum(agg.reachR16)).toBe(16 * 150)
+    expect(sum(agg.reachQF)).toBe(8 * 150)
+    expect(sum(agg.reachSF)).toBe(4 * 150)
+    expect(sum(agg.reachFinal)).toBe(2 * 150)
+  })
+})
+
+describe('reachAtRank', () => {
+  const sr = { r32: 0.9, r16: 0.7, qf: 0.5, sf: 0.3, final: 0.15, champion: 0.08 }
+  test('maps each predicted depth rank to the matching reach probability', () => {
+    expect(reachAtRank(sr, 7)).toBe(0.08) // champion
+    expect(reachAtRank(sr, 6)).toBe(0.15) // final
+    expect(reachAtRank(sr, 5)).toBe(0.3)  // semis
+    expect(reachAtRank(sr, 4)).toBe(0.5)  // quarters
+    expect(reachAtRank(sr, 3)).toBe(0.7)  // last 16
+    expect(reachAtRank(sr, 2)).toBe(0.9)  // group advance
+    expect(reachAtRank(sr, 1)).toBe(0.9)
+  })
+  test('an unknown team (no stage data) reads as 0', () => {
+    expect(reachAtRank(undefined, 7)).toBe(0)
+  })
 })
 
 describe('bracketSurvival', () => {
@@ -179,6 +237,43 @@ describe('bracketSurvival', () => {
     expect(s.alive).toBe(1)
     expect(s.painful?.teamHe).toBeDefined()
     expect(s.painful?.predictedLabel).toBe('עולה מהבית')
+  })
+})
+
+describe('advancementSummary', () => {
+  const user = makeUser({
+    groupTables: {
+      A: [standing('Spain'), standing('Turkey'), standing('X'), standing('Y')],
+      B: [standing('Brazil'), standing('Egypt'), standing('Z'), standing('W')],
+    },
+    predictedR16Teams: ['Spain', 'Brazil'],
+  })
+
+  test('buckets each advancement pick by its model reach and group-first', () => {
+    const reach = { Spain: 0.97, Brazil: 0.62, Turkey: 0.0, Egypt: 0.45 }
+    const groupFirst = { Spain: 0.71, Brazil: 0.30, Turkey: 0.0, Egypt: 0.10 }
+    const exits = new Map([['Turkey', { rank: 0, label: 'שלב הבתים' }]])
+    const s = advancementSummary(user, reach, groupFirst, exits)!
+
+    expect(s.total).toBe(4)
+    expect(s.secured).toBe(1)   // Spain
+    expect(s.likely).toBe(1)    // Brazil (0.62)
+    expect(s.bubble).toBe(1)    // Egypt (0.45)
+    expect(s.out).toBe(1)       // Turkey (in exits)
+    expect(s.decided).toBe(false) // Egypt still on the bubble
+    // sorted most-secure first, Spain flagged as group favorite
+    expect(s.picks[0].team).toBe('Spain')
+    expect(s.picks[0].topsGroup).toBe(true)
+    expect(s.picks.find(p => p.team === 'Brazil')!.topsGroup).toBe(false)
+  })
+
+  test('an out pick never counts as a group favorite even with stale group-first', () => {
+    const s = advancementSummary(user, { Turkey: 0 }, { Turkey: 0.9 }, new Map([['Turkey', { rank: 0, label: 'שלב הבתים' }]]))!
+    expect(s.picks.find(p => p.team === 'Turkey')!.topsGroup).toBe(false)
+  })
+
+  test('returns null when the user has no advancement picks', () => {
+    expect(advancementSummary(makeUser(), {}, {}, new Map())).toBeNull()
   })
 })
 

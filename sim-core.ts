@@ -468,6 +468,18 @@ export interface SimAgg {
   // group-only realEliminations() can't yet prove mid-group (a 3rd-placed team is
   // formally out only once the best-third pool is decided). See effectiveEliminations().
   reachR32: Map<string, number>
+  // How many simulated tournaments each team finishes *first* in its group. With
+  // reachR32 this lets the card say not just "advances" but "tops the group" —
+  // the bit that decides the round-of-32 cross matchup once the picture clears.
+  groupFirst: Map<string, number>
+  // How often each team reaches each *knockout* round (appears in that round's
+  // matches). With reachR32 (round of 32) and champFreq (the title) this gives a
+  // full per-team depth curve, so the card can show "you backed X to the semis —
+  // Y% to get there" for the exact depth each bettor predicted.
+  reachR16: Map<string, number>
+  reachQF: Map<string, number>
+  reachSF: Map<string, number>
+  reachFinal: Map<string, number>
   series?: Map<string, number[]>
 }
 
@@ -498,13 +510,15 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   const stages = new Map<string, Stages>()
   const champFreq = new Map<string, number>()
   const reachR32 = new Map<string, number>()
+  const groupFirst = new Map<string, number>()
+  const reachR16 = new Map<string, number>(), reachQF = new Map<string, number>(), reachSF = new Map<string, number>(), reachFinal = new Map<string, number>()
   const series = collect ? new Map<string, number[]>() : undefined
   for (const u of USERS) { win.set(u.label, 0); top3.set(u.label, 0); top5.set(u.label, 0); sumPts.set(u.label, 0); sumSq.set(u.label, 0); sumRank.set(u.label, 0); stages.set(u.label, zeroStages()); series?.set(u.label, []) }
   // Seed every group team at 0 so a team that *never* reaches the knockouts still
   // gets an explicit 0 (a missing key would otherwise hide it from the survival
   // verdict — exactly the case for a side that's already mathematically doomed).
   for (const letter of ALL_GROUP_LETTERS)
-    for (const m of GROUP_MATCHES[letter]) { reachR32.set(m.homeTeam, 0); reachR32.set(m.awayTeam, 0) }
+    for (const m of GROUP_MATCHES[letter]) { reachR32.set(m.homeTeam, 0); reachR32.set(m.awayTeam, 0); groupFirst.set(m.homeTeam, 0); groupFirst.set(m.awayTeam, 0) }
 
   for (let i = 0; i < n; i++) {
     const results = simulateTournament(played, realGoals, realGames)
@@ -512,6 +526,17 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
     for (const m of results.knockoutStages.r32) {
       if (m.home) reachR32.set(m.home, (reachR32.get(m.home) ?? 0) + 1)
       if (m.away) reachR32.set(m.away, (reachR32.get(m.away) ?? 0) + 1)
+    }
+    const bumpReach = (map: Map<string, number>, ms: KnockoutMatch[]) => {
+      for (const m of ms) { if (m.home) map.set(m.home, (map.get(m.home) ?? 0) + 1); if (m.away) map.set(m.away, (map.get(m.away) ?? 0) + 1) }
+    }
+    bumpReach(reachR16, results.knockoutStages.r16)
+    bumpReach(reachQF, results.knockoutStages.qf)
+    bumpReach(reachSF, results.knockoutStages.sf)
+    bumpReach(reachFinal, results.knockoutStages.final)
+    for (const standings of Object.values(results.groupTables)) {
+      const winner = standings[0]?.team
+      if (winner) groupFirst.set(winner, (groupFirst.get(winner) ?? 0) + 1)
     }
     const scored = USERS.map(u => {
       const b = computeUserPoints(u, results)
@@ -539,7 +564,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       series?.get(s.label)!.push(s.pts)
     }
   }
-  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, reachR32, series }
+  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, series }
 }
 
 // Add every tally of `b` into `a` (in place) and return `a`. All aggregate
@@ -554,7 +579,8 @@ export function mergeSimAgg(a: SimAgg, b: SimAgg): SimAgg {
   }
   addMap(a.win, b.win); addMap(a.top3, b.top3); addMap(a.top5, b.top5)
   addMap(a.sumPts, b.sumPts); addMap(a.sumSq, b.sumSq); addMap(a.sumRank, b.sumRank)
-  addMap(a.champFreq, b.champFreq); addMap(a.reachR32, b.reachR32)
+  addMap(a.champFreq, b.champFreq); addMap(a.reachR32, b.reachR32); addMap(a.groupFirst, b.groupFirst)
+  addMap(a.reachR16, b.reachR16); addMap(a.reachQF, b.reachQF); addMap(a.reachSF, b.reachSF); addMap(a.reachFinal, b.reachFinal)
   for (const [label, st] of b.stages) {
     const cur = a.stages.get(label)
     if (!cur) { a.stages.set(label, { ...st }); continue }
@@ -640,6 +666,12 @@ function explain(u: typeof USERS[number], winPct: number, avgWin: number, signal
   return `${lead} — ${parts.join('; ')}`
 }
 
+// Below this many percentage points, a win% move is within Monte-Carlo sampling
+// noise at the card's sim count (the *difference* of two estimates is doubly
+// noisy), so we don't assert a direction — a single group game flipping a title
+// race by a few tenths is almost always the seed talking, not the football.
+export const WIN_DELTA_EPS = 1.0
+
 // Plain-Hebrew "why" for the win% move after a played game. Each clause names
 // the scoreline and a short forward read on the bettor's predicted finish ("the
 // target you called"), keyed off whether that team is still alive. When `delta`
@@ -692,7 +724,7 @@ export function explainMatchForUser(
   // your own picks, since this is a "first among all bettors" race.
   const backedWinner = !draw && deepestStage(u, winner).rank > 0
   let note = ''
-  if (delta !== undefined && Math.abs(delta) >= 0.1) {
+  if (delta !== undefined && Math.abs(delta) >= WIN_DELTA_EPS) {
     if (delta > 0 && !backedWinner) note = ' · העלייה הגיעה מנפילת מתחרים'
     else if (delta < 0 && backedWinner) note = ' · למרות הניצחון, מתחרים שבחרו אותה הרוויחו יותר'
   }
@@ -894,6 +926,96 @@ export function bracketSurvival(u: User, exits: Map<string, TeamExit>): BracketS
 export function bracketSurvivalForLabel(label: string, exits: Map<string, TeamExit>): BracketSurvival | null {
   const u = USERS.find(x => x.label === label)
   return u ? bracketSurvival(u, exits) : null
+}
+
+// ---- round-3 advancement picture ------------------------------------------
+// As the group stage closes the interesting question shifts from "did your pick
+// win" to "is your pick actually going through, and as what seed". This reads the
+// model's reach (P advance) and group-first (P top the group) probabilities for
+// every team the bettor backed to advance, and buckets each into a plain status.
+// `exits` is the same effectiveEliminations map the survival line uses, so an
+// "out" here can never contradict "still in the tournament" there.
+export type PickStage = 'out' | 'secured' | 'likely' | 'bubble' | 'longshot'
+
+export interface PickStatus {
+  team: string
+  teamHe: string
+  reach: number        // P(reach round of 32)
+  groupFirst: number   // P(finish 1st in group)
+  stage: PickStage
+  topsGroup: boolean   // model favors this team to win its group outright
+  predictedRank: number // how deep the bettor backed it (deepestStage rank: champion=7…3rd-qualifier=1)
+}
+
+export interface AdvancementSummary {
+  picks: PickStatus[] // every advancement pick, sorted most-secure first
+  secured: number; likely: number; bubble: number; longshot: number; out: number
+  total: number
+  decided: boolean    // no pick is still genuinely in the balance (bubble/longshot)
+}
+
+function classifyReach(reach: number): Exclude<PickStage, 'out'> {
+  if (reach >= 0.85) return 'secured'
+  if (reach >= 0.6) return 'likely'
+  if (reach >= 0.35) return 'bubble'
+  return 'longshot'
+}
+
+export function advancementSummary(
+  u: User,
+  reachByTeam: Record<string, number>,
+  groupFirstByTeam: Record<string, number>,
+  exits: Map<string, TeamExit>,
+): AdvancementSummary | null {
+  const picks = predictedAdvancers(u)
+  if (!picks.size) return null
+  const list: PickStatus[] = []
+  for (const team of picks) {
+    const reach = reachByTeam[team] ?? 0
+    const groupFirst = groupFirstByTeam[team] ?? 0
+    const stage: PickStage = exits.has(team) ? 'out' : classifyReach(reach)
+    list.push({ team, teamHe: he(team), reach, groupFirst, stage, topsGroup: stage !== 'out' && groupFirst >= 0.5, predictedRank: deepestStage(u, team).rank })
+  }
+  list.sort((a, b) => b.reach - a.reach)
+  const count = (s: PickStage) => list.filter(p => p.stage === s).length
+  const bubble = count('bubble'), longshot = count('longshot')
+  return {
+    picks: list,
+    secured: count('secured'), likely: count('likely'), bubble, longshot, out: count('out'),
+    total: list.length,
+    decided: bubble === 0 && longshot === 0,
+  }
+}
+
+export function advancementSummaryForLabel(
+  label: string,
+  reachByTeam: Record<string, number>,
+  groupFirstByTeam: Record<string, number>,
+  exits: Map<string, TeamExit>,
+): AdvancementSummary | null {
+  const u = USERS.find(x => x.label === label)
+  return u ? advancementSummary(u, reachByTeam, groupFirstByTeam, exits) : null
+}
+
+// Per-team probability of *reaching* each tournament depth (cumulative — reaching
+// the semis implies reaching the quarters). Built from the engine's per-round
+// appearance counts so the card can quote the odds at the exact depth a bettor
+// backed a team to, rather than only "advances from the group".
+export interface StageReach {
+  r32: number; r16: number; qf: number; sf: number; final: number; champion: number
+}
+
+// The reach probability at the depth a bettor predicted (deepestStage rank):
+// champion(7)→title, final(6)→final, SF(5)→semis, QF(4)→quarters, R16(3)→last-16,
+// group-advance(1–2)→reaching the knockouts at all.
+export function reachAtRank(sr: StageReach | undefined, rank: number): number {
+  if (!sr) return 0
+  if (rank >= 7) return sr.champion
+  if (rank === 6) return sr.final
+  if (rank === 5) return sr.sf
+  if (rank === 4) return sr.qf
+  if (rank === 3) return sr.r16
+  return sr.r32
 }
 
 // ---- build ranked rows -----------------------------------------------------

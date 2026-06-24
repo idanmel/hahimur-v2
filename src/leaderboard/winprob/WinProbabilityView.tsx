@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
-import type { Row, BracketSurvival, EliminatedBackedPick } from '../../../sim-core'
-import { realEliminations, effectiveEliminations, bracketSurvivalForLabel, explainLastMatch, eliminatedBackedPickInMatch } from '../../../sim-core'
+import type { Row, EliminatedBackedPick, AdvancementSummary, StageReach } from '../../../sim-core'
+import { realEliminations, effectiveEliminations, explainLastMatch, eliminatedBackedPickInMatch, advancementSummaryForLabel, reachAtRank } from '../../../sim-core'
 import { playedChrono, playedStateUpTo } from './realPlayed'
 import { useWinProbabilities } from './useWinProbabilities'
 
@@ -26,20 +26,50 @@ function resultsUpTo(results: TournamentResults, played: PredictionsState): Tour
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
-// Turns a predicted-depth label (from deepestStage) into a grammatical Hebrew
-// clause for "you predicted (that) it would …", so the painful-bust line reads
-// naturally for both group-advance picks and deep knockout picks.
-function predictedDepthPhrase(label: string): string {
-  switch (label) {
-    case 'אלופה': return 'תהיה אלופה'
-    case 'גמר': return 'תגיע לגמר'
-    case 'חצי גמר': return 'תגיע לחצי הגמר'
-    case 'רבע גמר': return 'תגיע לרבע הגמר'
-    case 'שמינית': return 'תגיע לשמינית'
-    case 'עולה מהבית': return 'תעלה מהבית'
-    case 'עולה כשלישית': return 'תעלה כשלישית'
-    default: return `תגיע ל${label}`
+// A win% that rounds to 0.0 isn't a proven impossibility — at the card's sim count
+// it just means "below the resolution we can see". Showing "<0.1%" instead of "0%"
+// keeps it honest (and matches why such a bettor can still top a best-case board).
+function fmtPct(p: number): string {
+  return p > 0 && p < 0.1 ? '<0.1%' : `${p.toFixed(1)}%`
+}
+
+// Short Hebrew header for the depth a team was backed to reach.
+const DEPTH_HEAD: Record<number, string> = { 7: 'אלופה', 6: 'לגמר', 5: 'לחצי', 4: 'לרבע' }
+
+// The bettor's *deep* picks (quarter-final and beyond), each with the model's odds
+// to reach the exact stage they predicted — "you took Spain all the way: 18% title,
+// England to the final: 29%…". This is the heart of the round: it ties each pick to
+// the depth it was bet at, in percentages. Eliminated picks are flagged outright.
+// Grouped by depth (deepest first); a pick is listed once, at its deepest stage.
+function deepPicksClause(s: AdvancementSummary, stageReach: Record<string, StageReach>): string | null {
+  const deep = s.picks.filter(p => p.predictedRank >= 4).sort((a, b) => b.predictedRank - a.predictedRank)
+  if (!deep.length) return null
+  const groups: string[] = []
+  for (const rank of [7, 6, 5, 4]) {
+    const inRank = deep.filter(p => p.predictedRank === rank)
+    if (!inRank.length) continue
+    const items = inRank.map(p => p.stage === 'out'
+      ? `${p.teamHe} (הודחה)`
+      : `${p.teamHe} ${Math.round(reachAtRank(stageReach[p.team], rank) * 100)}%`)
+    groups.push(`${DEPTH_HEAD[rank]}: ${items.join(', ')}`)
   }
+  return groups.join(' · ')
+}
+
+// The shallow picks (round-of-16 and group-advance) summarised: how many are on
+// track to clear the groups, which are still genuinely in the balance (with their
+// advance %), and which already fell. Keeps the long tail of picks to one tidy line.
+function groupPicksClause(s: AdvancementSummary): string | null {
+  const shallow = s.picks.filter(p => p.predictedRank <= 3)
+  if (!shallow.length) return null
+  const through = shallow.filter(p => p.stage === 'secured' || p.stage === 'likely').length
+  const contested = shallow.filter(p => p.stage === 'bubble' || p.stage === 'longshot')
+    .sort((a, b) => a.reach - b.reach).map(p => `${p.teamHe} (${Math.round(p.reach * 100)}%)`)
+  const out = shallow.filter(p => p.stage === 'out').map(p => p.teamHe)
+  const parts = [`מהבתים: ${through}/${shallow.length} בדרך לעלות`]
+  if (contested.length) parts.push(`על הגדר: ${contested.join(', ')}`)
+  if (out.length) parts.push(`בחוץ: ${out.join(', ')}`)
+  return parts.join(' · ')
 }
 
 // Expected final place + an arrow when it differs from the current standing
@@ -57,21 +87,8 @@ function ExpectedPlace({ curRank, expRank }: { curRank: number; expRank: number 
   )
 }
 
-// win% movement since the last played game; muted dash when nothing to compare.
-function Delta({ delta }: { delta: number | undefined }) {
-  if (delta === undefined || Math.abs(delta) < 0.1) {
-    return <span className="wp-delta wp-delta--flat">—</span>
-  }
-  const up = delta > 0
-  return (
-    <span className={`wp-delta wp-delta--${up ? 'up' : 'down'}`} dir="ltr">
-      {up ? '+' : '−'}{Math.abs(delta).toFixed(1)}
-    </span>
-  )
-}
-
 // Tap-to-open key points for one bettor — plain Hebrew, no tooltips (mobile-first).
-function RowDetail({ row, winRank, delta, reason, survival, eliminatedPick }: { row: Row; winRank: number; delta: number | undefined; reason?: string; survival?: BracketSurvival | null; eliminatedPick?: EliminatedBackedPick | null }) {
+function RowDetail({ row, winRank, reason, eliminatedPick, advancement, stageReach }: { row: Row; winRank: number; reason?: string; eliminatedPick?: EliminatedBackedPick | null; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach> }) {
   const exp = Math.round(row.expRank)
   const dirWord = exp < row.curRank ? 'עלייה' : exp > row.curRank ? 'ירידה' : 'ללא שינוי'
   const moveCls = exp < row.curRank ? 'up' : exp > row.curRank ? 'down' : 'flat'
@@ -79,34 +96,29 @@ function RowDetail({ row, winRank, delta, reason, survival, eliminatedPick }: { 
   // The win% (finish *first*) is tail-sensitive, so it can diverge sharply from
   // the average finish: a high-variance bracket tops the field often yet lands
   // mid-pack on average, while a steady one finishes high but rarely wins outright.
-  // Spell that gap out so a "wins 22% but average place 5" row reads as designed,
-  // not as a glitch.
+  // Spell that gap out — but only for bettors where it actually matters: a real
+  // shot at first (≥5%) for the jackpot read, or a genuine top-5 contender (≥20%)
+  // for the steady read. Otherwise a tiny tail isn't worth a "high-variance" label.
   let spreadNote: string | undefined
   const gap = exp - winRank
-  if (gap >= 3) spreadNote = `שים לב: הסיכוי לזכות גבוה ביחס למקום הממוצע (${exp}) — ברקט בסיכון-תשואה גבוה, שמזנק לראש בחלק מהתרחישים אך בממוצע נוחת באמצע`
-  else if (gap <= -3) spreadNote = `שים לב: ברקט יציב — מסיים בממוצע במקום ${exp}, אך לעיתים רחוקות לבד בראש, ולכן הסיכוי לזכות נמוך יחסית`
+  if (gap >= 3 && row.winPct >= 5) spreadNote = `שים לב: הסיכוי לזכות גבוה ביחס למקום הממוצע (${exp}) — ברקט בסיכון-תשואה גבוה, שמזנק לראש בחלק מהתרחישים אך בממוצע נוחת באמצע`
+  else if (gap <= -3 && row.top5Pct >= 20) spreadNote = `שים לב: ברקט יציב — מסיים בממוצע במקום ${exp}, אך לעיתים רחוקות לבד בראש, ולכן הסיכוי לזכות נמוך יחסית`
 
-  let deltaText = 'למשחק לא הייתה השפעה משמעותית על הסיכוי שלך'
+  // The last match's effect on the bettor's picks — purely the facts (a backed team
+  // knocked out, or how their teams fared), with no fragile win% delta number.
+  let impact: string | undefined
   if (eliminatedPick) {
-    // A backed team was knocked out here. Lead with that (the salient fact) and
-    // explain why the *relative* win% moved little/none: a widely-shared pick
-    // hurts almost the whole field, so it barely changes who leads.
     const ep = eliminatedPick
-    const move = delta === undefined || Math.abs(delta) < 0.1
-      ? 'הסיכוי שלך לסיים ראשון כמעט לא זז'
-      : delta > 0
-        ? `הסיכוי שלך לסיים ראשון דווקא עלה ב-${delta.toFixed(1)} נק׳ אחוז`
-        : `הסיכוי שלך לסיים ראשון ירד ב-${Math.abs(delta).toFixed(1)} נק׳ אחוז`
     const why = ep.backers / ep.total >= 0.4
-      ? `${ep.backers} מתוך ${ep.total} המהמרים בחרו גם הם את ${ep.teamHe}, כך שההדחה פוגעת כמעט בכולם במידה דומה וכמעט לא משנה מי מוביל`
-      : `המודל נתן מראש סיכוי נמוך לכך ש${ep.teamHe} תגיע רחוק, ולכן התרחישים שתלויים בה נשאו משקל קטן`
-    deltaText = `${ep.teamHe}, מהקבוצות שחזית שיעלו, הודחה. ${move} — ${why} (הסיכוי הוא יחסי: לסיים ראשון מול כל המהמרים)`
-  } else if (delta !== undefined && Math.abs(delta) >= 0.1) {
-    deltaText = delta > 0
-      ? `המשחק שיפר את הסיכוי שלך לסיים ראשון ב-${delta.toFixed(1)} נק׳ אחוז`
-      : `המשחק הוריד את הסיכוי שלך לסיים ראשון ב-${Math.abs(delta).toFixed(1)} נק׳ אחוז`
+      ? `${ep.backers} מתוך ${ep.total} המהמרים בחרו אותה גם הם, כך שהמכה דומה אצל כמעט כולם`
+      : `המודל ממילא נתן לה סיכוי נמוך להגיע רחוק`
+    impact = `${ep.teamHe}, מבחירותיך, הודחה במשחק האחרון — ${why}`
+  } else if (reason && reason.trim()) {
+    impact = reason
   }
-  const reasonText = eliminatedPick ? undefined : (reason && reason.trim() ? reason : undefined)
+
+  const deepClause = advancement && advancement.total > 0 ? deepPicksClause(advancement, stageReach) : null
+  const groupClause = advancement && advancement.total > 0 ? groupPicksClause(advancement) : null
 
   return (
     <div className="wp-detail-card">
@@ -121,7 +133,7 @@ function RowDetail({ row, winRank, delta, reason, survival, eliminatedPick }: { 
         <li>
           <span className="wp-point-label">סיכוי לזכות</span>
           <span className="wp-point-val">
-            <b>{row.winPct.toFixed(1)}%</b> לסיים ראשון מבין כל המהמרים · טופ 5: <b>{row.top5Pct.toFixed(1)}%</b>
+            <b>{fmtPct(row.winPct)}</b> לסיים ראשון מבין כל המהמרים · טופ 5: <b>{fmtPct(row.top5Pct)}</b>
             {spreadNote && <span className="wp-point-reason"> ({spreadNote})</span>}
           </span>
         </li>
@@ -129,24 +141,23 @@ function RowDetail({ row, winRank, delta, reason, survival, eliminatedPick }: { 
           <span className="wp-point-label">ניקוד צפוי בסיום</span>
           <span className="wp-point-val"><b>{row.avgPts.toFixed(0)}</b> נק׳ בממוצע (±{row.std.toFixed(0)})</span>
         </li>
-        {survival && survival.total > 0 && (
+        {(deepClause || groupClause) && (
           <li>
-            <span className="wp-point-label">עדיין בטורניר</span>
+            <span className="wp-point-label">תמונת ההימור</span>
             <span className="wp-point-val">
-              <b className={`wp-point-move wp-point-move--${survival.out === 0 ? 'up' : survival.alive === 0 ? 'down' : 'flat'}`}>{survival.alive}/{survival.total}</b>
-              {' '}מהקבוצות שחזית שיעלו מהבתים עדיין בטורניר
-              {survival.painful && <span className="wp-point-move wp-point-move--down"> — נפילה כואבת: {survival.painful.teamHe} (חזית ש{predictedDepthPhrase(survival.painful.predictedLabel)}, יצאה ב{survival.painful.exitLabel})</span>}
-              <span className="wp-point-reason"> (שרידות בלבד — ניצחון/הפסד ומיקום מדויק בבתים כבר נכללים בסיכוי ובניקוד הצפוי)</span>
+              {deepClause && <span className="wp-bet-deep">{deepClause}</span>}
+              {deepClause && groupClause && <br />}
+              {groupClause}
+              <span className="wp-point-reason"> (לפי המודל — הסיכוי של כל בחירה להגיע לשלב שחזית)</span>
             </span>
           </li>
         )}
-        <li>
-          <span className="wp-point-label">השפעת המשחק</span>
-          <span className="wp-point-val">
-            {deltaText}
-            {reasonText && <span className="wp-point-reason"> ({reasonText})</span>}
-          </span>
-        </li>
+        {impact && (
+          <li>
+            <span className="wp-point-label">השפעת המשחק האחרון</span>
+            <span className="wp-point-val">{impact}</span>
+          </li>
+        )}
       </ul>
       <p className="wp-detail-how">
         הסיכוי הוא לסיים <b>ראשון מבין כל המהמרים</b>. לכן תוצאה שעוזרת גם ליריבים שבחרו אותה קבוצה יכולה דווקא להוריד אותך.
@@ -177,25 +188,21 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
   const played = useMemo(() => (!selectedPre && effId ? playedStateUpTo(chrono, effId) : {}), [chrono, effId, selectedPre])
   const eliminations = useMemo(() => realEliminations(resultsUpTo(results, played)), [results, played])
   // Real golden-boot goals accrued up to the viewed point, so the projection and
-  // current rank reward a picked scorer who's already scoring. `prev` excludes
-  // the last played match, giving the delta a correct "before this game" baseline.
-  const { playerGoals, prevPlayerGoals } = useMemo(() => {
+  // current rank reward a picked scorer who's already scoring.
+  const playerGoals = useMemo(() => {
     const cur: Record<string, number> = {}
-    const prev: Record<string, number> = {}
     for (const [player, byMatch] of Object.entries(results.playerMatchGoals ?? {})) {
-      let curSum = 0, prevSum = 0
+      let curSum = 0
       for (const [matchId, goals] of Object.entries(byMatch)) {
         if (played[matchId] === undefined) continue
         curSum += goals
-        if (matchId !== effId) prevSum += goals
       }
       if (curSum > 0) cur[player] = curSum
-      if (prevSum > 0) prev[player] = prevSum
     }
-    return { playerGoals: cur, prevPlayerGoals: prev }
-  }, [results, played, effId])
+    return cur
+  }, [results, played])
 
-  const { status, rows, deltaByLabel, reachByTeam } = useWinProbabilities(played, last, playerGoals, prevPlayerGoals)
+  const { status, rows, reachByTeam, groupFirstByTeam, stageReachByTeam } = useWinProbabilities(played, playerGoals)
   // Certain real exits, widened by the model's verdict: a pick the simulation gives
   // essentially no path to the knockouts is shown as eliminated even before its
   // group formally closes — so "still alive" never contradicts a ~0% pick.
@@ -216,7 +223,6 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
       <p className="lb-prob-caption">
         הסיכוי לסיים ראשון מבין כל המהמרים{' '}
         {isLatest ? 'לפי התוצאות האמיתיות' : selectedPre ? 'לפי המצב לפני תחילת הטורניר' : 'לפי המצב אחרי המשחק שנבחר'}
-        {last && <> · השינוי מאז <b>{last.label}</b></>}
       </p>
 
       {chrono.length >= 1 && (
@@ -259,7 +265,6 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
               <th className="wp-th wp-th--name">מהמר</th>
               <th className="wp-th wp-th--win">סיכוי זכייה</th>
               <th className="wp-th wp-th--exp">מקום צפוי</th>
-              <th className="wp-th wp-th--delta">שינוי %</th>
             </tr>
           </thead>
           <tbody>
@@ -287,26 +292,23 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
                     <td className="wp-td wp-td--win">
                       <div className="wp-bar-wrap">
                         <div className="wp-bar" style={{ width: `${barW.toFixed(1)}%` }} />
-                        <span className="wp-bar-pct">{r.winPct.toFixed(1)}%</span>
+                        <span className="wp-bar-pct">{fmtPct(r.winPct)}</span>
                       </div>
                     </td>
                     <td className="wp-td wp-td--exp">
                       <ExpectedPlace curRank={r.curRank} expRank={r.expRank} />
                     </td>
-                    <td className="wp-td wp-td--delta">
-                      <Delta delta={deltaByLabel[r.label]} />
-                    </td>
                   </tr>
                   {isOpen && (
                     <tr className="wp-detail-row">
-                      <td className="wp-detail-cell" colSpan={5}>
+                      <td className="wp-detail-cell" colSpan={4}>
                         <RowDetail
                           row={r}
                           winRank={i + 1}
-                          delta={deltaByLabel[r.label]}
-                          reason={last ? explainLastMatch(r.label, last.home, last.away, last.homeScore, last.awayScore, eliminationsEff, deltaByLabel[r.label]) : undefined}
-                          survival={bracketSurvivalForLabel(r.label, eliminationsEff)}
+                          reason={last ? explainLastMatch(r.label, last.home, last.away, last.homeScore, last.awayScore, eliminationsEff) : undefined}
                           eliminatedPick={last ? eliminatedBackedPickInMatch(r.label, last.home, last.away, eliminationsEff) : null}
+                          advancement={advancementSummaryForLabel(r.label, reachByTeam, groupFirstByTeam, eliminationsEff)}
+                          stageReach={stageReachByTeam}
                         />
                       </td>
                     </tr>

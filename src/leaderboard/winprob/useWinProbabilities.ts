@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { PredictionsState } from '../../shared/types'
-import type { Row } from '../../../sim-core'
-import type { PlayedMatch } from './realPlayed'
+import type { Row, StageReach } from '../../../sim-core'
 import type { WinProbRequest, WinProbResponse } from './winProbWorker'
 
 export type WinProbStatus = 'loading' | 'ready' | 'unsupported'
@@ -9,17 +8,24 @@ export type WinProbStatus = 'loading' | 'ready' | 'unsupported'
 export interface WinProbResult {
   status: WinProbStatus
   rows: Row[]
-  deltaByLabel: Record<string, number>
   reachByTeam: Record<string, number>
+  groupFirstByTeam: Record<string, number>
+  stageReachByTeam: Record<string, StageReach>
 }
 
-const DEFAULT_N = 2500
+// A single fast pass. We dropped the second "before this match" run that powered
+// the win% delta — it was a difference of two noisy estimates (doubly noisy) and
+// doubled the runtime. With only one run we can keep the count modest and still be
+// quick: probabilities are reported directly (not as fragile differences), and the
+// deeper "reach the stage you backed" odds are stable enough at this count.
+const DEFAULT_N = 4000
 const DEFAULT_SEED = 12345
 
 interface Computed {
   rows: Row[]
-  deltaByLabel: Record<string, number>
   reachByTeam: Record<string, number>
+  groupFirstByTeam: Record<string, number>
+  stageReachByTeam: Record<string, StageReach>
 }
 
 // The engine is fully deterministic for a given (played, goals, n, seed), so every
@@ -32,9 +38,7 @@ const cache = new Map<string, Computed>()
 // the first time a given scenario is requested. Repeat views return cached.
 export function useWinProbabilities(
   played: PredictionsState,
-  last: PlayedMatch | null,
   playerGoals: Record<string, number> = {},
-  prevPlayerGoals: Record<string, number> = {},
   n: number = DEFAULT_N,
   seed: number = DEFAULT_SEED,
 ): WinProbResult {
@@ -42,24 +46,23 @@ export function useWinProbabilities(
   // Bumped when a worker fills the cache, to re-render with the fresh result.
   const [, bump] = useState(0)
 
-  const lastMatchId = last?.id ?? null
-  const key = `${JSON.stringify(played)}|${lastMatchId}|${JSON.stringify(playerGoals)}|${JSON.stringify(prevPlayerGoals)}|${n}|${seed}`
+  const key = `${JSON.stringify(played)}|${JSON.stringify(playerGoals)}|${n}|${seed}`
 
   useEffect(() => {
     if (!supported || cache.has(key)) return
     const worker = new Worker(new URL('./winProbWorker.ts', import.meta.url), { type: 'module' })
     worker.onmessage = (e: MessageEvent<WinProbResponse>) => {
-      cache.set(key, { rows: e.data.rows, deltaByLabel: e.data.deltaByLabel, reachByTeam: e.data.reachByTeam })
+      cache.set(key, { rows: e.data.rows, reachByTeam: e.data.reachByTeam, groupFirstByTeam: e.data.groupFirstByTeam, stageReachByTeam: e.data.stageReachByTeam })
       bump(x => x + 1)
     }
-    worker.postMessage({ played, lastMatchId, playerGoals, prevPlayerGoals, n, seed } satisfies WinProbRequest)
+    worker.postMessage({ played, playerGoals, n, seed } satisfies WinProbRequest)
     return () => worker.terminate()
-    // played/last/n/seed are all captured via `key`
+    // played/n/seed are all captured via `key`
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, supported])
 
-  if (!supported) return { status: 'unsupported', rows: [], deltaByLabel: {}, reachByTeam: {} }
+  if (!supported) return { status: 'unsupported', rows: [], reachByTeam: {}, groupFirstByTeam: {}, stageReachByTeam: {} }
   const hit = cache.get(key)
-  if (hit) return { status: 'ready', rows: hit.rows, deltaByLabel: hit.deltaByLabel, reachByTeam: hit.reachByTeam }
-  return { status: 'loading', rows: [], deltaByLabel: {}, reachByTeam: {} }
+  if (hit) return { status: 'ready', rows: hit.rows, reachByTeam: hit.reachByTeam, groupFirstByTeam: hit.groupFirstByTeam, stageReachByTeam: hit.stageReachByTeam }
+  return { status: 'loading', rows: [], reachByTeam: {}, groupFirstByTeam: {}, stageReachByTeam: {} }
 }
