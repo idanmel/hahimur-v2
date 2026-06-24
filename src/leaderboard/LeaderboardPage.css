@@ -1658,14 +1658,6 @@
   color: var(--muted);
 }
 
-.wp-me-story {
-  margin-top: 2px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(200, 184, 122, 0.5);
-  font-weight: 600;
-  color: var(--navy);
-}
-
 @media (max-width: 560px) {
   .wp-me-lines li { flex-direction: column; align-items: flex-start; gap: 1px; }
   .wp-me-label { flex: none; }

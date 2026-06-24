@@ -25,7 +25,7 @@ describe('deepPicksClause', () => {
       pick({ team: 'ארגנטינה', predictedRank: 6, stage: 'out' }),
     ])
     const reach = { ספרד: sr({ champion: 0.18 }), אנגליה: sr({ sf: 0.31 }), ארגנטינה: sr({ final: 0.2 }) }
-    expect(deepPicksClause(adv, reach)).toBe('אלופה: ספרד 18% · לגמר: ארגנטינה (הודחה) · לחצי: אנגליה 31%')
+    expect(deepPicksClause(adv, reach)).toBe('אלופה: ספרד 18% · לגמר: ארגנטינה (הודחה) · לחצי הגמר: אנגליה 31%')
   })
 })
 
@@ -48,7 +48,7 @@ describe('groupPicksClause', () => {
 describe('edgeClause', () => {
   test('names the biggest gains and losses vs the field, skipping small gaps', () => {
     const r = row({ stages: [stage('group', 'שלב הבתים', 22), stage('gb', 'נעל זהב', -10), stage('r32', 'שלב 32', 2)] })
-    expect(edgeClause(r)).toBe('מרוויח על המתחרים בשלב הבתים (+22) · מפסיד להם בנעל זהב (−10)')
+    expect(edgeClause(r)).toBe('מרוויח על המתחרים בנקודות: שלב הבתים +22 · מפסיד: נעל זהב −10')
   })
   test('returns null when nothing exceeds the threshold', () => {
     expect(edgeClause(row({ stages: [stage('group', 'שלב הבתים', 1)] }))).toBeNull()
@@ -56,32 +56,43 @@ describe('edgeClause', () => {
 })
 
 describe('buildMyHeadline', () => {
-  test('synthesises standing, edge, marquee, fallen picks, and the live storyline', () => {
+  test('synthesises standing (with finishing points), the marquee bets, the top edge, and fallen picks', () => {
     const adv = summary([
-      pick({ team: 'ספרד', predictedRank: 7, stage: 'secured' }),
-      pick({ team: 'אנגליה', predictedRank: 5, stage: 'likely' }),
+      pick({ team: 'צרפת', predictedRank: 7, stage: 'likely' }),
+      pick({ team: 'אנגליה', predictedRank: 6, stage: 'likely' }),
+      pick({ team: 'ספרד', predictedRank: 5, stage: 'likely' }),
       pick({ team: 'טורקיה', predictedRank: 2, stage: 'out' }),
     ])
-    const reach = { ספרד: sr({ champion: 0.18 }), אנגליה: sr({ sf: 0.31 }) }
-    const r = row({ curRank: 1, expRank: 5, winPct: 24, top5Pct: 63.6, stages: [stage('group', 'שלב הבתים', 22)] })
+    const reach = { צרפת: sr({ champion: 0.13 }), אנגליה: sr({ final: 0.16 }), ספרד: sr({ sf: 0.43 }) }
+    const r = row({ curRank: 1, expRank: 5, winPct: 24, top5Pct: 63.6, avgPts: 402, stages: [stage('group', 'שלב הבתים', 22), stage('gb', 'נעל זהב', 7)] })
     const h = buildMyHeadline(r, adv, reach, 27)
     expect(h.standing).toContain('אתה במקום 1 מתוך 27')
     expect(h.standing).toContain('24.0%')
-    expect(h.standing).toContain('צפוי לרדת')
-    expect(h.edge).toBe('מרוויח על המתחרים בשלב הבתים (+22)')
-    expect(h.marquee).toBe('אלופה: ספרד 18% · לחצי: אנגליה 31%')
+    expect(h.standing).toContain('(צפוי לרדת)')
+    expect(h.standing).toContain('402 נק׳')
+    // only the champion + finalist calls — not the SF pick (that lives in the row detail)
+    expect(h.bigBets).toBe('צרפת לאליפות (13%), אנגליה לגמר (16%)')
+    expect(h.edgeLabel).toBe('החוזק שלך')
+    expect(h.edge).toBe('שלב הבתים (+22 נק׳ מעל ממוצע המהמרים)')
     expect(h.fallen).toBe('טורקיה')
-    // deepest *live* bet is the champion pick (rank 7), 18% to win the title
-    expect(h.storyline).toBe('מכאן הסיפור שלך הוא ספרד: המודל נותן 18% שתזכה באליפות.')
   })
 
-  test('storyline falls to the next live bet when the deepest one is out', () => {
+  test('flags an eliminated marquee pick, and reports a weakness when that dominates', () => {
+    const adv = summary([pick({ team: 'ברזיל', predictedRank: 7, stage: 'out' })])
+    const r = row({ stages: [stage('gb', 'נעל זהב', -15), stage('group', 'שלב הבתים', 5)] })
+    const h = buildMyHeadline(r, adv, {}, 27)
+    expect(h.bigBets).toBe('ברזיל (לאליפות) — כבר הודחה')
+    expect(h.edgeLabel).toBe('החיסרון שלך')
+    expect(h.edge).toBe('נעל זהב (−15 נק׳ מתחת לממוצע)')
+  })
+
+  test('falls back to the two deepest live picks when no champion/finalist was backed', () => {
     const adv = summary([
-      pick({ team: 'ספרד', predictedRank: 7, stage: 'out' }),
-      pick({ team: 'אנגליה', predictedRank: 5, stage: 'likely' }),
+      pick({ team: 'ספרד', predictedRank: 5, stage: 'likely' }),
+      pick({ team: 'הולנד', predictedRank: 4, stage: 'bubble' }),
     ])
-    const reach = { אנגליה: sr({ sf: 0.31 }) }
+    const reach = { ספרד: sr({ sf: 0.43 }), הולנד: sr({ qf: 0.35 }) }
     const h = buildMyHeadline(row({}), adv, reach, 27)
-    expect(h.storyline).toBe('מכאן הסיפור שלך הוא אנגליה: המודל נותן 31% שתגיע לחצי הגמר.')
+    expect(h.bigBets).toBe('ספרד לחצי הגמר (43%), הולנד לרבע הגמר (35%)')
   })
 })
