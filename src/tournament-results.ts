@@ -1,5 +1,7 @@
 import { GROUPS } from './shared/groups'
-import type { TournamentResults, MatchScores } from './shared/types'
+import type { TournamentResults, MatchScores, PredictionsState } from './shared/types'
+import { deriveGroupStatus } from './shared/groupStatus'
+import { getThirdPlaceTeams, qualifyBestThirdPlace } from './formView/thirdPlace/thirdPlace'
 
 // Fill in real scores here as matches are played, keyed by match ID
 const groupScores: Record<string, MatchScores> = {
@@ -72,6 +74,18 @@ export function derivePlayerGoals(perMatch: Record<string, Record<string, number
   )
 }
 
+// Derive the group tables and third-place qualification straight from the
+// entered scores, exactly as the results page does. The leaderboard awards
+// advancement/place points off these — leaving them empty would silently zero
+// those points everywhere `tournamentResults` is read (e.g. the home board).
+const groupPredictions: PredictionsState = { ...groupScores }
+const { allGroupData, allGroupsFilled } = deriveGroupStatus(groupPredictions)
+const groupTables = Object.fromEntries(allGroupData.map(d => [d.group, d.standings]))
+const thirdPlaceTeams = getThirdPlaceTeams(allGroupData)
+const thirdPlaceQualification = allGroupsFilled
+  ? qualifyBestThirdPlace(thirdPlaceTeams)
+  : { resolved: false as const, all: thirdPlaceTeams, tied: [] }
+
 export const tournamentResults: TournamentResults = {
   groupMatches: Object.fromEntries(
     Object.entries(GROUPS).map(([letter, group]) => [
@@ -79,10 +93,10 @@ export const tournamentResults: TournamentResults = {
       group.matches.map(m => ({ ...m, scores: groupScores[m.id] ?? { home: null, away: null } })),
     ])
   ),
-  groupTables: {},
+  groupTables,
   playerMatchGoals: realGoals,
   playerGoals: derivePlayerGoals(realGoals),
-  thirdPlaceQualification: { resolved: false, all: [], tied: [] },
+  thirdPlaceQualification,
   knockoutStages: {
     r32: [],
     r16: [],
