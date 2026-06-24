@@ -63,7 +63,7 @@ export default function MatchLeaderboardTable({ rows, me }: Props) {
               </td>
               <td className="match-lb__pred">{row.prediction ? showScore(row.prediction) : '—'}</td>
               <td className="match-lb__pts">{row.matchPoints > 0 ? row.matchPoints : <span className="match-lb__pts-zero">0</span>}</td>
-              {showAdv && <td className="match-lb__adv">{row.advancementPoints > 0 ? <span className="match-lb__adv-on">+{row.advancementPoints}</span> : <span className="match-lb__pts-zero">0</span>}</td>}
+              {showAdv && <td className="match-lb__adv">{row.advancementPoints > 0 ? row.advancementPoints : <span className="match-lb__pts-zero">0</span>}</td>}
               <td className="match-lb__movement"><Movement value={row.placeMovement} /></td>
               <td className="match-lb__total">{row.total}</td>
             </tr>

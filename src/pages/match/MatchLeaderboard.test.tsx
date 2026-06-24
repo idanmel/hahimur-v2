@@ -39,7 +39,7 @@ test('shows the advancement column once someone has earned it', () => {
   ]} />)
   expect(screen.getByText('עלייה')).toBeInTheDocument()
   const rows = screen.getAllByTestId('match-lb-row')
-  expect(rows[0].querySelector('.match-lb__adv')!.textContent).toBe('+7')
+  expect(rows[0].querySelector('.match-lb__adv')!.textContent).toBe('7')
   expect(rows[1].querySelector('.match-lb__adv')!.textContent).toBe('0')
 })
 

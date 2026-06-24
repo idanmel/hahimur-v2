@@ -61,7 +61,9 @@ export default function KnockoutParticipantsList({ actualMatch, users }: Props) 
     <ol className="match-participants" dir="rtl">
       {participants.map((p, i) => {
         const isDraw = p.score.home === p.score.away
-        const pensWinner =
+        // A drawn knockout is settled in extra time or on penalties — either way
+        // drawWinner just names who advances, so the label stays neutral.
+        const advWinner =
           isDraw && p.score.drawWinner
             ? p.score.drawWinner === 'home' ? homeHe : awayHe
             : null
@@ -74,19 +76,21 @@ export default function KnockoutParticipantsList({ actualMatch, users }: Props) 
           >
             <span className="match-participants__name">{p.label}</span>
             <span className="match-participants__result">
+              {/* Same orientation as the match header: away team first (right in
+                  RTL), then the away–home score, then the home team. */}
               <span className="match-participants__chip">
+                <span className="match-participants__team">
+                  {awayIso && <span className={`fi fi-${awayIso} match-participants__flag`} />}
+                  {awayHe}
+                </span>
+                <span className="match-participants__score">{p.score.away}–{p.score.home}</span>
                 <span className="match-participants__team">
                   {homeIso && <span className={`fi fi-${homeIso} match-participants__flag`} />}
                   {homeHe}
                 </span>
-                <span className="match-participants__score">{p.score.home}–{p.score.away}</span>
-                <span className="match-participants__team">
-                  {awayHe}
-                  {awayIso && <span className={`fi fi-${awayIso} match-participants__flag`} />}
-                </span>
               </span>
-              {pensWinner && (
-                <span className="match-participants__pens">פנדלים ל{pensWinner}</span>
+              {advWinner && (
+                <span className="match-participants__adv">{advWinner} עולה</span>
               )}
             </span>
           </li>

@@ -76,7 +76,7 @@ export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: 
 
           <header className="section-heading" dir="rtl">
             <span className="section-heading__eyebrow">משתתפים</span>
-            <h2 className="section-heading__title">מי ניחש את המשחק</h2>
+            <h2 className="section-heading__title">מי משתתף במשחק</h2>
           </header>
           <KnockoutParticipantsList actualMatch={match} users={users} />
 
@@ -85,7 +85,7 @@ export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: 
               <header className="section-heading" dir="rtl">
                 <span className="section-heading__eyebrow">{venn.label}</span>
                 <h2 className="section-heading__title">
-                  מי ניחש את {teamForSlot(match.home).he} ואת {teamForSlot(match.away).he}
+                  מי העלה את {teamForSlot(match.away).he} ואת {teamForSlot(match.home).he}
                 </h2>
               </header>
               <KnockoutVenn teamA={match.home} teamB={match.away} stage={venn.stage} users={users} />

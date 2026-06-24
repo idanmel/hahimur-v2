@@ -577,7 +577,7 @@
   text-shadow: 0 0 16px rgba(212, 160, 22, 0.35);
 }
 
-.match-participants__pens {
+.match-participants__adv {
   font-family: 'Heebo', sans-serif;
   font-size: 0.56rem;
   font-weight: 700;
@@ -1589,17 +1589,16 @@
 
 .match-lb__pts-zero { color: rgba(239, 228, 184, 0.28); }
 
-/* advancement bonus credited at this match — a brighter, distinct accent so the
-   qualification points read apart from the scoreline points */
+/* advancement bonus credited at this match — same gold scoreboard styling as the
+   scoreline points column, so the two numeric columns read consistently */
 .match-lb__adv {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.15rem;
   line-height: 1;
   letter-spacing: 0.03em;
   direction: ltr;
+  color: var(--gold);
 }
-
-.match-lb__adv-on { color: #7fd6a0; }
 
 /* the sort key, and the visual anchor on the reading-end of the row */
 .match-lb__total {

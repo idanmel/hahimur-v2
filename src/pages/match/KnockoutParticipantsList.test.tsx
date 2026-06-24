@@ -43,7 +43,8 @@ test('shows each bettor predicted score oriented to the real home/away', () => {
   expect(rows).toHaveLength(2)
   rows.forEach(r => {
     expect(within(r).getByText('דרום קוריאה')).toBeInTheDocument()
-    expect(within(r).getByText('2–0')).toBeInTheDocument()
+    // away–home orientation, matching the match header (Canada 0 – S. Korea 2)
+    expect(within(r).getByText('0–2')).toBeInTheDocument()
     expect(within(r).getByText('קנדה')).toBeInTheDocument()
   })
 })
@@ -56,11 +57,11 @@ test('shows each team flag in the score chip', () => {
   expect(container.querySelector('.fi-ca')).toBeInTheDocument()
 })
 
-test('a drawn KO prediction shows the penalty winner, oriented correctly', () => {
+test('a drawn KO prediction shows the advancing team, oriented correctly', () => {
   const users = [
-    // stored reversed as a 1-1 with Canada winning on pens (drawWinner home=Canada);
-    // oriented to the real fixture the penalty winner is still Canada (away)
-    makeUser('פנדלים', ko('Canada', 'South Korea', 1, 1, 'home')),
+    // stored reversed as a 1-1 with Canada advancing (drawWinner home=Canada);
+    // oriented to the real fixture the advancing team is still Canada (away)
+    makeUser('עולה', ko('Canada', 'South Korea', 1, 1, 'home')),
   ]
   render(<KnockoutParticipantsList actualMatch={actual} users={users} />)
 
@@ -68,7 +69,7 @@ test('a drawn KO prediction shows the penalty winner, oriented correctly', () =>
   expect(within(row).getByText('דרום קוריאה')).toBeInTheDocument()
   expect(within(row).getByText('1–1')).toBeInTheDocument()
   expect(within(row).getByText('קנדה')).toBeInTheDocument()
-  expect(within(row).getByText('פנדלים לקנדה')).toBeInTheDocument()
+  expect(within(row).getByText('קנדה עולה')).toBeInTheDocument()
 })
 
 test('renders nothing until the real match has resolved its two teams', () => {

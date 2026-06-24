@@ -23,7 +23,7 @@ export default function KnockoutSurvivorsList({ actualMatch, users }: Props) {
       <header className="section-heading" dir="rtl">
         <span className="section-heading__eyebrow">עוד בחיים</span>
         <h2 className="section-heading__title">
-          מי ניחש את
+          מי העלה את
           {' '}
           <span className="match-participants__team">
             {teamIso && <span className={`fi fi-${teamIso} match-participants__flag`} />}
