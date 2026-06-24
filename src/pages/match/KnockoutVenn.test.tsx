@@ -17,13 +17,15 @@ const ko = (matchNum: number, home: string, away: string): KnockoutMatch =>
 const both = makeUser('AB', 'r16', [ko(90, 'South Korea', 'Morocco'), ko(95, 'Canada', 'Egypt')])
 const aOnly = makeUser('A', 'r16', [ko(90, 'South Korea', 'Morocco')])
 const bOnly = makeUser('B', 'r16', [ko(90, 'Canada', 'Morocco')])
+const neither = makeUser('N', 'r16', [ko(90, 'Brazil', 'Spain')])
 
 test('lists each bettor under the matching region', () => {
-  render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[both, aOnly, bOnly]} />)
+  render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[both, aOnly, bOnly, neither]} />)
 
   expect(within(screen.getByTestId('venn-region-a')).getByText('A')).toBeInTheDocument()
   expect(within(screen.getByTestId('venn-region-b')).getByText('B')).toBeInTheDocument()
   expect(within(screen.getByTestId('venn-region-both')).getByText('AB')).toBeInTheDocument()
+  expect(within(screen.getByTestId('venn-region-neither')).getByText('N')).toBeInTheDocument()
 })
 
 test('a team counts whether it sits home or away in the bettor\'s stage, regardless of path', () => {
@@ -37,13 +39,22 @@ test('a team counts whether it sits home or away in the bettor\'s stage, regardl
 })
 
 test('the diagram tallies each region and the legend carries the team totals', () => {
-  render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[both, aOnly, bOnly]} />)
+  render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[both, aOnly, bOnly, neither]} />)
 
   expect(screen.getByText('דרום קוריאה')).toBeInTheDocument()
   expect(screen.getByText('קנדה')).toBeInTheDocument()
   expect(screen.getByTestId('venn-count-a')).toHaveTextContent('1')
   expect(screen.getByTestId('venn-count-both')).toHaveTextContent('1')
   expect(screen.getByTestId('venn-count-b')).toHaveTextContent('1')
+  expect(screen.getByTestId('venn-count-neither')).toHaveTextContent('1')
+})
+
+test('a bettor who advanced neither team sits outside both lobes', () => {
+  render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[aOnly, neither]} />)
+
+  expect(within(screen.getByTestId('venn-region-neither')).getByText('N')).toBeInTheDocument()
+  // and is not double-counted in either lobe's list
+  expect(within(screen.getByTestId('venn-region-a')).queryByText('N')).not.toBeInTheDocument()
 })
 
 test('reads the stage it is told to — e.g. who reached the quarter-finals', () => {
@@ -52,9 +63,11 @@ test('reads the stage it is told to — e.g. who reached the quarter-finals', ()
   const inR16Only = makeUser('r16Fan', 'r16', [ko(90, 'Brazil', 'Spain')])
   render(<KnockoutVenn teamA="Brazil" teamB="France" stage="qf" users={[inQf, inR16Only]} />)
 
-  // Only the bettor who put Brazil in the QF counts; the R16-only pick is ignored.
+  // Only the bettor who put Brazil in the QF counts toward the lobe; the
+  // R16-only pick advanced neither team this far, so it falls outside both.
   expect(within(screen.getByTestId('venn-region-a')).getByText('qfFan')).toBeInTheDocument()
-  expect(screen.queryByText('r16Fan')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('venn-region-a')).queryByText('r16Fan')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('venn-region-neither')).getByText('r16Fan')).toBeInTheDocument()
 })
 
 test('a crowded lobe still names everyone in its list below', () => {

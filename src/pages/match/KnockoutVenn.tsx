@@ -62,6 +62,8 @@ export default function KnockoutVenn({ teamA, teamB, stage, users }: Props) {
   const both = inA.filter(u => inB.includes(u))
   const aOnly = inA.filter(u => !inB.includes(u))
   const bOnly = inB.filter(u => !inA.includes(u))
+  // the fourth region: outside both lobes — bettors who sent neither team this far
+  const neither = users.filter(u => !inA.includes(u) && !inB.includes(u))
 
   const max = Math.max(inA.length, inB.length, 1)
   const dA = lobeDiameter(inA.length, max)
@@ -127,12 +129,20 @@ export default function KnockoutVenn({ teamA, teamB, stage, users }: Props) {
         >
           {bOnly.length}
         </span>
+
+        {neither.length > 0 && (
+          <span className="venn__tally venn__tally--neither" data-testid="venn-count-neither">
+            <span className="venn__tally-label">אף אחת</span>
+            {neither.length}
+          </span>
+        )}
       </div>
 
       <div className="venn__lists">
         <RegionList testid="venn-region-a" modifier="a" team={teamA} label={`רק ${teamHe(teamA)}`} users={aOnly} />
         <RegionList testid="venn-region-both" modifier="both" label="שניהם" users={both} />
         <RegionList testid="venn-region-b" modifier="b" team={teamB} label={`רק ${teamHe(teamB)}`} users={bOnly} />
+        <RegionList testid="venn-region-neither" modifier="neither" label="אף אחת" users={neither} />
       </div>
     </div>
   )

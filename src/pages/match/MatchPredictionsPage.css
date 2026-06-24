@@ -727,6 +727,24 @@
   text-shadow: 0 0 18px rgba(212, 160, 22, 0.65);
 }
 
+/* the "neither" count — the universe outside both lobes. Parked quietly in the
+   bottom-left corner of the frame (no inline left), dimmed so it reads as the
+   background field the two sets float on, not a third bright region. */
+.venn__tally--neither {
+  top: auto;
+  bottom: 4%;
+  left: 7%;
+  transform: none;
+  font-size: 1.5rem;
+  color: rgba(239, 228, 184, 0.42);
+  text-shadow: none;
+}
+
+.venn__tally--neither .venn__tally-label {
+  color: rgba(239, 228, 184, 0.5);
+  text-shadow: none;
+}
+
 /* floated above the number so the lens "4" centres on the same line as the
    crescent numbers instead of being pushed down by the label */
 .venn__tally-label {
@@ -775,6 +793,7 @@
 .venn__list--a .venn__list-label    { color: var(--gold); }
 .venn__list--b .venn__list-label    { color: #e2606a; }
 .venn__list--both .venn__list-label { color: #fff6e2; }
+.venn__list--neither .venn__list-label { color: rgba(239, 228, 184, 0.55); }
 
 /* count pill on the reading edge of each group header */
 .venn__list-count {
