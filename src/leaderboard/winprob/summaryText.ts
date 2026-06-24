@@ -1,7 +1,7 @@
 // Pure Hebrew text builders for the win-probability card and the personal headline.
 // Kept React-free so the wording can be unit-tested directly on synthetic data —
 // the view just renders what these return.
-import type { Row, AdvancementSummary, StageReach } from '../../../sim-core'
+import type { Row, AdvancementSummary, PickStatus, StageReach } from '../../../sim-core'
 import { reachAtRank } from '../../../sim-core'
 
 // A win% that rounds to 0.0 isn't a proven impossibility — at the card's sim count
@@ -74,33 +74,47 @@ export function edgeClause(row: Row): string | null {
   return parts.join(' · ')
 }
 
-// The marquee calls for the top-of-page headline: the boldest depth bets a bettor
-// made (champion and finalist), each with the model's odds and a "(הודחה)" flag if
-// busted. If they backed nothing that deep, fall back to their two deepest live
-// picks. Deliberately short — the full depth ladder lives in the row detail.
-function bigBetsClause(s: AdvancementSummary, stageReach: Record<string, StageReach>): string | null {
-  let pool = s.picks.filter(p => p.predictedRank >= 6).sort((a, b) => b.predictedRank - a.predictedRank)
-  if (!pool.length) pool = s.picks.filter(p => p.stage !== 'out' && p.predictedRank >= 4).sort((a, b) => b.predictedRank - a.predictedRank).slice(0, 2)
-  if (!pool.length) return null
-  return pool.map(p => p.stage === 'out'
-    ? `${p.teamHe} (${DEPTH_TO[p.predictedRank]}) — כבר הודחה`
-    : `${p.teamHe} ${DEPTH_TO[p.predictedRank]} (${Math.round(reachAtRank(stageReach[p.team], p.predictedRank) * 100)}%)`,
-  ).join(', ')
+// One marquee call, with the model's odds and a "(הודחה)" flag if busted.
+function betPhrase(p: PickStatus, stageReach: Record<string, StageReach>): string {
+  return p.stage === 'out'
+    ? `${p.teamHe} (${DEPTH_TO[p.predictedRank]}) — הודחה`
+    : `${p.teamHe} ${DEPTH_TO[p.predictedRank]} (${Math.round(reachAtRank(stageReach[p.team], p.predictedRank) * 100)}%)`
+}
+
+// The simulated *route* of a team through the bracket, stage by stage. Because the
+// engine resolves the real Round-of-32 cross and plays each knockout head-to-head
+// against whoever the draw delivers, this ladder already encodes path difficulty:
+// an easy draw melts slowly, a brutal half drops off a cliff. Shown for the bettor's
+// deepest live pick, from the round of 16 up to the depth they backed it.
+const ROUTE_STEPS: { word: string; key: keyof StageReach; rank: number }[] = [
+  { word: 'שמינית', key: 'r16', rank: 3 },
+  { word: 'רבע', key: 'qf', rank: 4 },
+  { word: 'חצי', key: 'sf', rank: 5 },
+  { word: 'גמר', key: 'final', rank: 6 },
+  { word: 'אלופה', key: 'champion', rank: 7 },
+]
+function routeLadder(team: string, predictedRank: number, stageReach: Record<string, StageReach>): string | null {
+  const sr = stageReach[team]
+  if (!sr) return null
+  const steps = ROUTE_STEPS.filter(s => s.rank <= predictedRank)
+  if (steps.length < 2) return null
+  return steps.map(s => `${s.word} ${Math.round(sr[s.key] * 100)}%`).join(' → ')
 }
 
 export interface MyHeadline {
   standing: string
-  bigBets?: string    // the marquee depth calls (champion/finalist)
-  edgeLabel?: string  // 'החוזק שלך' | 'החיסרון שלך'
-  edge?: string       // the single biggest points gap vs the field
+  route?: { teamHe: string; ladder: string } // deepest live pick's simulated path
+  bigBets?: string    // the other marquee depth calls (finalist/SF), with odds
+  strength?: string   // top stages where you beat the field, in points
+  weakness?: string   // top stage where you trail the field, in points
   fallen?: string     // group picks already out of the race
 }
 
-// A tight, synthesised read of *your own* bet for the top of the page — an executive
-// summary that doesn't just repeat the row detail. The standing numbers (with your
-// projected finishing points), your boldest calls, the single factor that most moves
-// you against the field, and the group busts. The full depth ladder and per-stage
-// edge breakdown stay in the row detail, so the headline reads as a headline.
+// A richer synthesised read of *your own* bet for the top of the page. Beyond the
+// standing it shows the simulated *route* of your deepest live pick (which already
+// bakes in the bracket/draw difficulty), your other marquee calls, where you most
+// beat and trail the field in points, and the group busts. The full depth ladder for
+// every pick stays in the row detail.
 export function buildMyHeadline(
   row: Row,
   advancement: AdvancementSummary | null,
@@ -112,17 +126,21 @@ export function buildMyHeadline(
   const standing = `אתה במקום ${row.curRank} מתוך ${totalPlayers}. סיכוי לזכייה: ${fmtPct(row.winPct)} · טופ 5: ${fmtPct(row.top5Pct)} · צפי סיום: מקום ${exp}${dir} עם כ-${Math.round(row.avgPts)} נק׳.`
 
   const out: MyHeadline = { standing }
-  // The one stage where this bettor diverges most from the field — strength or weakness.
-  const sig = row.stages.filter(s => Math.abs(s.edge) >= EDGE_MIN).sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))
-  if (sig.length) {
-    const s = sig[0]
-    out.edgeLabel = s.edge > 0 ? 'החוזק שלך' : 'החיסרון שלך'
-    out.edge = s.edge > 0
-      ? `${s.label} (+${s.edge.toFixed(0)} נק׳ מעל ממוצע המהמרים)`
-      : `${s.label} (−${Math.abs(s.edge).toFixed(0)} נק׳ מתחת לממוצע)`
-  }
+  const sig = row.stages.filter(s => Math.abs(s.edge) >= EDGE_MIN)
+  const strong = sig.filter(s => s.edge > 0).sort((a, b) => b.edge - a.edge).slice(0, 2).map(s => `${s.label} +${s.edge.toFixed(0)}`)
+  const weak = sig.filter(s => s.edge < 0).sort((a, b) => a.edge - b.edge).slice(0, 1).map(s => `${s.label} −${Math.abs(s.edge).toFixed(0)}`)
+  if (strong.length) out.strength = `${strong.join(', ')} (נק׳ מעל ממוצע המהמרים)`
+  if (weak.length) out.weakness = `${weak.join(', ')} (נק׳ מתחת לממוצע)`
+
   if (advancement && advancement.total > 0) {
-    out.bigBets = bigBetsClause(advancement, stageReach) ?? undefined
+    const deepLive = advancement.picks.filter(p => p.stage !== 'out' && p.predictedRank >= 4).sort((a, b) => b.predictedRank - a.predictedRank)
+    const lead = deepLive[0]
+    if (lead) {
+      const ladder = routeLadder(lead.team, lead.predictedRank, stageReach)
+      if (ladder) out.route = { teamHe: lead.teamHe, ladder }
+    }
+    const others = advancement.picks.filter(p => p.predictedRank >= 5 && p.team !== lead?.team).sort((a, b) => b.predictedRank - a.predictedRank)
+    if (others.length) out.bigBets = others.map(p => betPhrase(p, stageReach)).join(', ')
     const fallen = advancement.picks.filter(p => p.predictedRank <= 3 && p.stage === 'out').map(p => p.teamHe)
     if (fallen.length) out.fallen = fallen.join(', ')
   }

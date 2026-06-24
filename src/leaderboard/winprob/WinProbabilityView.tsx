@@ -107,8 +107,10 @@ function MyHeadline({ name, row, advancement, stageReach, totalPlayers }: {
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
       <p className="wp-me-standing">{h.standing}</p>
       <ul className="wp-me-lines">
-        {h.bigBets && <li><span className="wp-me-label">הקלפים הגדולים</span><span>{h.bigBets}</span></li>}
-        {h.edge && <li><span className="wp-me-label">{h.edgeLabel}</span><span>{h.edge}</span></li>}
+        {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{h.route.ladder}</span></li>}
+        {h.bigBets && <li><span className="wp-me-label">עוד קלפים גדולים</span><span>{h.bigBets}</span></li>}
+        {h.strength && <li><span className="wp-me-label">החוזקות שלך</span><span>{h.strength}</span></li>}
+        {h.weakness && <li><span className="wp-me-label">החולשות שלך</span><span>{h.weakness}</span></li>}
         {h.fallen && <li><span className="wp-me-label">כבר נפלו מהבית</span><span>{h.fallen}</span></li>}
       </ul>
     </section>
