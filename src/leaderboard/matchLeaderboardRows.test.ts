@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
-import type { GroupMatch, MatchScores, TournamentResults } from '../shared/types'
+import type { GroupMatch, MatchScores, Standing, TournamentResults } from '../shared/types'
 import { buildMatchLeaderboardRows } from './matchLeaderboardRows'
+import { OLEH_POINTS, PLACE_POINT } from './points'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
 // Two group-A matches on consecutive days. roundOf treats group matches as
@@ -63,4 +64,47 @@ test('before kickoff (no result yet) points are zero and there is no movement', 
   expect(rows[0].placeMovement).toBeNull()
   // Cumulative still reflects the played A1+A2 standings.
   expect(rows[0].total).toBe(4)
+})
+
+// A finished-group table: every team has played all 3 of its games, so the
+// group counts as complete and its advancement/place points become payable.
+const grpRow = (team: string, pos: number): Standing =>
+  ({ team, played: 3, won: 3 - pos, drawn: 0, lost: pos, goalsFor: 6 - pos * 2, goalsAgainst: pos * 2, points: 9 - pos * 3 })
+
+const dated = (id: string, matchDate: string, kickoffIST: string, scores: MatchScores): GroupMatch =>
+  ({ id, homeTeam: 'H', awayTeam: 'A', matchDate, kickoffIST, scores })
+
+// Group B's final round (B5 + B6) kicks off simultaneously at 24 ביוני 22:00.
+// A group's advancement + position points are credited to its single completing
+// match — the chronologically-last played match, which on a twin kickoff breaks
+// to the later-listed fixture (B6). So B6's row carries the whole group's
+// qualification points while B5's carries none, even though both jointly decide
+// the table.
+test('twin final matches: advancement + position land on the completing match (B6), not B5', () => {
+  const table = [grpRow('Switzerland', 0), grpRow('Canada', 1), grpRow('Bosnia', 2), grpRow('Qatar', 3)]
+  const completedGroupB: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: {
+      B: [
+        dated('B1', '12 ביוני', '22:00', { home: 1, away: 1 }),
+        dated('B2', '13 ביוני', '22:00', { home: 1, away: 1 }),
+        dated('B3', '18 ביוני', '22:00', { home: 4, away: 1 }),
+        dated('B4', '19 ביוני', '01:00', { home: 6, away: 0 }),
+        dated('B5', '24 ביוני', '22:00', { home: 2, away: 0 }),
+        dated('B6', '24 ביוני', '22:00', { home: 1, away: 0 }), // later-listed twin → completes group B
+      ],
+    },
+    groupTables: { B: table },
+  }
+  // Dana nails the final table exactly: 2 correct advancers + 4 correct positions,
+  // and predicts no individual scorelines, so match-bet points stay 0 and the
+  // matchPoints figure is purely the qualification lump.
+  const dana = makeUser({ label: 'Dana', groupTables: { B: table } })
+  const qualPoints = 2 * OLEH_POINTS.group + 4 * PLACE_POINT
+
+  const [b6Row] = buildMatchLeaderboardRows([dana], completedGroupB, 'B6')
+  expect(b6Row.matchPoints).toBe(qualPoints)
+
+  const [b5Row] = buildMatchLeaderboardRows([dana], completedGroupB, 'B5')
+  expect(b5Row.matchPoints).toBe(0)
 })
