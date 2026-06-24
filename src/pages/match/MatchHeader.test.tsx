@@ -87,3 +87,20 @@ test('omits a chevron at the schedule edge', () => {
   expect(screen.queryByLabelText('המשחק הקודם')).not.toBeInTheDocument()
   expect(screen.getByLabelText('המשחק הבא')).toBeInTheDocument()
 })
+
+// A knockout slot that hasn't resolved yet is a bare descriptor with no team, so
+// it carries no flag.
+test('renders a team name without a flag when it has no iso', () => {
+  render(<MatchHeader match={match} home={home} away={{ he: 'סגנית א' }} {...scoreProps} />)
+  expect(screen.getByText('סגנית א')).toBeInTheDocument()
+  expect(document.querySelectorAll('.match-team__flag')).toHaveLength(1)
+})
+
+// A custom badge (knockout round label) replaces the group link; with no href it
+// renders as plain text, not a link.
+test('renders a custom badge as plain text when it has no href', () => {
+  render(<MatchHeader match={match} home={home} away={away} {...scoreProps} badge={{ label: 'שלב ה-32 · משחק 73' }} />)
+  const badge = document.querySelector('.match-header__group-badge')!
+  expect(badge.textContent).toBe('שלב ה-32 · משחק 73')
+  expect(badge.tagName).toBe('SPAN')
+})

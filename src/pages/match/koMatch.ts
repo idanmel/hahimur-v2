@@ -58,3 +58,23 @@ const ROUND_LABELS: { upTo: number; label: string }[] = [
 export function roundLabel(matchNum: number): string {
   return ROUND_LABELS.find(r => matchNum <= r.upTo)?.label ?? ''
 }
+
+// Which knockout stage the Venn diagram checks for a given match: the round the
+// two teams had to reach to meet here. A R32 winner reaches the R16, a R16 winner
+// the QF, and so on; the third-place match and the final ask about the round both
+// teams already reached (the semis / the final itself).
+export type VennStage = 'r16' | 'qf' | 'sf' | 'final'
+
+const VENN_STAGES: { upTo: number; stage: VennStage; label: string }[] = [
+  { upTo: 88,  stage: 'r16',   label: 'שמינית גמר' },
+  { upTo: 96,  stage: 'qf',    label: 'רבע גמר' },
+  { upTo: 100, stage: 'sf',    label: 'חצי גמר' },
+  { upTo: 102, stage: 'final', label: 'גמר' },
+  { upTo: 103, stage: 'sf',    label: 'חצי גמר' },
+  { upTo: 104, stage: 'final', label: 'גמר' },
+]
+
+export function vennStage(matchNum: number): { stage: VennStage; label: string } | null {
+  const match = VENN_STAGES.find(v => matchNum <= v.upTo)
+  return match ? { stage: match.stage, label: match.label } : null
+}

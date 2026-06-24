@@ -241,12 +241,18 @@ describe('bestRemainingResult — the unified holistic engine', () => {
     // his qualifying thirds. Rooting for Bosnia to WIN B6 lifts it to 4 pts, which
     // would bump his own Scotland/Czech out of the 8. The guard must avoid that.
     const u = USERS.find(x => x.label === 'עידן מלמד')!
+    // The scenario is about rooting for Bosnia in B6, so it only exists while B's
+    // final matches are unplayed. Pin that here instead of leaning on live results,
+    // which now have B complete.
+    const settledBPending = { ...settled }
+    delete settledBPending.B5
+    delete settledBPending.B6
     const params = {
       groupLetter: 'B',
       predictions: u.predictions,
       predictedOrder: orderOf(u, 'B'),
       thirdPick: thirdPickFromQualification(u, 'B'),
-      settledAll: settled,
+      settledAll: settledBPending,
     }
     const guarded = bestRemainingResult({ ...params, protectedThirds: protectedThirdsForGroup(u.thirdPlaceQualification, 'B') })!
     const unguarded = bestRemainingResult(params)!

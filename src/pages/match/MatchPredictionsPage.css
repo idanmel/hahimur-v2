@@ -401,6 +401,22 @@
   letter-spacing: 0.01em;
 }
 
+.match-survivors__count {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1;
+}
+
+/* The known team's flag + name sits inline inside the survivors heading. */
+.section-heading__title .match-participants__team {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-weight: 700;
+}
+
 /* ── Predictions ────────────────────────────────────────────── */
 
 .match-predictions {
@@ -1553,6 +1569,18 @@
 }
 
 .match-lb__pts-zero { color: rgba(239, 228, 184, 0.28); }
+
+/* advancement bonus credited at this match — a brighter, distinct accent so the
+   qualification points read apart from the scoreline points */
+.match-lb__adv {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.15rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  direction: ltr;
+}
+
+.match-lb__adv-on { color: #7fd6a0; }
 
 /* the sort key, and the visual anchor on the reading-end of the row */
 .match-lb__total {

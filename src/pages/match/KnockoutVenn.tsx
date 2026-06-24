@@ -1,18 +1,20 @@
 import type { User } from '../../users/index'
+import type { VennStage } from './koMatch'
 import { TEAMS } from '../../shared/groups'
 
 // Two overlapping team lobes instead of three flat lists: the diagram is the
 // at-a-glance summary (lobe size ∝ how many bettors advanced that team, with the
 // three region tallies), and the full name lists sit beneath it — so a lopsided
 // split like 25 / 3 / 1 reads instantly up top and still names everyone below.
-type Props = { teamA: string; teamB: string; users: User[] }
+type Props = { teamA: string; teamB: string; stage: VennStage; users: User[] }
 
 const teamHe = (name: string) => TEAMS[name]?.he ?? name
 
-// Path-independent: a bettor "has the team in their Round of 16" if it shows up in
-// any of their predicted R16 fixtures, no matter how their bracket routed it there.
-function hasTeamInRound16(user: User, team: string): boolean {
-  return user.knockoutStages.r16.some(m => m.home === team || m.away === team)
+// Path-independent: a bettor "has the team in this stage" if it shows up in any of
+// their predicted fixtures for that round, no matter how their bracket routed it
+// there. Which stage to check is the match's own job (see vennStage).
+function hasTeamInStage(user: User, stage: VennStage, team: string): boolean {
+  return user.knockoutStages[stage].some(m => m.home === team || m.away === team)
 }
 
 // Lobe geometry, in % of the stage width. Centres are fixed (A right, B left) so
@@ -54,9 +56,9 @@ function RegionList({
   )
 }
 
-export default function RoundOf16Venn({ teamA, teamB, users }: Props) {
-  const inA = users.filter(u => hasTeamInRound16(u, teamA))
-  const inB = users.filter(u => hasTeamInRound16(u, teamB))
+export default function KnockoutVenn({ teamA, teamB, stage, users }: Props) {
+  const inA = users.filter(u => hasTeamInStage(u, stage, teamA))
+  const inB = users.filter(u => hasTeamInStage(u, stage, teamB))
   const both = inA.filter(u => inB.includes(u))
   const aOnly = inA.filter(u => !inB.includes(u))
   const bOnly = inB.filter(u => !inA.includes(u))

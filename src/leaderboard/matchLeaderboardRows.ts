@@ -8,8 +8,12 @@ export interface MatchLeaderRow {
   // The bettor's predicted score, or null if they didn't predict this match.
   prediction: MatchScores | null
   // Points this match earned them (the bet outcome plus any goals their picked
-  // scorer netted here) — provisional while the match is live.
+  // scorer netted here, and group position points on a completing match) —
+  // provisional while the match is live.
   matchPoints: number
+  // Advancement bonus credited at this match: a group's correct qualifiers land
+  // on its completing match; a knockout match credits its winner's round bonus.
+  advancementPoints: number
   // Running tournament total through this match in schedule order; later matches,
   // even already-played ones, are deliberately excluded.
   total: number
@@ -37,10 +41,14 @@ export function buildMatchLeaderboardRows(users: User[], results: TournamentResu
   return users
     .map((user, i) => {
       const p = user.predictions[matchId]
+      // Advancement is broken out into its own column; the remaining bet, place
+      // and goals points stay in matchPoints.
+      const advancementPoints = thisMatchRows ? thisMatchRows[i].advancementPoints : 0
       return {
         label: user.label,
         prediction: p && !isUnpredicted(p) ? p : null,
-        matchPoints: thisMatchRows ? thisMatchRows[i].total : 0,
+        matchPoints: thisMatchRows ? thisMatchRows[i].total - advancementPoints : 0,
+        advancementPoints,
         total: cumulative[i].total,
         placeMovement: movement ? movement[user.label] : null,
       }

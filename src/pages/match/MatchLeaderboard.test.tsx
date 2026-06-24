@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import MatchLeaderboard from './MatchLeaderboard'
+import MatchLeaderboardTable from './MatchLeaderboardTable'
 import type { GroupMatch, MatchScores, TournamentResults } from '../../shared/types'
 import type { User } from '../../users/index'
 
@@ -29,6 +30,25 @@ test('renders prediction, this-match points and total per bettor', () => {
   expect(within(rows[0]).getByText('1–2')).toBeInTheDocument() // away–home
   expect(rows[0].querySelector('.match-lb__pts')!.textContent).toBe('4')   // this match
   expect(rows[0].querySelector('.match-lb__total')!.textContent).toBe('4') // cumulative
+})
+
+test('shows the advancement column once someone has earned it', () => {
+  render(<MatchLeaderboardTable rows={[
+    { label: 'Alice', prediction: { home: 1, away: 0 }, matchPoints: 7, advancementPoints: 7, total: 18, placeMovement: 0 },
+    { label: 'Bob', prediction: null, matchPoints: 0, advancementPoints: 0, total: 4, placeMovement: -1 },
+  ]} />)
+  expect(screen.getByText('עלייה')).toBeInTheDocument()
+  const rows = screen.getAllByTestId('match-lb-row')
+  expect(rows[0].querySelector('.match-lb__adv')!.textContent).toBe('+7')
+  expect(rows[1].querySelector('.match-lb__adv')!.textContent).toBe('0')
+})
+
+test('hides the advancement column when no one has earned any', () => {
+  // Group A is mid-table here, so no advancement has been credited — the column
+  // is dropped rather than showing a row of zeros.
+  render(<MatchLeaderboard matchId="A1" users={[alice, bob]} results={results} />)
+  expect(screen.queryByText('עלייה')).not.toBeInTheDocument()
+  expect(document.querySelector('.match-lb__adv')).toBeNull()
 })
 
 test('shows a downward move for a bettor who lost a place on this match', () => {

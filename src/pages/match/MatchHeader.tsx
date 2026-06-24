@@ -1,9 +1,21 @@
+import type { ReactNode } from 'react'
 import { GROUPS } from '../../shared/groups'
 import type { MatchScores, Score } from '../../shared/types'
 import ScoreInput from '../../formView/ScoreInput'
 
-type Team = { iso: string; he: string }
+// A resolved slot has a flag (iso); a knockout slot that is still a descriptor
+// ("סגנית א") has only a name.
+type Team = { iso?: string; he: string }
 type Match = { id: string; matchDate?: string; kickoffIST?: string }
+
+function TeamName({ team }: { team: Team }) {
+  return (
+    <div className="match-team">
+      {team.iso && <span className={`fi fi-${team.iso} match-team__flag`} />}
+      <span className="match-team__name">{team.he}</span>
+    </div>
+  )
+}
 
 type Props = {
   match: Match
@@ -21,16 +33,23 @@ type Props = {
   // Ids of the chronologically adjacent matches, or null at the schedule edges.
   prevId?: string | null
   nextId?: string | null
+  // Replaces the default group-stats badge — knockout pages pass their round
+  // label here, with no href since there's no per-round stats page to link to.
+  badge?: { label: ReactNode; href?: string }
 }
 
-export default function MatchHeader({ match, home, away, homeScore, awayScore, onHomeScore, onAwayScore, realScore = null, live = false, liveScore = null, prevId = null, nextId = null }: Props) {
+export default function MatchHeader({ match, home, away, homeScore, awayScore, onHomeScore, onAwayScore, realScore = null, live = false, liveScore = null, prevId = null, nextId = null, badge }: Props) {
   const showLive = live && !realScore
   // A score that is showing while the match is still in progress is provisional,
   // so it gets a "חי" badge (with the minute) instead of "נגמר".
   const showLiveScore = !!realScore && !!liveScore
   return (
     <div className="match-header">
-      <a className="match-header__group-badge" href={`/stats/groups/${match.id[0].toLowerCase()}`}>בית {GROUPS[match.id[0]]?.he} · משחק {match.id[1]} ›</a>
+      {badge
+        ? badge.href
+          ? <a className="match-header__group-badge" href={badge.href}>{badge.label}</a>
+          : <span className="match-header__group-badge" dir="rtl">{badge.label}</span>
+        : <a className="match-header__group-badge" href={`/stats/groups/${match.id[0].toLowerCase()}`}>בית {GROUPS[match.id[0]]?.he} · משחק {match.id[1]} ›</a>}
 
       <div className="match-header__teams">
         {/* Step through matches in kickoff order. Previous sits on the right
@@ -44,10 +63,7 @@ export default function MatchHeader({ match, home, away, homeScore, awayScore, o
           <a className="match-header__nav match-header__nav--next" href={`/matches/${nextId.toLowerCase()}`} aria-label="המשחק הבא">‹</a>
         )}
 
-        <div className="match-team">
-          <span className={`fi fi-${away.iso} match-team__flag`} />
-          <span className="match-team__name">{away.he}</span>
-        </div>
+        <TeamName team={away} />
 
         {realScore ? (
           <div className={`match-header__vs match-header__vs--final${showLiveScore ? ' match-header__vs--live' : ''}`} data-testid="real-score">
@@ -74,10 +90,7 @@ export default function MatchHeader({ match, home, away, homeScore, awayScore, o
           </div>
         )}
 
-        <div className="match-team">
-          <span className={`fi fi-${home.iso} match-team__flag`} />
-          <span className="match-team__name">{home.he}</span>
-        </div>
+        <TeamName team={home} />
       </div>
 
       {showLive ? (
