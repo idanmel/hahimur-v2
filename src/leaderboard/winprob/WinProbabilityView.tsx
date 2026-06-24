@@ -1,9 +1,10 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
 import type { Row, AdvancementSummary, StageReach } from '../../../sim-core'
-import { realEliminations, effectiveEliminations, advancementSummaryForLabel, reachAtRank } from '../../../sim-core'
+import { realEliminations, effectiveEliminations, advancementSummaryForLabel } from '../../../sim-core'
 import { playedChrono, playedStateUpTo } from './realPlayed'
 import { useWinProbabilities } from './useWinProbabilities'
+import { fmtPct, deepPicksClause, groupPicksClause, edgeClause, buildMyHeadline } from './summaryText'
 
 const KO_KEYS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
 
@@ -25,73 +26,6 @@ function resultsUpTo(results: TournamentResults, played: PredictionsState): Tour
 }
 
 const MEDALS = ['🥇', '🥈', '🥉']
-
-// A win% that rounds to 0.0 isn't a proven impossibility — at the card's sim count
-// it just means "below the resolution we can see". Showing "<0.1%" instead of "0%"
-// keeps it honest (and matches why such a bettor can still top a best-case board).
-function fmtPct(p: number): string {
-  return p > 0 && p < 0.1 ? '<0.1%' : `${p.toFixed(1)}%`
-}
-
-// Short Hebrew header for the depth a team was backed to reach.
-const DEPTH_HEAD: Record<number, string> = { 7: 'אלופה', 6: 'לגמר', 5: 'לחצי', 4: 'לרבע' }
-
-// The bettor's *deep* picks (quarter-final and beyond), each with the model's odds
-// to reach the exact stage they predicted — "you took Spain all the way: 18% title,
-// England to the final: 29%…". This is the heart of the round: it ties each pick to
-// the depth it was bet at, in percentages. Eliminated picks are flagged outright.
-// Grouped by depth (deepest first); a pick is listed once, at its deepest stage.
-function deepPicksClause(s: AdvancementSummary, stageReach: Record<string, StageReach>): string | null {
-  const deep = s.picks.filter(p => p.predictedRank >= 4).sort((a, b) => b.predictedRank - a.predictedRank)
-  if (!deep.length) return null
-  const groups: string[] = []
-  for (const rank of [7, 6, 5, 4]) {
-    const inRank = deep.filter(p => p.predictedRank === rank)
-    if (!inRank.length) continue
-    const items = inRank.map(p => p.stage === 'out'
-      ? `${p.teamHe} (הודחה)`
-      : `${p.teamHe} ${Math.round(reachAtRank(stageReach[p.team], rank) * 100)}%`)
-    groups.push(`${DEPTH_HEAD[rank]}: ${items.join(', ')}`)
-  }
-  return groups.join(' · ')
-}
-
-// The group-stage advance picks (teams backed only to escape the group — deeper
-// calls live in the depth clause above). Lead with the busts the bettor most wants
-// to know about: teams they sent through that now have no realistic path. Then the
-// ones still in the balance with their odds, and a bare count of the safe rest — no
-// opaque "x/y" fraction.
-function groupPicksClause(s: AdvancementSummary): string | null {
-  const shallow = s.picks.filter(p => p.predictedRank <= 3)
-  if (!shallow.length) return null
-  const dead = shallow.filter(p => p.stage === 'out').map(p => p.teamHe)
-  const risk = shallow.filter(p => p.stage === 'bubble' || p.stage === 'longshot')
-    .sort((a, b) => a.reach - b.reach).map(p => `${p.teamHe} ${Math.round(p.reach * 100)}%`)
-  const safe = shallow.filter(p => p.stage === 'secured' || p.stage === 'likely').length
-  const parts: string[] = []
-  if (dead.length) parts.push(`כבר לא יעלו: ${dead.join(', ')}`)
-  if (risk.length) parts.push(`בסיכון: ${risk.join(', ')}`)
-  if (safe) parts.push(`עוד ${safe} בדרך בטוחה לעלות`)
-  return parts.join(' · ')
-}
-
-// Where this bettor gains or loses points against the field, by tournament stage —
-// the actual scoring model talking (group advance + place, the round-of-32 cross,
-// each knockout round, the golden boot). Each stage's value is the bettor's mean
-// points there minus the field mean, so this is the personal edge that decides the
-// pool, not a generic recap. Only stages with a meaningful gap are named.
-const EDGE_MIN = 4
-function edgeClause(row: Row): string | null {
-  const sig = row.stages.filter(s => Math.abs(s.edge) >= EDGE_MIN)
-  if (!sig.length) return null
-  const fmt = (s: Row['stages'][number]) => `${s.label} (${s.edge > 0 ? '+' : '−'}${Math.abs(s.edge).toFixed(0)})`
-  const strong = sig.filter(s => s.edge > 0).sort((a, b) => b.edge - a.edge).slice(0, 3).map(fmt)
-  const weak = sig.filter(s => s.edge < 0).sort((a, b) => a.edge - b.edge).slice(0, 2).map(fmt)
-  const parts: string[] = []
-  if (strong.length) parts.push(`מרוויח על המתחרים ב${strong.join(', ')}`)
-  if (weak.length) parts.push(`מפסיד להם ב${weak.join(', ')}`)
-  return parts.join(' · ')
-}
 
 // Expected final place + an arrow when it differs from the current standing
 // (green = projected to climb, red = projected to slip).
@@ -156,6 +90,29 @@ function RowDetail({ row, advancement, stageReach }: { row: Row; advancement?: A
         )}
       </ul>
     </div>
+  )
+}
+
+// The featured personal read for the identified bettor, pinned to the top of the
+// page so they don't have to find and expand their own row. A fuller synthesis than
+// the row detail: standing, the edge that explains it, the marquee bets, and the
+// live storyline. Built entirely from this bettor's own picks (no generic prose).
+function MyHeadline({ name, row, advancement, stageReach, totalPlayers }: {
+  name: string; row: Row; advancement: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number
+}) {
+  const h = buildMyHeadline(row, advancement, stageReach, totalPlayers)
+  const firstName = name.split(' ')[0]
+  return (
+    <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
+      <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
+      <p className="wp-me-standing">{h.standing}</p>
+      <ul className="wp-me-lines">
+        {h.edge && <li><span className="wp-me-label">מה שמזיז את המחט</span><span>{h.edge}</span></li>}
+        {h.marquee && <li><span className="wp-me-label">ההימורים הגדולים</span><span>{h.marquee}</span></li>}
+        {h.fallen && <li><span className="wp-me-label">כבר נפלו מהבית</span><span>{h.fallen}</span></li>}
+        {h.storyline && <li className="wp-me-story"><span>{h.storyline}</span></li>}
+      </ul>
+    </section>
   )
 }
 
@@ -249,6 +206,18 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
         </div>
       ) : (
       <>
+      {(() => {
+        const meRow = me ? rows.find(r => r.label === me) : undefined
+        return meRow ? (
+          <MyHeadline
+            name={me!}
+            row={meRow}
+            advancement={advancementSummaryForLabel(me!, reachByTeam, groupFirstByTeam, eliminationsEff)}
+            stageReach={stageReachByTeam}
+            totalPlayers={rows.length}
+          />
+        ) : null
+      })()}
       <div className="lb-prob-scroll">
         <table className="wp-table">
           <thead>
