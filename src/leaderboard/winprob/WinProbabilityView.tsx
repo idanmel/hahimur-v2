@@ -56,19 +56,22 @@ function deepPicksClause(s: AdvancementSummary, stageReach: Record<string, Stage
   return groups.join(' · ')
 }
 
-// The shallow picks (round-of-16 and group-advance) summarised: how many are on
-// track to clear the groups, which are still genuinely in the balance (with their
-// advance %), and which already fell. Keeps the long tail of picks to one tidy line.
+// The group-stage advance picks (teams backed only to escape the group — deeper
+// calls live in the depth clause above). Lead with the busts the bettor most wants
+// to know about: teams they sent through that now have no realistic path. Then the
+// ones still in the balance with their odds, and a bare count of the safe rest — no
+// opaque "x/y" fraction.
 function groupPicksClause(s: AdvancementSummary): string | null {
   const shallow = s.picks.filter(p => p.predictedRank <= 3)
   if (!shallow.length) return null
-  const through = shallow.filter(p => p.stage === 'secured' || p.stage === 'likely').length
-  const contested = shallow.filter(p => p.stage === 'bubble' || p.stage === 'longshot')
-    .sort((a, b) => a.reach - b.reach).map(p => `${p.teamHe} (${Math.round(p.reach * 100)}%)`)
-  const out = shallow.filter(p => p.stage === 'out').map(p => p.teamHe)
-  const parts = [`מהבתים: ${through}/${shallow.length} בדרך לעלות`]
-  if (contested.length) parts.push(`על הגדר: ${contested.join(', ')}`)
-  if (out.length) parts.push(`בחוץ: ${out.join(', ')}`)
+  const dead = shallow.filter(p => p.stage === 'out').map(p => p.teamHe)
+  const risk = shallow.filter(p => p.stage === 'bubble' || p.stage === 'longshot')
+    .sort((a, b) => a.reach - b.reach).map(p => `${p.teamHe} ${Math.round(p.reach * 100)}%`)
+  const safe = shallow.filter(p => p.stage === 'secured' || p.stage === 'likely').length
+  const parts: string[] = []
+  if (dead.length) parts.push(`כבר לא יעלו: ${dead.join(', ')}`)
+  if (risk.length) parts.push(`בסיכון: ${risk.join(', ')}`)
+  if (safe) parts.push(`עוד ${safe} בדרך בטוחה לעלות`)
   return parts.join(' · ')
 }
 
@@ -139,7 +142,7 @@ function RowDetail({ row, winRank, advancement, stageReach }: { row: Row; winRan
         <li>
           <span className="wp-point-label">סיכוי לזכות</span>
           <span className="wp-point-val">
-            <b>{fmtPct(row.winPct)}</b> לסיים ראשון מבין כל המהמרים · טופ 5: <b>{fmtPct(row.top5Pct)}</b>
+            <b>{fmtPct(row.winPct)}</b> · טופ 5: <b>{fmtPct(row.top5Pct)}</b>
             {spreadNote && <span className="wp-point-reason"> ({spreadNote})</span>}
           </span>
         </li>
@@ -154,17 +157,13 @@ function RowDetail({ row, winRank, advancement, stageReach }: { row: Row; winRan
               {deepClause && <span className="wp-bet-deep">{deepClause}</span>}
               {deepClause && groupClause && <br />}
               {groupClause}
-              <span className="wp-point-reason"> (לפי המודל — הסיכוי של כל בחירה להגיע לשלב שחזית)</span>
             </span>
           </li>
         )}
         {edge && (
           <li>
             <span className="wp-point-label">מול הממוצע</span>
-            <span className="wp-point-val">
-              {edge}
-              <span className="wp-point-reason"> (הפרש הניקוד הצפוי שלך מממוצע המהמרים, לפי שלב)</span>
-            </span>
+            <span className="wp-point-val">{edge}</span>
           </li>
         )}
       </ul>
@@ -325,7 +324,8 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
 
       <p className="lb-prob-note">
         <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «מקום צפוי» = הדירוג הממוצע בסיום,
-        וחץ מראה אם צפויים לעלות או לרדת. <b>לחצו על שם</b> לפירוט קצר של הנתונים.
+        וחץ מראה אם צפויים לעלות או לרדת. <b>לחצו על שם</b> לפירוט קצר. בפירוט: ב«תמונת ההימור» מופיע לכל קבוצה
+        שבחרתם הסיכוי להגיע לשלב שחזיתם לה, ו«מול הממוצע» הוא הפרש הניקוד הצפוי שלכם מהמתחרים, לפי שלב.
         {!isLatest && <> בחרתם נקודת זמן קודמת — אפשר לחזור ל«המשחק האחרון» בבורר למעלה.</>}
       </p>
       </>
