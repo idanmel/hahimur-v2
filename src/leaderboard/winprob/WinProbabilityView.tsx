@@ -109,21 +109,10 @@ function ExpectedPlace({ curRank, expRank }: { curRank: number; expRank: number 
 }
 
 // Tap-to-open key points for one bettor — plain Hebrew, no tooltips (mobile-first).
-function RowDetail({ row, winRank, advancement, stageReach }: { row: Row; winRank: number; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach> }) {
+function RowDetail({ row, advancement, stageReach }: { row: Row; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach> }) {
   const exp = Math.round(row.expRank)
   const dirWord = exp < row.curRank ? 'עלייה' : exp > row.curRank ? 'ירידה' : 'ללא שינוי'
   const moveCls = exp < row.curRank ? 'up' : exp > row.curRank ? 'down' : 'flat'
-
-  // The win% (finish *first*) is tail-sensitive, so it can diverge sharply from
-  // the average finish: a high-variance bracket tops the field often yet lands
-  // mid-pack on average, while a steady one finishes high but rarely wins outright.
-  // Spell that gap out — but only for bettors where it actually matters: a real
-  // shot at first (≥5%) for the jackpot read, or a genuine top-5 contender (≥20%)
-  // for the steady read. Otherwise a tiny tail isn't worth a "high-variance" label.
-  let spreadNote: string | undefined
-  const gap = exp - winRank
-  if (gap >= 3 && row.winPct >= 5) spreadNote = `שים לב: הסיכוי לזכות גבוה ביחס למקום הממוצע (${exp}) — ברקט בסיכון-תשואה גבוה, שמזנק לראש בחלק מהתרחישים אך בממוצע נוחת באמצע`
-  else if (gap <= -3 && row.top5Pct >= 20) spreadNote = `שים לב: ברקט יציב — מסיים בממוצע במקום ${exp}, אך לעיתים רחוקות לבד בראש, ולכן הסיכוי לזכות נמוך יחסית`
 
   const deepClause = advancement && advancement.total > 0 ? deepPicksClause(advancement, stageReach) : null
   const groupClause = advancement && advancement.total > 0 ? groupPicksClause(advancement) : null
@@ -143,7 +132,6 @@ function RowDetail({ row, winRank, advancement, stageReach }: { row: Row; winRan
           <span className="wp-point-label">סיכוי לזכות</span>
           <span className="wp-point-val">
             <b>{fmtPct(row.winPct)}</b> · טופ 5: <b>{fmtPct(row.top5Pct)}</b>
-            {spreadNote && <span className="wp-point-reason"> ({spreadNote})</span>}
           </span>
         </li>
         <li>
@@ -308,7 +296,6 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
                       <td className="wp-detail-cell" colSpan={4}>
                         <RowDetail
                           row={r}
-                          winRank={i + 1}
                           advancement={advancementSummaryForLabel(r.label, reachByTeam, groupFirstByTeam, eliminationsEff)}
                           stageReach={stageReachByTeam}
                         />
