@@ -27,6 +27,9 @@ const CENTER_A = 62
 const CENTER_B = 38
 
 function lobeDiameter(count: number, max: number): number {
+  // A team nobody advanced gets no bubble at all — otherwise the floor would draw
+  // a phantom circle (and a phantom overlap lens) implying support that isn't there.
+  if (count === 0) return 0
   return MIN_D + (MAX_D - MIN_D) * Math.sqrt(count / max)
 }
 
@@ -69,17 +72,23 @@ export default function KnockoutVenn({ teamA, teamB, stage, users }: Props) {
   const dA = lobeDiameter(inA.length, max)
   const dB = lobeDiameter(inB.length, max)
 
+  // When only one team was advanced by anyone there's no overlap to draw: centre
+  // the lone lobe and its count, and drop the "both"/empty-team tallies entirely.
+  const single = (dA > 0) !== (dB > 0)
+  const centerA = single ? 50 : CENTER_A
+  const centerB = single ? 50 : CENTER_B
+
   // Centre each tally in the middle of its sliver: the two outer crescents
   // (teamA-only / teamB-only) and the lens, derived from the circles' edges so
   // the numbers track the lobes as they resize.
   const rA = dA / 2
   const rB = dB / 2
-  const aRight = CENTER_A + rA
-  const bLeft = CENTER_B - rB
-  const overlapL = Math.max(CENTER_A - rA, CENTER_B - rB)
-  const overlapR = Math.min(aRight, CENTER_B + rB)
-  const aTallyX = (overlapR + aRight) / 2
-  const bTallyX = (bLeft + overlapL) / 2
+  const aRight = centerA + rA
+  const bLeft = centerB - rB
+  const overlapL = Math.max(centerA - rA, centerB - rB)
+  const overlapR = Math.min(aRight, centerB + rB)
+  const aTallyX = single ? 50 : (overlapR + aRight) / 2
+  const bTallyX = single ? 50 : (bLeft + overlapL) / 2
   const bothTallyX = (overlapL + overlapR) / 2
 
   return (
@@ -96,39 +105,51 @@ export default function KnockoutVenn({ teamA, teamB, stage, users }: Props) {
       </div>
 
       <div className="venn__stage">
-        <span
-          className="venn__circle venn__circle--a"
-          aria-hidden="true"
-          style={{ width: `${dA}%`, left: `${CENTER_A - dA / 2}%` }}
-        />
-        <span
-          className="venn__circle venn__circle--b"
-          aria-hidden="true"
-          style={{ width: `${dB}%`, left: `${CENTER_B - dB / 2}%` }}
-        />
+        {dA > 0 && (
+          <span
+            className="venn__circle venn__circle--a"
+            data-testid="venn-circle-a"
+            aria-hidden="true"
+            style={{ width: `${dA}%`, left: `${centerA - dA / 2}%` }}
+          />
+        )}
+        {dB > 0 && (
+          <span
+            className="venn__circle venn__circle--b"
+            data-testid="venn-circle-b"
+            aria-hidden="true"
+            style={{ width: `${dB}%`, left: `${centerB - dB / 2}%` }}
+          />
+        )}
 
-        <span
-          className="venn__tally venn__tally--a"
-          data-testid="venn-count-a"
-          style={{ left: `${aTallyX}%` }}
-        >
-          {aOnly.length}
-        </span>
-        <span
-          className="venn__tally venn__tally--both"
-          data-testid="venn-count-both"
-          style={{ left: `${bothTallyX}%` }}
-        >
-          <span className="venn__tally-label">שניהם</span>
-          {both.length}
-        </span>
-        <span
-          className="venn__tally venn__tally--b"
-          data-testid="venn-count-b"
-          style={{ left: `${bTallyX}%` }}
-        >
-          {bOnly.length}
-        </span>
+        {dA > 0 && (
+          <span
+            className={`venn__tally venn__tally--a${single ? ' venn__tally--solo' : ''}`}
+            data-testid="venn-count-a"
+            style={{ left: `${aTallyX}%` }}
+          >
+            {single ? inA.length : aOnly.length}
+          </span>
+        )}
+        {dA > 0 && dB > 0 && (
+          <span
+            className="venn__tally venn__tally--both"
+            data-testid="venn-count-both"
+            style={{ left: `${bothTallyX}%` }}
+          >
+            <span className="venn__tally-label">שניהם</span>
+            {both.length}
+          </span>
+        )}
+        {dB > 0 && (
+          <span
+            className={`venn__tally venn__tally--b${single ? ' venn__tally--solo' : ''}`}
+            data-testid="venn-count-b"
+            style={{ left: `${bTallyX}%` }}
+          >
+            {single ? inB.length : bOnly.length}
+          </span>
+        )}
 
         {neither.length > 0 && (
           <span className="venn__tally venn__tally--neither" data-testid="venn-count-neither">

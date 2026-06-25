@@ -710,6 +710,21 @@
   animation: summary-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
+/* the lone count when only one team has a lobe: dead-centre in its circle,
+   undoing the 47% offset the two-lobe crescents use to clear their labels. Needs
+   its own keyframe because summary-in ends on translateY(0), which would wipe the
+   centring translate the crescents can live without but a centred count can't. */
+.venn__tally--solo {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  animation-name: venn-solo-in;
+}
+
+@keyframes venn-solo-in {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 6px)); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
+}
+
 .venn__tally--a {
   color: var(--gold);
   text-shadow: 0 0 16px rgba(212, 160, 22, 0.55);

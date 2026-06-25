@@ -80,6 +80,19 @@ test('a crowded lobe still names everyone in its list below', () => {
   expect(screen.getByTestId('venn-count-a')).toHaveTextContent('25')
 })
 
+test('draws no lobe for a team nobody advanced', () => {
+  // Only South Korea has backers; nobody sent Canada this far. The Canada lobe
+  // (and its phantom overlap) must not render — otherwise it reads as support.
+  render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[aOnly, neither]} />)
+
+  expect(screen.getByTestId('venn-circle-a')).toBeInTheDocument()
+  expect(screen.queryByTestId('venn-circle-b')).not.toBeInTheDocument()
+  // no overlap exists, so the lone count is centred and the "both" tally is gone
+  expect(screen.getByTestId('venn-count-a')).toHaveStyle({ left: '50%' })
+  expect(screen.getByTestId('venn-count-a')).toHaveTextContent('1')
+  expect(screen.queryByTestId('venn-count-both')).not.toBeInTheDocument()
+})
+
 test('omits a region list entirely when nobody falls in it', () => {
   render(<KnockoutVenn teamA="South Korea" teamB="Canada" stage="r16" users={[aOnly]} />)
 
