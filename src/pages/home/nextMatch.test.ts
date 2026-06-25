@@ -20,20 +20,20 @@ const MATCHES: GroupMatch[] = [
 
 const ids = (matches: GroupMatch[]) => matches.map(m => m.id)
 
-test('nextMatches returns every match within 24h of the closest, across calendar days', () => {
-  // Before the tournament A1 (11th 22:00) is closest. A2 (12th 05:00, +7h) and
-  // B1 (12th 20:00, +22h) fall inside the 24h window though on the next calendar
-  // day; C1 (13th) is two days out and excluded.
+test('nextMatches returns every match within 15h of the closest, across calendar days', () => {
+  // Before the tournament A1 (11th 22:00) is closest. A2 (12th 05:00, +7h) falls
+  // inside the 15h window though on the next calendar day; B1 (12th 20:00, +22h)
+  // and C1 (13th) are further out and excluded.
   const now = new Date('2026-06-10T12:00:00Z')
-  expect(ids(nextMatches(MATCHES, now))).toEqual(['A1', 'A2', 'B1'])
+  expect(ids(nextMatches(MATCHES, now))).toEqual(['A1', 'A2'])
 })
 
-test('nextMatches drops a match more than 24h after the closest one', () => {
-  // X is closest; Y kicks off 23h later (in), Z 25h later (out).
+test('nextMatches drops a match more than 15h after the closest one', () => {
+  // X is closest; Y kicks off 14h later (in), Z 16h later (out).
   const spread: GroupMatch[] = [
     { id: 'X', homeTeam: 'A', awayTeam: 'B', matchDate: '11 ביוני', kickoffIST: '12:00' }, // 11 Jun 09:00Z
-    { id: 'Y', homeTeam: 'C', awayTeam: 'D', matchDate: '12 ביוני', kickoffIST: '11:00' }, // +23h
-    { id: 'Z', homeTeam: 'E', awayTeam: 'F', matchDate: '12 ביוני', kickoffIST: '13:00' }, // +25h
+    { id: 'Y', homeTeam: 'C', awayTeam: 'D', matchDate: '12 ביוני', kickoffIST: '02:00' }, // +14h
+    { id: 'Z', homeTeam: 'E', awayTeam: 'F', matchDate: '12 ביוני', kickoffIST: '04:00' }, // +16h
   ]
   const now = new Date('2026-06-11T00:00:00Z')
   expect(ids(nextMatches(spread, now))).toEqual(['X', 'Y'])
@@ -41,8 +41,8 @@ test('nextMatches drops a match more than 24h after the closest one', () => {
 
 test('nextMatches returns matches in chronological order regardless of source order', () => {
   const now = new Date('2026-06-10T12:00:00Z')
-  const shuffled = [MATCHES[2], MATCHES[0], MATCHES[1]]
-  expect(ids(nextMatches(shuffled, now))).toEqual(['A1', 'A2', 'B1'])
+  const shuffled = [MATCHES[2], MATCHES[1], MATCHES[0]]
+  expect(ids(nextMatches(shuffled, now))).toEqual(['A1', 'A2'])
 })
 
 test('nextMatches keeps a match in progress until its score is recorded', () => {
@@ -96,27 +96,34 @@ test('nextMatches drops a tied match once its score is in but keeps the other', 
 // most recent first. Built from the same fixture, with scores filled in.
 const SCORED: GroupMatch[] = MATCHES.map(m => ({ ...m, scores: { home: 1, away: 0 } }))
 
-test('recentMatches returns every played match within 24h of the most recent, newest first', () => {
-  // By now A1 (11th), A2 and B1 (12th) have been played. B1 (12th 20:00) is the
-  // most recent; A2 (-15h) and A1 (-22h) fall inside the 24h window, newest first.
-  const now = new Date('2026-06-13T00:00:00Z')
-  expect(ids(recentMatches(SCORED, now))).toEqual(['B1', 'A2', 'A1'])
+test('recentMatches returns every played match within 15h of the most recent, newest first', () => {
+  // R1 (13th 02:00) is the most recent; R2 (12th 20:00, -6h) falls inside the
+  // 15h window though on the previous calendar day; R0 (12th 05:00, -21h) is a
+  // full day out and excluded.
+  const recent: GroupMatch[] = [
+    { id: 'R0', homeTeam: 'A', awayTeam: 'B', matchDate: '12 ביוני', kickoffIST: '05:00', scores: { home: 1, away: 0 } },
+    { id: 'R2', homeTeam: 'C', awayTeam: 'D', matchDate: '12 ביוני', kickoffIST: '20:00', scores: { home: 1, away: 0 } },
+    { id: 'R1', homeTeam: 'E', awayTeam: 'F', matchDate: '13 ביוני', kickoffIST: '02:00', scores: { home: 1, away: 0 } },
+  ]
+  const now = new Date('2026-06-13T03:00:00Z')
+  expect(ids(recentMatches(recent, now))).toEqual(['R1', 'R2'])
 })
 
 test('recentMatches ignores matches without a final score', () => {
-  // A2 sits inside B1's 24h window but has no score, so only A1 and B1 show.
+  // M (12th 14:00) sits inside L's 15h window but has no score, so only K and L
+  // show — K (12th 08:00) is settled and inside the window.
   const matches: GroupMatch[] = [
-    { ...MATCHES[0], scores: { home: 2, away: 1 } }, // A1 settled
-    MATCHES[1], // A2 no score
-    { ...MATCHES[2], scores: { home: 0, away: 0 } }, // B1 settled
+    { id: 'K', homeTeam: 'A', awayTeam: 'B', matchDate: '12 ביוני', kickoffIST: '08:00', scores: { home: 2, away: 1 } },
+    { id: 'M', homeTeam: 'C', awayTeam: 'D', matchDate: '12 ביוני', kickoffIST: '14:00' },
+    { id: 'L', homeTeam: 'E', awayTeam: 'F', matchDate: '12 ביוני', kickoffIST: '20:00', scores: { home: 0, away: 0 } },
   ]
-  const now = new Date('2026-06-20T12:00:00Z')
-  expect(ids(recentMatches(matches, now))).toEqual(['B1', 'A1'])
+  const now = new Date('2026-06-13T00:00:00Z')
+  expect(ids(recentMatches(matches, now))).toEqual(['L', 'K'])
 })
 
 test('recentMatches only counts matches whose kickoff has passed', () => {
   // At noon on the 12th only A1 and A2 have kicked off; B1 (20:00) is still to
-  // come. A2 is the most recent, with A1 (-7h) inside its 24h window.
+  // come. A2 is the most recent, with A1 (-7h) inside its 15h window.
   const now = new Date('2026-06-12T12:00:00Z')
   expect(ids(recentMatches(SCORED, now))).toEqual(['A2', 'A1'])
 })
