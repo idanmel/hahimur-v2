@@ -24,6 +24,22 @@
   .lb-mobile  { display: block; padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
+/* Narrow screens that still get the detailed table (phone landscape, small
+   tablets, slim windows): claw back horizontal room by trimming cell padding
+   and the side gutter, so the enlarged numbers stay readable and the table
+   keeps fitting without shrinking to a squint. */
+@media (min-width: 640px) and (max-width: 860px) {
+  .lb-scroll { padding: 0 0.5rem; }
+  .lb-desktop .lb-table { min-width: 0; }
+  .lb-desktop .lb-th { padding-left: 6px; padding-right: 6px; }
+  .lb-desktop .lb-td { padding-left: 6px; padding-right: 6px; }
+  .lb-desktop .lb-td--rank,
+  .lb-desktop .lb-th--rank { padding-right: 8px; }
+  .lb-desktop .lb-td--name,
+  .lb-desktop .lb-th--name { padding-right: 8px; }
+  .lb-desktop .lb-td--detail { padding-left: 4px; padding-right: 4px; }
+}
+
 /* ── Mobile Cards ── */
 
 @keyframes lb-card-in {
@@ -370,7 +386,7 @@
   text-align: right;
   font-family: 'Heebo', sans-serif;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--row-accent, var(--ink));
   letter-spacing: 0.01em;
   padding-right: 14px;
@@ -378,7 +394,7 @@
 }
 
 .lb-td--total {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--row-accent, var(--navy));
   letter-spacing: 0.04em;
@@ -419,6 +435,220 @@
 
 .lb-traj {
   position: relative;
+}
+
+/* ── Points distribution (expand panel) ──
+   A full-width stacked share-bar over a per-phase legend. Mobile-first:
+   the bar reads the split at a glance, the list spells out each phase. */
+.lb-breakdown {
+  margin: 0 0 14px;
+}
+
+.lb-breakdown:last-child {
+  margin-bottom: 0;
+}
+
+.lb-breakdown-bar {
+  display: flex;
+  height: 11px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(11, 34, 68, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(11, 34, 68, 0.08);
+  margin-bottom: 12px;
+}
+
+.lb-breakdown-seg {
+  height: 100%;
+  min-width: 2px;
+}
+
+.lb-breakdown-seg + .lb-breakdown-seg {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.55);
+}
+
+.lb-breakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lb-breakdown-item {
+  padding: 7px 2px;
+  border-bottom: 1px solid rgba(200, 184, 122, 0.28);
+}
+
+.lb-breakdown-item:last-child {
+  border-bottom: none;
+}
+
+.lb-breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+}
+
+.lb-breakdown-row--btn {
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lb-breakdown-chev {
+  flex: none;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--navy);
+  opacity: 0.5;
+  transition: transform 0.2s ease;
+}
+
+.lb-breakdown-row--btn[aria-expanded="true"] .lb-breakdown-chev {
+  transform: rotate(-90deg);
+  opacity: 0.85;
+}
+
+.lb-breakdown-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(11, 34, 68, 0.12);
+}
+
+.lb-breakdown-round {
+  flex: none;
+  min-width: 62px;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+}
+
+.lb-breakdown-subs {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  min-width: 0;
+}
+
+.lb-breakdown-sub {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.lb-breakdown-sub-label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.lb-breakdown-sub-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-breakdown-pts {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-inline-start: auto;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.lb-breakdown-pct {
+  min-width: 30px;
+  text-align: left;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* ── Group drill-down: the actual teams behind עולות / מיקומים ── */
+.lb-breakdown-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 9px;
+  padding: 10px 10px 4px;
+  border-inline-start: 2px solid rgba(11, 34, 68, 0.12);
+}
+
+.lb-bd-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lb-bd-group-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.lb-bd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lb-bd-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 8px;
+  border: 1px solid rgba(200, 184, 122, 0.55);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(212, 160, 22, 0.05)),
+    var(--paper);
+}
+
+.lb-bd-team-flag {
+  flex: none;
+  width: 18px;
+  height: 13px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(11, 34, 68, 0.15);
+}
+
+.lb-bd-team-name {
+  font-family: 'Heebo', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.lb-bd-team-tag {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Tappable rows on mobile: the whole row toggles the breakdown panel */
+.lb-table--mobile .lb-row--clickable {
+  cursor: pointer;
+}
+
+.lb-table--mobile .lb-row--clickable:active td {
+  background: rgba(239, 228, 184, 0.5);
 }
 
 /* ── Outright honours (golden boot, champion) in the expand panel ── */
@@ -757,7 +987,7 @@
   display: block;
   text-align: center;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 15px;
+  font-size: 20px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
   line-height: 1.15;
@@ -767,31 +997,31 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 1px 5px;
-  margin-top: 4px;
+  gap: 2px 8px;
+  margin-top: 5px;
 }
 
 .lb-td-sub {
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 3px;
   white-space: nowrap;
 }
 
 .lb-td-sub-label {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 7.5px;
+  font-size: 11.5px;
   letter-spacing: 0.06em;
   color: var(--row-accent, var(--muted));
-  opacity: 0.5;
+  opacity: 0.65;
 }
 
 .lb-td-sub-value {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 10.5px;
+  font-size: 15px;
   color: var(--row-accent, var(--muted));
   font-variant-numeric: tabular-nums;
-  opacity: 0.75;
+  opacity: 0.9;
 }
 
 /* ── Mobile section breakdown ── */
@@ -1686,6 +1916,11 @@
   background: rgba(11, 34, 68, 0.035);
   border: 1px solid rgba(200, 184, 122, 0.4);
   border-radius: 10px;
+}
+
+.wp-detail-title {
+  font-size: 16px;
+  margin: 0 0 8px;
 }
 
 .wp-points {

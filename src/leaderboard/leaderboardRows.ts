@@ -1,4 +1,4 @@
-import { computeUserPoints, computeGroupBreakdown, isGroupComplete, singleMatchOutcome, singleMatchPoints, POINTS_PER_GOAL } from './points'
+import { computeUserPoints, computeGroupBreakdown, computeGroupTeamDetail, isGroupComplete, singleMatchOutcome, singleMatchPoints, POINTS_PER_GOAL } from './points'
 import { ALL_GROUP_LETTERS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import { isUnpredicted } from '../shared/types'
@@ -23,6 +23,7 @@ export function buildLeaderboardRows(users: User[], results: TournamentResults) 
       label: user.label,
       topGoalscorer: user.topGoalscorer,
       predictedChampion: user.predictedChampion,
+      groupTeamDetail: computeGroupTeamDetail(user, results),
       ...computeUserPoints(user, results),
     }))
     .sort((a, b) => b.total - a.total)

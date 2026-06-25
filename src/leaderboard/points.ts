@@ -199,6 +199,58 @@ export function computeGroupBreakdown(user: User, results: TournamentResults): G
   return { matchPoints, advancementPoints, placePoints, total: matchPoints + advancementPoints + placePoints }
 }
 
+// A team that earned the bettor points in the group stage, with the context
+// needed to name it: which group it sits in, and (for place hits) the exact
+// table position the bettor nailed.
+export interface GroupTeamHit {
+  team: string
+  group: string
+  position?: number
+}
+
+// The team-level story behind a bettor's group-stage עולות/מיקומים points —
+// which qualifiers they correctly tipped to advance (4 pts each) and which exact
+// table positions they nailed (1 pt each). Mirrors computeGroupBreakdown's rules
+// so advancement.length * OLEH_POINTS.group == advancementPoints and
+// places.length * PLACE_POINT == placePoints.
+export interface GroupTeamDetail {
+  advancement: GroupTeamHit[]
+  places: GroupTeamHit[]
+}
+
+export function computeGroupTeamDetail(user: User, results: TournamentResults): GroupTeamDetail {
+  const actualR32Set = new Set<string>()
+  const places: GroupTeamHit[] = []
+  for (const groupId of Object.keys(results.groupTables)) {
+    const actualTable = results.groupTables[groupId]
+    if (isGroupComplete(actualTable)) {
+      actualTable.slice(0, 2).forEach(s => actualR32Set.add(s.team))
+      const userTable = user.groupTables[groupId] ?? []
+      actualTable.forEach((s, i) => {
+        if (userTable[i]?.team === s.team) places.push({ team: s.team, group: groupId, position: i + 1 })
+      })
+    }
+  }
+  if (results.thirdPlaceQualification.resolved) {
+    results.thirdPlaceQualification.qualifiers.forEach(t => actualR32Set.add(t.team))
+  }
+
+  const predicted: GroupTeamHit[] = []
+  const seen = new Set<string>()
+  for (const groupId of Object.keys(user.groupTables)) {
+    (user.groupTables[groupId] ?? []).slice(0, 2).forEach(s => {
+      if (!seen.has(s.team)) { seen.add(s.team); predicted.push({ team: s.team, group: groupId }) }
+    })
+  }
+  if (user.thirdPlaceQualification.resolved) {
+    user.thirdPlaceQualification.qualifiers.forEach(t => {
+      if (!seen.has(t.team)) { seen.add(t.team); predicted.push({ team: t.team, group: t.group }) }
+    })
+  }
+
+  return { advancement: predicted.filter(p => actualR32Set.has(p.team)), places }
+}
+
 export function computeRoundBreakdown(
   userMatches: KnockoutMatch[],
   resultMatches: KnockoutMatch[],

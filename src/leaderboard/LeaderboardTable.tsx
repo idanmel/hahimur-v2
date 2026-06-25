@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import type { PointsBreakdown } from './points'
+import type { PointsBreakdown, GroupTeamDetail } from './points'
+import { OLEH_POINTS } from './points'
 import { MEDALS } from './medals'
 import { competitionRanks } from './rank'
 import { TEAMS } from '../shared/groups'
@@ -9,6 +10,7 @@ export interface LeaderboardRow extends PointsBreakdown {
   label: string
   topGoalscorer?: string
   predictedChampion?: string
+  groupTeamDetail?: GroupTeamDetail
 }
 
 type RoundKey = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final' | 'goldenBoot'
@@ -35,6 +37,19 @@ const SUB_FIELDS: Record<RoundKey, SubField[]> = {
   third:      [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'thirdPlaceWinner', label: 'זוכה' }],
   final:      [{ key: 'matchPoints', label: 'תוצאה' }, { key: 'champion', label: 'אלופה' }],
   goldenBoot: [{ key: 'goalsPoints', label: 'שערים' }, { key: 'winnerBonus', label: 'מלך' }],
+}
+
+// Distinct, theme-rooted hue per phase so the distribution bar and its legend
+// read at a glance — navy→gold sweep through the knockout, plum for the boot.
+const ROUND_COLORS: Record<RoundKey, string> = {
+  group:      '#0b2244',
+  r32:        '#1f5d7a',
+  r16:        '#2e8b8b',
+  qf:         '#5a8f3c',
+  sf:         '#c98a2b',
+  third:      '#b8855a',
+  final:      '#d4a016',
+  goldenBoot: '#9b3b6a',
 }
 
 function NameLabel({ label, isMe }: { label: string; isMe: boolean }) {
@@ -86,6 +101,125 @@ function PickPlaque({ kicker, icon, value, iso, correct }: {
   )
 }
 
+// A single team that earned points, shown as a flag chip with its name and a
+// context tag (its group, or the exact place the bettor nailed).
+function TeamChip({ team, tag }: { team: string; tag: string }) {
+  const t = TEAMS[team]
+  return (
+    <span className="lb-bd-team">
+      {t?.iso && <span className={`fi fi-${t.iso} lb-bd-team-flag`} aria-hidden="true" />}
+      <span className="lb-bd-team-name">{t?.he ?? team}</span>
+      <span className="lb-bd-team-tag">{tag}</span>
+    </span>
+  )
+}
+
+// The group-stage drill-down: the actual teams behind the עולות and מיקומים
+// points — which qualifiers were tipped right, and which exact places were hit.
+function GroupTeamDetailBlock({ detail }: { detail: GroupTeamDetail }) {
+  return (
+    <div className="lb-breakdown-teams">
+      {detail.advancement.length > 0 && (
+        <div className="lb-bd-group">
+          <span className="lb-bd-group-label">עולות · {OLEH_POINTS.group} לכל קבוצה</span>
+          <div className="lb-bd-chips">
+            {detail.advancement.map(a => (
+              <TeamChip key={`adv-${a.team}`} team={a.team} tag={`בית ${a.group}`} />
+            ))}
+          </div>
+        </div>
+      )}
+      {detail.places.length > 0 && (
+        <div className="lb-bd-group">
+          <span className="lb-bd-group-label">מיקומים · נקודה לכל מיקום מדויק</span>
+          <div className="lb-bd-chips">
+            {detail.places.map(p => (
+              <TeamChip key={`place-${p.group}-${p.position}`} team={p.team} tag={`מקום ${p.position} · בית ${p.group}`} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// How a bettor's points split across the tournament — a stacked share-bar over
+// a per-phase legend (with sub-fields), shown in the expand panel. Built to read
+// cleanly on a phone: full-width bar up top, one tidy row per scoring phase. The
+// group row drills down a second level to the actual team names behind its
+// עולות/מיקומים points.
+function ScoreBreakdownPanel({ row }: { row: LeaderboardRow }) {
+  const [openTeams, setOpenTeams] = useState(false)
+  if (row.total <= 0) return null
+  const phases = ROUNDS
+    .map(({ key, label }) => ({ key, label, data: row[key] as unknown as Record<string, number> }))
+    .filter(p => (p.data.total ?? 0) > 0)
+  if (phases.length === 0) return null
+
+  const detail = row.groupTeamDetail
+  const hasTeamDetail = (key: RoundKey) =>
+    key === 'group' && !!detail && (detail.advancement.length > 0 || detail.places.length > 0)
+
+  return (
+    <div className="lb-breakdown">
+      <div className="lb-breakdown-bar" aria-hidden="true">
+        {phases.map(p => (
+          <span
+            key={p.key}
+            className="lb-breakdown-seg"
+            style={{ width: `${(p.data.total / row.total) * 100}%`, background: ROUND_COLORS[p.key] }}
+          />
+        ))}
+      </div>
+      <ul className="lb-breakdown-list">
+        {phases.map(p => {
+          const subs = SUB_FIELDS[p.key].filter(sf => (p.data[sf.key] ?? 0) > 0)
+          const pct = Math.round((p.data.total / row.total) * 100)
+          const drillable = hasTeamDetail(p.key)
+          const rowContent = (
+            <>
+              <span className="lb-breakdown-swatch" style={{ background: ROUND_COLORS[p.key] }} aria-hidden="true" />
+              <span className="lb-breakdown-round">{p.label}</span>
+              {subs.length > 0 && (
+                <span className="lb-breakdown-subs">
+                  {subs.map(sf => (
+                    <span key={sf.key} className="lb-breakdown-sub">
+                      <span className="lb-breakdown-sub-label">{sf.label}</span>
+                      <span className="lb-breakdown-sub-val">{p.data[sf.key]}</span>
+                    </span>
+                  ))}
+                </span>
+              )}
+              <span className="lb-breakdown-pts">
+                {p.data.total}
+                <span className="lb-breakdown-pct">{pct}%</span>
+              </span>
+            </>
+          )
+          return (
+            <li key={p.key} className="lb-breakdown-item">
+              {drillable ? (
+                <button
+                  type="button"
+                  className="lb-breakdown-row lb-breakdown-row--btn"
+                  aria-expanded={openTeams}
+                  onClick={() => setOpenTeams(v => !v)}
+                >
+                  {rowContent}
+                  <span className="lb-breakdown-chev" aria-hidden="true">‹</span>
+                </button>
+              ) : (
+                <div className="lb-breakdown-row">{rowContent}</div>
+              )}
+              {drillable && openTeams && detail && <GroupTeamDetailBlock detail={detail} />}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 // A bettor's two outright picks (golden boot, champion), shown in the expand
 // panel. Correctness rides on the points breakdown the row already carries.
 function PicksPanel({ row }: { row: LeaderboardRow }) {
@@ -132,9 +266,12 @@ export default function LeaderboardTable({ rows, me, trajectories, hits }: { row
       : []
   const ranks = competitionRanks(rows, row => row.total)
 
-  // A row expands if it has picks to reveal or a rank trajectory to chart.
+  const toggle = (label: string) => setOpenLabel(prev => (prev === label ? null : label))
+
+  // A row expands if it has points to break down, picks to reveal, or a rank
+  // trajectory to chart.
   const hasDetail = (row: LeaderboardRow) =>
-    !!row.topGoalscorer || !!row.predictedChampion || !!trajectories?.[row.label]
+    row.total > 0 || !!row.topGoalscorer || !!row.predictedChampion || !!trajectories?.[row.label]
 
   // Name cell that toggles the expand panel, when there's detail to show.
   const renderName = (row: LeaderboardRow, isMe: boolean) => {
@@ -146,7 +283,7 @@ export default function LeaderboardTable({ rows, me, trajectories, hits }: { row
           type="button"
           className="lb-name-btn"
           aria-expanded={open}
-          onClick={() => setOpenLabel(open ? null : row.label)}
+          onClick={e => { e.stopPropagation(); toggle(row.label) }}
         >
           <NameLabel label={row.label} isMe={isMe} />
           <span className="lb-name-chevron" aria-hidden="true">‹</span>
@@ -155,13 +292,14 @@ export default function LeaderboardTable({ rows, me, trajectories, hits }: { row
     )
   }
 
-  // Expansion row holding the bettor's picks and trajectory chart.
+  // Expansion row holding the points breakdown, picks, and trajectory chart.
   const renderDetailRow = (row: LeaderboardRow, colSpan: number) => {
     if (!hasDetail(row) || openLabel !== row.label) return null
     const trajectory = trajectories?.[row.label]
     return (
       <tr className="lb-traj-row">
         <td className="lb-td lb-traj-cell" colSpan={colSpan} data-testid={`lb-traj-${row.label}`}>
+          <ScoreBreakdownPanel row={row} />
           <PicksPanel row={row} />
           {trajectory && <RankTrajectoryChart ranks={trajectory} hits={hits?.[row.label]} />}
         </td>
@@ -254,11 +392,13 @@ export default function LeaderboardTable({ rows, me, trajectories, hits }: { row
               const rank = ranks[i]
               const rankClass = rank <= 3 ? `lb-row--rank-${rank}` : 'lb-row--other'
               const isMe = row.label === me
+              const expandable = hasDetail(row)
               return (
                 <React.Fragment key={row.label}>
                   <tr
-                    className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}`}
+                    className={`lb-row ${rankClass}${isMe ? ' lb-row--me' : ''}${expandable ? ' lb-row--clickable' : ''}`}
                     style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
+                    onClick={expandable ? () => toggle(row.label) : undefined}
                   >
                     <td className="lb-td lb-td--rank">{rank <= 3 ? MEDALS[rank] : rank}</td>
                     {renderName(row, isMe)}

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import type { Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
-import { computeUserPoints, singleMatchOutcome, OLEH_POINTS, PLACE_POINT } from './points'
+import { computeUserPoints, computeGroupTeamDetail, singleMatchOutcome, OLEH_POINTS, PLACE_POINT } from './points'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
 test('returns all-zero breakdown with empty results', () => {
@@ -229,6 +229,52 @@ describe('group place points', () => {
       groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') },
     }
     expect(computeUserPoints(user, results).group.placePoints).toBe(0)
+  })
+})
+
+describe('computeGroupTeamDetail', () => {
+  const table = (...teams: string[]) => teams.map(t => grpRow(t, 3, 1, 1, 1, 3, 3, 4))
+
+  test('names the advancing teams and exact-place hits, matching the point totals', () => {
+    const user = makeUser({ groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') } })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: table('Brazil', 'Germany', 'France', 'Spain') },
+    }
+    const detail = computeGroupTeamDetail(user, results)
+
+    // actual top-2: Brazil, Germany; user's predicted top-2: Brazil, France → only Brazil advanced
+    expect(detail.advancement).toEqual([{ team: 'Brazil', group: 'A' }])
+    // exact positions hit: 1 (Brazil) and 4 (Spain); the middle pair was swapped
+    expect(detail.places).toEqual([
+      { team: 'Brazil', group: 'A', position: 1 },
+      { team: 'Spain', group: 'A', position: 4 },
+    ])
+
+    // the detail explains exactly the aggregate points, no more no less
+    const group = computeUserPoints(user, results).group
+    expect(detail.advancement.length * OLEH_POINTS.group).toBe(group.advancementPoints)
+    expect(detail.places.length * PLACE_POINT).toBe(group.placePoints)
+  })
+
+  test('credits a team that advanced via third place, tagged with its own group', () => {
+    const s = (team: string, pos: number, group: string): ThirdPlaceStanding => ({
+      team, played: 3, won: 3 - pos, drawn: 0, lost: pos, goalsFor: 6 - pos * 2, goalsAgainst: pos * 2, points: 9 - pos * 3, group,
+    })
+    const user = makeUser({ groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') } })
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: { A: table('Brazil', 'Germany', 'France', 'Spain') },
+      thirdPlaceQualification: { resolved: true, all: [s('France', 2, 'A')], qualifiers: [s('France', 2, 'A')] },
+    }
+    const detail = computeGroupTeamDetail(user, results)
+    // Brazil (top-2) + France (predicted top-2, qualified via third place) both advanced
+    expect(detail.advancement).toEqual([{ team: 'Brazil', group: 'A' }, { team: 'France', group: 'A' }])
+  })
+
+  test('empty when nothing has resolved yet', () => {
+    const user = makeUser({ groupTables: { A: table('Brazil', 'France', 'Germany', 'Spain') } })
+    expect(computeGroupTeamDetail(user, EMPTY_RESULTS)).toEqual({ advancement: [], places: [] })
   })
 })
 

@@ -98,34 +98,121 @@ function routeLadder(team: string, predictedRank: number, stageReach: Record<str
   if (!sr) return null
   const steps = ROUTE_STEPS.filter(s => s.rank <= predictedRank)
   if (steps.length < 2) return null
-  return steps.map(s => `${s.word} ${Math.round(sr[s.key] * 100)}%`).join(' → ')
+  // RTL line: the arrow must point in the reading direction (right→left), so the
+  // ladder reads forward as שמינית → … → אלופה. A ' → ' glyph points backwards here.
+  return steps.map(s => `${s.word} ${Math.round(sr[s.key] * 100)}%`).join(' ← ')
 }
 
-export interface MyHeadline {
+export interface BettorHeadline {
   standing: string
+  peers?: string      // the win% put in context against the rest of the field
   route?: { teamHe: string; ladder: string } // deepest live pick's simulated path
   bigBets?: string    // the other marquee depth calls (finalist/SF), with odds
-  strength?: string   // top stages where you beat the field, in points
-  weakness?: string   // top stage where you trail the field, in points
+  strength?: string   // top stages where the bettor beats the field, in points
+  weakness?: string   // top stage where the bettor trails the field, in points
   fallen?: string     // group picks already out of the race
 }
 
-// A richer synthesised read of *your own* bet for the top of the page. Beyond the
-// standing it shows the simulated *route* of your deepest live pick (which already
-// bakes in the bracket/draw difficulty), your other marquee calls, where you most
-// beat and trail the field in points, and the group busts. The full depth ladder for
-// every pick stays in the row detail.
-export function buildMyHeadline(
+// Just the win odds of each bettor — enough to put one bettor's number in context
+// against the whole field without dragging the entire Row around.
+export interface PeerWin { label: string; winPct: number }
+
+// Who we're writing about — second person ("אתה") for the viewer's own featured
+// card, or the bettor's name in the row detail. Keeps the prose identical bar the
+// subject, so the expand-on-tap read matches the headline at the top of the page.
+export type HeadlineSubject =
+  | { self: true; firstName: string }
+  | { self: false; name: string }
+
+// Where a bettor sits in words, not just a number — so the standing reads like a
+// verdict on their real situation rather than a stat dump.
+function rankPhrase(rank: number, total: number): string {
+  if (rank <= 1) return 'בראש הטבלה'
+  if (rank <= Math.max(2, Math.ceil(total * 0.15))) return 'בצמרת הטבלה'
+  if (rank <= Math.ceil(total / 2)) return 'בחצי העליון'
+  if (rank < total) return 'בחצי התחתון'
+  return 'בתחתית הטבלה'
+}
+
+// How alive the title hopes are, framed by the model's win odds.
+function chancePhrase(winPct: number): string {
+  if (winPct >= 25) return 'מועמד מוביל לזכייה'
+  if (winPct >= 12) return 'מועמד רציני לזכייה'
+  if (winPct >= 4) return 'עדיין בתמונה לזכייה'
+  if (winPct > 0) return 'אאוטסיידר לזכייה'
+  return 'כמעט מחוץ למרוץ על הזכייה'
+}
+
+// "פי 8" / "פי 2.7" — whole multiples once they're big enough to round cleanly,
+// one decimal while the gap is still small, so the ratio reads at a glance.
+function timesPhrase(a: number, b: number): string {
+  const r = a / b
+  return `פי ${r >= 3 ? Math.round(r) : r.toFixed(1)}`
+}
+
+// Why one bettor's win% looks the way it does, in plain terms anchored to the rest
+// of the field — the question people actually ask about a runaway leader. For the
+// front-runner: the equal-split baseline (what everyone would have if the title
+// race were a coin-flip lottery) and how many times over they beat it, plus the
+// gap to the next bettor by name. For everyone else: how far the current leader is
+// ahead of them. This is what makes a 32% feel earned rather than mysterious.
+export function peersClause(row: Row, peers: PeerWin[], totalPlayers: number, subject: HeadlineSubject): string | null {
+  const others = peers.filter(p => p.label !== row.label)
+  if (!others.length || totalPlayers < 2) return null
+  const subj = subject.self ? 'שלך' : `של ${subject.name}`
+  const avg = 100 / totalPlayers
+  const top = peers.reduce((a, b) => (b.winPct > a.winPct ? b : a))
+  const isLeader = row.winPct > 0 && row.winPct >= top.winPct - 1e-9
+
+  if (isLeader && row.winPct > avg) {
+    const next = others.reduce((a, b) => (b.winPct > a.winPct ? b : a))
+    let s = `אם הסיכוי היה מתחלק שווה בין ${totalPlayers} המהמרים כל אחד היה ב-${fmtPct(avg)} — הסיכוי ${subj} ${timesPhrase(row.winPct, avg)} מזה`
+    if (next.winPct > 0) s += ` ו${timesPhrase(row.winPct, next.winPct)} מהמהמר הבא בתור (${next.label} ${fmtPct(next.winPct)})`
+    return s + '.'
+  }
+  if (top.label !== row.label && top.winPct > 0) {
+    if (row.winPct < 0.1) return `המוביל ${top.label} ב-${fmtPct(top.winPct)}; הסיכוי ${subj} עדיין זניח.`
+    return `המוביל ${top.label} ב-${fmtPct(top.winPct)} — ${timesPhrase(top.winPct, row.winPct)} מהסיכוי ${subj} (${fmtPct(row.winPct)}).`
+  }
+  return null
+}
+
+// The opening paragraph: standing in words + place, the live title odds, and the
+// model's projected finish with its trajectory — all grounded in this bettor's
+// own numbers, in second or third person per `subject`.
+function standingText(row: Row, totalPlayers: number, subject: HeadlineSubject): string {
+  const exp = Math.round(row.expRank)
+  const subj = subject.self ? 'אתה' : subject.name
+  const place = `${subj} ${rankPhrase(row.curRank, totalPlayers)}, מקום ${row.curRank} מתוך ${totalPlayers}.`
+  const chance = `${chancePhrase(row.winPct)} — ${fmtPct(row.winPct)} לזכייה, ${fmtPct(row.top5Pct)} לטופ 5.`
+  const avg = Math.round(row.avgPts)
+  const proj =
+    exp < row.curRank ? `המודל צופה טיפוס למקום ${exp} בסיום, עם צפי של כ-${avg} נק׳.`
+    : exp > row.curRank ? `המודל צופה נסיגה למקום ${exp} בסיום, עם צפי של כ-${avg} נק׳.`
+    : `המודל צופה סיום סביב מקום ${exp}, עם צפי של כ-${avg} נק׳.`
+  return `${place} ${chance} ${proj}`
+}
+
+// A synthesised read of one bettor's bet, used both for the viewer's featured card
+// at the top and for the expand-on-tap detail of any row (same prose, subject aside).
+// Beyond the standing it shows the simulated *route* of the deepest live pick (which
+// already bakes in the bracket/draw difficulty), the other marquee calls, where the
+// bettor most beats and trails the field in points, and the group busts.
+export function buildBettorHeadline(
   row: Row,
   advancement: AdvancementSummary | null,
   stageReach: Record<string, StageReach>,
   totalPlayers: number,
-): MyHeadline {
-  const exp = Math.round(row.expRank)
-  const dir = exp < row.curRank ? ' (צפוי לטפס)' : exp > row.curRank ? ' (צפוי לרדת)' : ''
-  const standing = `אתה במקום ${row.curRank} מתוך ${totalPlayers}. סיכוי לזכייה: ${fmtPct(row.winPct)} · טופ 5: ${fmtPct(row.top5Pct)} · צפי סיום: מקום ${exp}${dir} עם כ-${Math.round(row.avgPts)} נק׳.`
+  subject: HeadlineSubject,
+  peers?: PeerWin[],
+): BettorHeadline {
+  const standing = standingText(row, totalPlayers, subject)
 
-  const out: MyHeadline = { standing }
+  const out: BettorHeadline = { standing }
+  if (peers && peers.length) {
+    const pc = peersClause(row, peers, totalPlayers, subject)
+    if (pc) out.peers = pc
+  }
   const sig = row.stages.filter(s => Math.abs(s.edge) >= EDGE_MIN)
   const strong = sig.filter(s => s.edge > 0).sort((a, b) => b.edge - a.edge).slice(0, 2).map(s => `${s.label} +${s.edge.toFixed(0)}`)
   const weak = sig.filter(s => s.edge < 0).sort((a, b) => a.edge - b.edge).slice(0, 1).map(s => `${s.label} −${Math.abs(s.edge).toFixed(0)}`)

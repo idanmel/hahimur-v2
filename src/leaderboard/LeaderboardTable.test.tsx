@@ -143,6 +143,60 @@ test('marks a pick correct when it earned its winner bonus', () => {
   expect(within(panel).getAllByLabelText('ניחוש נכון')).toHaveLength(2)
 })
 
+test.each([
+  ['mobile', '.lb-mobile'],
+  ['desktop', '.lb-desktop'],
+])('expanding a bettor on %s reveals a per-phase points breakdown', (_name, selector) => {
+  const row = withR32(makeRow({ matchPoints: 8, advancementPoints: 5 }), 3) // group 13 + r32 3 = 16
+  const { container } = render(<LeaderboardTable rows={[row]} />)
+  const table = within(container.querySelector(selector) as HTMLElement)
+
+  fireEvent.click(table.getByRole('button', { name: /Dana/ }))
+  const panel = table.getByTestId('lb-traj-Dana')
+
+  // both scoring phases are listed with their phase totals + sub-fields
+  expect(within(panel).getByText('שלב הבתים')).toBeInTheDocument()
+  expect(within(panel).getByText('שלב 32')).toBeInTheDocument()
+  expect(within(panel).getByText('עולות')).toBeInTheDocument()
+})
+
+test('tapping anywhere on a mobile row toggles its breakdown panel', () => {
+  const row = withR32(makeRow({ matchPoints: 8, advancementPoints: 5 }), 3) // group 13, r32 3, total 16
+  const { container } = render(<LeaderboardTable rows={[row]} />)
+  const mobile = within(container.querySelector('.lb-mobile') as HTMLElement)
+
+  expect(mobile.queryByTestId('lb-traj-Dana')).not.toBeInTheDocument()
+
+  // tap the group score cell (not the name button) — the row itself toggles open
+  fireEvent.click(mobile.getByText('13'))
+  expect(mobile.getByTestId('lb-traj-Dana')).toBeInTheDocument()
+})
+
+test('drilling into the group phase reveals the teams behind עולות and מיקומים', () => {
+  const row: LeaderboardRow = {
+    ...makeRow({ matchPoints: 8, advancementPoints: 4 }),
+    group: { matchPoints: 8, advancementPoints: 4, placePoints: 1, total: 13 },
+    total: 13,
+    groupTeamDetail: {
+      advancement: [{ team: 'Brazil', group: 'A' }],
+      places: [{ team: 'Spain', group: 'A', position: 4 }],
+    },
+  }
+  const { container } = render(<LeaderboardTable rows={[row]} />)
+  const desktop = within(container.querySelector('.lb-desktop') as HTMLElement)
+
+  // first click: open the bettor's breakdown panel
+  fireEvent.click(desktop.getByRole('button', { name: /Dana/ }))
+  const panel = desktop.getByTestId('lb-traj-Dana')
+
+  // teams are hidden until the second click on the group phase row
+  expect(within(panel).queryByText('בית A')).not.toBeInTheDocument()
+  fireEvent.click(within(panel).getByRole('button', { name: /שלב הבתים/ }))
+
+  expect(within(panel).getByText('בית A')).toBeInTheDocument()
+  expect(within(panel).getByText('מקום 4 · בית A')).toBeInTheDocument()
+})
+
 test('no row is flagged when me is absent from the table', () => {
   const row = { ...makeRow({ matchPoints: 8, advancementPoints: 5 }), label: 'עידן' }
   render(<LeaderboardTable rows={[row]} me="someone-else" />)
