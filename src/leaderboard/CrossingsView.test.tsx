@@ -113,6 +113,20 @@ test('renders the crossings standing ranked by expected hits', () => {
   expect(screen.getByText('1.0')).toBeInTheDocument()
 })
 
+test('groups a ruled-out crossing (0%) in its own section, not under open', () => {
+  const actual = [km(75, 'Brazil', 'סגנית ו')]   // half-open -> potential
+  const user = userWith([km(75, 'Brazil', 'Netherlands')])
+  const probByMatch = { 75: { 'Brazil|Netherlands': 0 } } // simulated, never happens
+  render(<CrossingsList user={user} users={[user]} actualMatches={actual} probByMatch={probByMatch} probStatus="ready" />)
+
+  // it's not presented as a live open chance...
+  expect(screen.queryByText('⏳ עוד פתוחות')).not.toBeInTheDocument()
+  // ...but it does appear, in a dedicated "ruled out" section, for a full picture
+  expect(screen.getByText('❌ כבר לא ריאליות')).toBeInTheDocument()
+  expect(screen.getByTestId('crossing-card')).toBeInTheDocument()
+  expect(screen.getByText(/אין סיכוי שייפגשו/)).toBeInTheDocument()
+})
+
 test('renders the stage tabs and switches round on click', () => {
   const user = userWith([km(73, 'Mexico', 'Canada')])
   const onRoundChange = vi.fn()

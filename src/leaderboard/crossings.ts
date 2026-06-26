@@ -119,7 +119,10 @@ export function computeCrossingsLeaderboard(
     .map(u => {
       const { locked, potential } = computeUserCrossings(u.knockoutStages?.[roundKey] ?? [], actualMatches)
       const expectedOpen = potential.reduce((s, c) => s + (crossingProbability(c, crossingProbByMatch) ?? 0), 0)
-      return { label: u.label, locked: locked.length, potential: potential.length, expected: locked.length + expectedOpen }
+      // Only count open pairings the model still gives a chance — a simulated 0%
+      // is effectively ruled out, so it shouldn't inflate the "open" tally.
+      const live = potential.filter(c => { const p = crossingProbability(c, crossingProbByMatch); return p === null || p > 0 })
+      return { label: u.label, locked: locked.length, potential: live.length, expected: locked.length + expectedOpen }
     })
     .sort((a, b) => b.expected - a.expected || b.locked - a.locked || a.label.localeCompare(b.label, 'he'))
 }

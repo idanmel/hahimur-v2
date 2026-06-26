@@ -170,6 +170,37 @@
   font-size: 0.78rem;
 }
 
+.cx-summary-stat--dead {
+  background: var(--surface-2, #f1f3f7);
+  color: var(--text-muted, #8a90a0);
+}
+.cx-summary-stat--dead b { color: #b54a4a; }
+
+.cx-sec-title--dead { color: #b54a4a; }
+
+.cx-card--dead {
+  opacity: 0.72;
+  filter: grayscale(0.35);
+}
+
+.cx-card-foot--dead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cx-dead-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #b54a4a;
+}
+
+.cx-board-detail-h--dead { color: #b54a4a; }
+
+.cx-board-pair--dead { opacity: 0.7; }
+.cx-board-pair-tag--dead { color: #b54a4a; }
+
 .cx-prob {
   color: var(--text, #1a1d27);
 }
@@ -389,6 +420,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .cx-board-mebadge {
@@ -474,4 +506,31 @@
   color: var(--text-muted, #6b7385);
   font-size: 0.9rem;
   max-width: 24rem;
+}
+
+/* --- mobile --- */
+@media (max-width: 639px) {
+  /* one card per row reads cleaner than squeezing two narrow ones */
+  .cx-cards { grid-template-columns: 1fr; }
+
+  /* the 4-up standing row is too tight on a phone: keep rank + name + number on
+     top, and give the progress bar its own full-width row underneath */
+  .cx-board-row {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank name exp"
+      "bar  bar  bar";
+    gap: 0.3rem 0.5rem;
+  }
+  .cx-board-rank { grid-area: rank; }
+  .cx-board-name { grid-area: name; }
+  .cx-board-exp { grid-area: exp; min-width: 0; }
+  .cx-board-bar-wrap { grid-area: bar; }
+
+  /* the standing number sits inline next to the name on mobile */
+  .cx-board-exp {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
 }
