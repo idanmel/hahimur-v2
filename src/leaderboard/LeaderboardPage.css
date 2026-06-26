@@ -1301,6 +1301,32 @@
     margin-inline-start: 0;
     margin-top: 4px;
   }
+
+  /* The joined segmented strip can't hold six tabs on one line, and a wrapped
+     shared border leaves the second row's dividers dangling. On mobile drop the
+     outer border and split it into standalone chips that grow to fill each row,
+     so a wrap reads as a deliberate two-row grid rather than a broken control. */
+  .lb-scope-modes {
+    width: 100%;
+    border: none;
+    gap: 6px;
+  }
+
+  .lb-scope-mode {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 7px 10px 6px;
+    border: 1.5px solid rgba(11, 34, 68, 0.3);
+  }
+
+  /* container border is gone, so the first chip needs its own start edge back */
+  .lb-scope-mode:first-child {
+    border-inline-start: 1.5px solid rgba(11, 34, 68, 0.3);
+  }
+
+  .lb-scope-mode--active {
+    border-color: var(--navy);
+  }
 }
 
 .lb-lastx-caption {

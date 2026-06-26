@@ -201,6 +201,33 @@
 .cx-board-pair--dead { opacity: 0.7; }
 .cx-board-pair-tag--dead { color: #b54a4a; }
 
+/* missed — a team you didn't pick already advanced, so the crossing broke
+   (shown inside the shared "כבר לא יקרו" section alongside the 0% ones) */
+.cx-card--missed {
+  opacity: 0.85;
+  border-style: dashed;
+  background: var(--surface-2, #f7f8fb);
+}
+
+.cx-card-foot--missed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cx-missed-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6b7385;
+}
+
+.cx-missed-actual {
+  font-size: 0.78rem;
+  color: var(--text, #1a1d27);
+  font-weight: 600;
+}
+
 .cx-prob {
   color: var(--text, #1a1d27);
 }
@@ -214,6 +241,90 @@
   color: var(--text-muted, #6b7385);
   font-style: italic;
 }
+
+.cx-prob-wrap { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.cx-prob--btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.cx-prob--btn:hover { text-decoration: underline; }
+
+.cx-prob-info {
+  font-size: 0.72rem;
+  color: #2563eb;
+}
+
+.cx-calc {
+  border: 1px solid var(--border, #e3e6ee);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  background: var(--surface-2, #f7f8fb);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.cx-calc-lead {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text, #1a1d27);
+}
+
+.cx-calc-lead b { font-weight: 700; }
+
+.cx-calc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cx-calc-opt {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text, #1a1d27);
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
+}
+
+.cx-calc-opt b { font-variant-numeric: tabular-nums; }
+
+.cx-calc-opt-team {
+  min-width: 0;
+}
+
+.cx-calc-done { color: #16a34a; }
+
+.cx-calc-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  border-top: 1px dashed var(--border, #d8dce6);
+  padding-top: 0.35rem;
+  margin-top: 0.1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text, #1a1d27);
+}
+
+.cx-calc-total b { font-variant-numeric: tabular-nums; }
 
 .cx-pending {
   color: var(--text-muted, #6b7385);

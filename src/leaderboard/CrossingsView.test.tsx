@@ -30,11 +30,20 @@ test('prompts to pick a player when none is selected', () => {
   expect(screen.getByText(/בחרו שחקן/)).toBeInTheDocument()
 })
 
-test('shows an empty state when the bettor has no live crossings', () => {
-  const actual = [km(73, 'Mexico', 'Canada')]
+test('shows an empty state when there is no bracket yet', () => {
+  const user = userWith([km(73, 'Brazil', 'Spain')])
+  render(<CrossingsList user={user} users={[user]} actualMatches={[]} probByMatch={{}} probStatus="ready" />)
+  expect(screen.getByText(/עוד אין הצלבות/)).toBeInTheDocument()
+})
+
+test('shows a broken crossing under "התפספסו" with what actually happened', () => {
+  const actual = [km(73, 'Mexico', 'Canada')]      // a team the bettor didn't pick
   const user = userWith([km(73, 'Brazil', 'Spain')])
   render(<CrossingsList user={user} users={[user]} actualMatches={actual} probByMatch={{}} probStatus="ready" />)
-  expect(screen.getByText(/עוד אין הצלבות/)).toBeInTheDocument()
+
+  expect(screen.getByText('❌ לא יקרו')).toBeInTheDocument()
+  expect(screen.getByTestId('crossing-card')).toBeInTheDocument()
+  expect(screen.getByText(/בפועל/)).toBeInTheDocument()
 })
 
 test('renders locked and potential crossings with their counts', () => {
@@ -68,6 +77,24 @@ test('shows the simulated chance on an open crossing', () => {
   const probByMatch = { 75: { 'Brazil|Netherlands': 0.42 } }
   render(<CrossingsList user={user} users={[user]} actualMatches={actual} probByMatch={probByMatch} probStatus="ready" />)
   expect(screen.getByText('42%')).toBeInTheDocument()
+})
+
+test('clicking the chance explains what must happen for your own pick', () => {
+  const actual = [km(75, 'Brazil', 'סגנית ו')] // Brazil locked in, the other side open
+  const user = userWith([km(75, 'Brazil', 'Netherlands')])
+  const probByMatch = { 75: { 'Brazil|Netherlands': 0.3 } }
+  render(<CrossingsList user={user} users={[user]} actualMatches={actual} probByMatch={probByMatch} probStatus="ready" />)
+
+  // panel hidden until you tap the percentage
+  expect(screen.queryByTestId('crossing-calc')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /סיכוי שתצא/ }))
+
+  const calc = within(screen.getByTestId('crossing-calc'))
+  // it's about the bettor's own teams: one already in, the other with its requirement
+  expect(calc.getByText(/כבר במשבצת/)).toBeInTheDocument()
+  expect(calc.getByText(/צריכה להיות סגנית ו/)).toBeInTheDocument()
+  // and the combined chance the pair actually meets
+  expect(calc.getByText(/הסיכוי ששתיהן/)).toBeInTheDocument()
 })
 
 test('reads the chance regardless of team order', () => {
@@ -121,10 +148,21 @@ test('groups a ruled-out crossing (0%) in its own section, not under open', () =
 
   // it's not presented as a live open chance...
   expect(screen.queryByText('⏳ עוד פתוחות')).not.toBeInTheDocument()
-  // ...but it does appear, in a dedicated "ruled out" section, for a full picture
-  expect(screen.getByText('❌ כבר לא ריאליות')).toBeInTheDocument()
+  // ...but it does appear, in the merged "won't happen" section, for a full picture
+  expect(screen.getByText('❌ לא יקרו')).toBeInTheDocument()
   expect(screen.getByTestId('crossing-card')).toBeInTheDocument()
   expect(screen.getByText(/אין סיכוי שייפגשו/)).toBeInTheDocument()
+})
+
+test('orders open crossings by chance, highest first', () => {
+  const actual = [km(75, 'Brazil', 'סגנית ו'), km(79, 'Spain', 'שלישית א/ב/ג')]
+  const user = userWith([km(75, 'Brazil', 'Netherlands'), km(79, 'Spain', 'Germany')])
+  const probByMatch = { 75: { 'Brazil|Netherlands': 0.3 }, 79: { 'Germany|Spain': 0.8 } }
+  render(<CrossingsList user={user} users={[user]} actualMatches={actual} probByMatch={probByMatch} probStatus="ready" />)
+
+  const cards = screen.getAllByTestId('crossing-card')
+  expect(within(cards[0]).getByText('80%')).toBeInTheDocument() // best chance leads
+  expect(within(cards[1]).getByText('30%')).toBeInTheDocument()
 })
 
 test('renders the stage tabs and switches round on click', () => {
@@ -150,6 +188,27 @@ test('reads the bettor predictions for the selected round', () => {
   expect(screen.getByText('✓ נעולות')).toBeInTheDocument()
   expect(screen.getByText(/ניקוד השמינית/)).toBeInTheDocument()
   expect(screen.getByText(/מי יפגע בהכי הרבה מפגשים/)).toBeInTheDocument()
+})
+
+test('standing row accounts for every match: locked + open + gone', () => {
+  const actual = [
+    km(73, 'Mexico', 'Canada'),    // both in -> locked
+    km(75, 'Brazil', 'סגנית ו'),   // half open -> potential
+    km(79, 'Spain', 'Germany'),    // a pair the bettor didn't call -> missed
+  ]
+  const bettor = userWith([
+    km(73, 'Mexico', 'Canada'),
+    km(75, 'Brazil', 'Netherlands'),
+    km(79, 'France', 'Portugal'),
+  ], 'דני')
+  const probByMatch = { 75: { 'Brazil|Netherlands': 0.5 } }
+  render(<CrossingsList user={bettor} users={[bettor]} actualMatches={actual} probByMatch={probByMatch} probStatus="ready" />)
+
+  // the row's breakdown lists all three buckets, which sum to the 3 matches
+  expect(screen.getByText('1 נעולות · 1 פתוחות · 1 אזלו')).toBeInTheDocument()
+  // and the expanded detail surfaces the broken one too
+  fireEvent.click(screen.getByRole('button', { name: /דני/ }))
+  expect(screen.getByText(/לא יקרו \(1\)/)).toBeInTheDocument()
 })
 
 test('expands a standing row to reveal that bettor pairs and chances', () => {

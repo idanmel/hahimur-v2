@@ -11,6 +11,10 @@ export type RoundKey = 'r32' | 'r16' | 'qf' | 'sf' | 'final'
 export interface CrossingTeam {
   team: string
   confirmed: boolean
+  // For a team not yet in the slot: the real bracket position it must finish in for
+  // this crossing to come true, e.g. "סגנית ו" or "שלישית א/ב/ג". Undefined once the
+  // team is confirmed in the slot.
+  needsSlot?: string
 }
 
 // A "crossing" = one R32 cross-bracket pairing the bettor predicted.
@@ -24,11 +28,19 @@ export interface Crossing {
   // (home) / teams[1] (away). Null when they left the score blank. Used to show
   // "the score you bet" on a locked crossing — the match that will actually happen.
   predicted: { home: number; away: number } | null
+  // For a *missed* crossing only: the real team(s) that actually landed in this
+  // slot (at least one of which the bettor didn't pick, which is what broke it),
+  // so the card can show "what happened instead". Undefined for live crossings.
+  actualTeams?: string[]
 }
 
 export interface UserCrossings {
   locked: Crossing[]
   potential: Crossing[]
+  // Crossings already broken — a confirmed team the bettor didn't pair is in the
+  // slot, so this pairing can no longer happen. Kept (not dropped) so the view can
+  // account for all of the round's matches, not only the live ones.
+  missed: Crossing[]
 }
 
 // A resolved knockout slot holds a real team name (a TEAMS key); an unresolved
@@ -56,6 +68,39 @@ export function crossingProbability(
   if (!rec) return null
   return rec[crossingPairKey(crossing.teams[0].team, crossing.teams[1].team)] ?? 0
 }
+
+// How the crossing's chance breaks down, read straight from the simulation's
+// per-match pairing distribution:
+//   • reachA / reachB — how often *each* team reaches this match (the share of all
+//     simulated pairings at this slot that include it). Each run yields exactly one
+//     pairing here, so these are true marginals.
+//   • joint — how often the two meet *together* (the crossing itself).
+// joint is measured directly, not reachA·reachB: the two teams reaching the same
+// slot are dependent events, so a simple product would be wrong.
+export interface CrossingBreakdown {
+  reachA: number
+  reachB: number
+  joint: number
+}
+
+export function crossingBreakdown(
+  crossing: Crossing,
+  crossingProbByMatch: Record<number, Record<string, number>>,
+): CrossingBreakdown | null {
+  const rec = crossingProbByMatch[crossing.matchNum]
+  if (!rec) return null
+  const a = crossing.teams[0].team
+  const b = crossing.teams[1].team
+  let reachA = 0
+  let reachB = 0
+  for (const [key, p] of Object.entries(rec)) {
+    const [x, y] = key.split('|')
+    if (x === a || y === a) reachA += p
+    if (x === b || y === b) reachB += p
+  }
+  return { reachA, reachB, joint: rec[crossingPairKey(a, b)] ?? 0 }
+}
+
 
 // The minimal shape these helpers need from a bettor: a label and their knockout
 // predictions, keyed by round ('r32' | 'r16' | 'qf' | 'sf' | 'final' | ...).
@@ -106,6 +151,10 @@ export interface CrossingStanding {
   label: string
   locked: number
   potential: number
+  // Pairings that can no longer happen: already broken (missed) plus open ones the
+  // model gives a 0% chance. Tracked so locked + potential + gone covers every
+  // match in the round (16 in R32), not just the live ones.
+  gone: number
   expected: number
 }
 
@@ -117,12 +166,13 @@ export function computeCrossingsLeaderboard(
 ): CrossingStanding[] {
   return bettors
     .map(u => {
-      const { locked, potential } = computeUserCrossings(u.knockoutStages?.[roundKey] ?? [], actualMatches)
+      const { locked, potential, missed } = computeUserCrossings(u.knockoutStages?.[roundKey] ?? [], actualMatches)
       const expectedOpen = potential.reduce((s, c) => s + (crossingProbability(c, crossingProbByMatch) ?? 0), 0)
       // Only count open pairings the model still gives a chance — a simulated 0%
       // is effectively ruled out, so it shouldn't inflate the "open" tally.
       const live = potential.filter(c => { const p = crossingProbability(c, crossingProbByMatch); return p === null || p > 0 })
-      return { label: u.label, locked: locked.length, potential: live.length, expected: locked.length + expectedOpen }
+      const gone = missed.length + (potential.length - live.length)
+      return { label: u.label, locked: locked.length, potential: live.length, gone, expected: locked.length + expectedOpen }
     })
     .sort((a, b) => b.expected - a.expected || b.locked - a.locked || a.label.localeCompare(b.label, 'he'))
 }
@@ -135,14 +185,22 @@ export function computeCrossingsLeaderboard(
 //                 one the bettor paired, but at least one side is still open (a group
 //                 that hasn't finished, or a third-place slot not yet fixed), so the
 //                 crossing can still come true.
-// Crossings already broken by a confirmed team the bettor didn't pick are dropped
-// (a "miss" — no longer reachable), so the view only ever shows live possibilities.
+//   • missed    — already broken: a confirmed team the bettor didn't pair is in the
+//                 slot, so this pairing can't happen. Kept (with the teams that
+//                 actually landed) so the view can account for every match in the
+//                 round, not just the live ones.
+function mkTeam(team: string, confirmed: string[], openSlots: string[]): CrossingTeam {
+  if (confirmed.includes(team)) return { team, confirmed: true }
+  return { team, confirmed: false, needsSlot: openSlots.shift() }
+}
+
 export function computeUserCrossings(
   userR32: KnockoutMatch[],
   actualR32: KnockoutMatch[],
 ): UserCrossings {
   const locked: Crossing[] = []
   const potential: Crossing[] = []
+  const missed: Crossing[] = []
 
   for (const actual of actualR32) {
     const um = userR32.find(m => m.matchNum === actual.matchNum)
@@ -156,16 +214,24 @@ export function computeUserCrossings(
     const confirmed = slots.filter(isRealTeam)
     const pendingSlots = slots.filter(s => !isRealTeam(s))
 
-    // A confirmed team the bettor didn't pair means the crossing already broke.
-    if (confirmed.some(t => !userSet.has(t))) continue
-
+    // Hand each still-open predicted team the next unfilled bracket slot, so the
+    // card can say exactly what that team needs to finish as. With one side open
+    // this is exact; with both open the two slots map to the two teams in order.
+    const openSlots = [...pendingSlots]
     const teams: [CrossingTeam, CrossingTeam] = [
-      { team: userTeams[0], confirmed: confirmed.includes(userTeams[0]) },
-      { team: userTeams[1], confirmed: confirmed.includes(userTeams[1]) },
+      mkTeam(userTeams[0], confirmed, openSlots),
+      mkTeam(userTeams[1], confirmed, openSlots),
     ]
     const predicted = um.scores && !isUnpredicted(um.scores)
       ? { home: um.scores.home as number, away: um.scores.away as number }
       : null
+
+    // A confirmed team the bettor didn't pair means the crossing already broke.
+    if (confirmed.some(t => !userSet.has(t))) {
+      missed.push({ matchNum: actual.matchNum, teams, pendingSlots, predicted, actualTeams: confirmed })
+      continue
+    }
+
     const crossing: Crossing = { matchNum: actual.matchNum, teams, pendingSlots, predicted }
 
     if (pendingSlots.length === 0) locked.push(crossing)
@@ -176,6 +242,7 @@ export function computeUserCrossings(
   // Most-resolved first: a crossing with one team already in is "hotter" than one
   // still wide open. Stable by matchNum within the same confirmed count.
   potential.sort((a, b) => confirmedCount(b) - confirmedCount(a) || a.matchNum - b.matchNum)
+  missed.sort((a, b) => a.matchNum - b.matchNum)
 
-  return { locked, potential }
+  return { locked, potential, missed }
 }

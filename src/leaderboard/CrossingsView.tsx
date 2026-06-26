@@ -5,8 +5,8 @@ import { buildKnockoutBracket } from '../formView/knockout/knockout'
 import { realPlayedState } from './winprob/realPlayed'
 import { useWinProbabilities } from './winprob/useWinProbabilities'
 import type { WinProbStatus } from './winprob/useWinProbabilities'
-import { computeUserCrossings, crossingProbability, crossingParticipants, computeCrossingsLeaderboard } from './crossings'
-import type { Crossing, CrossingStanding, RoundKey } from './crossings'
+import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard } from './crossings'
+import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey } from './crossings'
 import { TeamChip } from './LeaderboardTable'
 import { TEAMS } from '../shared/groups'
 import './CrossingsView.css'
@@ -50,12 +50,59 @@ function probColor(p: number): string {
   return `hsl(${hue} 75% 38%)`
 }
 
-function ProbBadge({ prob, status }: { prob: number | null; status: WinProbStatus }) {
+// Explains the percentage for *the bettor's own pick*: for each predicted team,
+// whether it's already in the slot or what it still has to finish as, with that
+// team's simulated chance, and the combined chance the two actually meet. No other
+// matchups — just what has to happen for this crossing.
+function ProbBadge({ prob, status, crossing, breakdown }: {
+  prob: number | null
+  status: WinProbStatus
+  crossing?: Crossing
+  breakdown?: CrossingBreakdown | null
+}) {
+  const [open, setOpen] = useState(false)
   if (status === 'unsupported') return null
   if (status === 'loading' || prob === null) {
     return <span className="cx-prob cx-prob--loading">מחשב סיכוי…</span>
   }
-  return <span className="cx-prob">סיכוי שתצא: <b style={{ color: probColor(prob) }}>{fmtPct(prob)}</b></span>
+  if (!crossing || !breakdown) {
+    return <span className="cx-prob">סיכוי שתצא: <b style={{ color: probColor(prob) }}>{fmtPct(prob)}</b></span>
+  }
+  const reaches = [breakdown.reachA, breakdown.reachB]
+  return (
+    <div className="cx-prob-wrap">
+      <button type="button" className="cx-prob cx-prob--btn" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+        סיכוי שתצא: <b style={{ color: probColor(prob) }}>{fmtPct(prob)}</b>
+        <span className="cx-prob-info" aria-hidden="true">{open ? '⌃' : 'ⓘ'}</span>
+      </button>
+      {open && (
+        <div className="cx-calc" data-testid="crossing-calc">
+          <p className="cx-calc-lead">מה צריך לקרות כדי שהזוג שלך ייפגש:</p>
+          <ul className="cx-calc-list">
+            {crossing.teams.map((t, i) => (
+              <li key={t.team} className="cx-calc-opt">
+                {t.confirmed ? (
+                  <>
+                    <span className="cx-calc-opt-team">✓ {teamHe(t.team)} כבר במשבצת</span>
+                    <b className="cx-calc-done">בפנים</b>
+                  </>
+                ) : (
+                  <>
+                    <span className="cx-calc-opt-team">{teamHe(t.team)} צריכה להיות {t.needsSlot ?? 'במשבצת'}</span>
+                    <b style={{ color: probColor(reaches[i]) }}>{fmtPct(reaches[i])}</b>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="cx-calc-total">
+            <span>הסיכוי ששתיהן יסתדרו ויפגשו</span>
+            <b style={{ color: probColor(breakdown.joint) }}>{fmtPct(breakdown.joint)}</b>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // The "who else called it" line: a tap-to-reveal count of the other bettors who
@@ -77,24 +124,29 @@ function Participants({ names, expanded, onToggle }: { names: string[]; expanded
   )
 }
 
-function CrossingCard({ crossing, locked, ruledOut = false, prob, status, mates, expanded, onToggle }: {
+function CrossingCard({ crossing, locked, ruledOut = false, missed = false, prob, breakdown, status, mates, expanded, onToggle }: {
   crossing: Crossing
   locked: boolean
   ruledOut?: boolean
+  missed?: boolean
   prob: number | null
+  breakdown?: CrossingBreakdown | null
   status: WinProbStatus
   mates: string[]
   expanded: boolean
   onToggle: () => void
 }) {
   const [a, b] = crossing.teams
-  const cls = locked ? ' cx-card--locked' : ruledOut ? ' cx-card--dead' : ''
+  const cls = locked ? ' cx-card--locked' : missed ? ' cx-card--missed' : ruledOut ? ' cx-card--dead' : ''
+  // On a missed crossing, neither predicted team is "in as predicted", so don't
+  // hand out a green "בפנים ✓" — just show them as the (failed) bet.
+  const tagFor = (t: { confirmed: boolean }) => (!missed && t.confirmed ? 'בפנים ✓' : 'הניחוש שלך')
   return (
     <article className={`cx-card${cls}`} data-testid="crossing-card">
       <div className="cx-card-teams">
-        <TeamChip team={a.team} tag={a.confirmed ? 'בפנים ✓' : 'הניחוש שלך'} />
+        <TeamChip team={a.team} tag={tagFor(a)} />
         <span className="cx-vs" aria-hidden="true">×</span>
-        <TeamChip team={b.team} tag={b.confirmed ? 'בפנים ✓' : 'הניחוש שלך'} />
+        <TeamChip team={b.team} tag={tagFor(b)} />
       </div>
       {locked ? (
         <div className="cx-card-foot cx-card-foot--locked">
@@ -102,6 +154,13 @@ function CrossingCard({ crossing, locked, ruledOut = false, prob, status, mates,
             <span className="cx-bet">הניחוש שלך: <b dir="ltr">{crossing.predicted.away}–{crossing.predicted.home}</b></span>
           ) : (
             <span className="cx-bet cx-bet--empty">לא ניחשת תוצאה למשחק הזה</span>
+          )}
+        </div>
+      ) : missed ? (
+        <div className="cx-card-foot cx-card-foot--missed">
+          <span className="cx-missed-tag">ההצלבה נשברה</span>
+          {crossing.actualTeams && crossing.actualTeams.length > 0 && (
+            <span className="cx-missed-actual">בפועל: {crossing.actualTeams.map(teamHe).join(' × ')}</span>
           )}
         </div>
       ) : ruledOut ? (
@@ -113,7 +172,7 @@ function CrossingCard({ crossing, locked, ruledOut = false, prob, status, mates,
         </div>
       ) : (
         <div className="cx-card-foot">
-          <ProbBadge prob={prob} status={status} />
+          <ProbBadge prob={prob} status={status} crossing={crossing} breakdown={breakdown} />
           {crossing.pendingSlots.length > 0 && (
             <span className="cx-pending">ממתין ל־{crossing.pendingSlots.join(' · ')}</span>
           )}
@@ -133,16 +192,18 @@ const MEDALS = ['🥇', '🥈', '🥉']
 interface StandingDetailData {
   locked: Crossing[]
   potential: (Crossing & { prob: number | null })[]
+  missed: Crossing[]
 }
 
 function StandingDetail({ detail, status }: { detail: StandingDetailData; status: WinProbStatus }) {
-  const { locked, potential } = detail
+  const { locked, potential, missed } = detail
   // Separate live open pairings from ones the model rules out (a flat 0% once
-  // ready) — the live ones rank by chance, the dead ones get their own muted group
-  // so the breakdown is complete without listing an "open" pair at 0%.
+  // ready) — the live ones rank by chance, the dead ones join the broken ones in a
+  // single muted "won't happen" group so the breakdown covers every match.
   const openLive = potential.filter(c => status !== 'ready' || c.prob === null || c.prob > 0)
   const openDead = potential.filter(c => status === 'ready' && c.prob === 0)
-  if (locked.length + openLive.length + openDead.length === 0) {
+  const gone = [...missed, ...openDead].sort((a, b) => a.matchNum - b.matchNum)
+  if (locked.length + openLive.length + gone.length === 0) {
     return <div className="cx-board-detail cx-board-detail--empty">אין כרגע זוגות חיים לשחקן הזה בשלב הזה.</div>
   }
   // Open crossings, highest chance first — the most "bankable" reads at the top.
@@ -177,14 +238,14 @@ function StandingDetail({ detail, status }: { detail: StandingDetailData; status
           </div>
         </div>
       )}
-      {openDead.length > 0 && (
+      {gone.length > 0 && (
         <div className="cx-board-detail-sec">
-          <span className="cx-board-detail-h cx-board-detail-h--dead">אין סיכוי ({openDead.length})</span>
+          <span className="cx-board-detail-h cx-board-detail-h--dead">לא יקרו ({gone.length})</span>
           <div className="cx-board-pairs">
-            {openDead.map(c => (
+            {gone.map(c => (
               <span key={c.matchNum} className="cx-board-pair cx-board-pair--dead">
                 {teamHe(c.teams[0].team)} × {teamHe(c.teams[1].team)}
-                <span className="cx-board-pair-tag cx-board-pair-tag--dead">0%</span>
+                <span className="cx-board-pair-tag cx-board-pair-tag--dead">{c.actualTeams ? 'נשברה' : '0%'}</span>
               </span>
             ))}
           </div>
@@ -241,7 +302,7 @@ function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun }: {
                 </span>
                 <span className="cx-board-bar-wrap">
                   <span className="cx-board-bar" style={{ width: `${barW.toFixed(1)}%` }} />
-                  <span className="cx-board-breakdown">{s.locked} נעולות · {s.potential} פתוחות</span>
+                  <span className="cx-board-breakdown">{s.locked} נעולות · {s.potential} פתוחות · {s.gone} אזלו</span>
                 </span>
                 <span className="cx-board-exp">
                   {ready ? <b>{s.expected.toFixed(1)}</b> : <b>{s.locked}</b>}
@@ -317,10 +378,11 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   const detailByLabel = useMemo(() => {
     const map = new Map<string, StandingDetailData>()
     for (const u of users) {
-      const { locked, potential } = computeUserCrossings(u.knockoutStages?.[round.key] ?? [], actualMatches)
+      const { locked, potential, missed } = computeUserCrossings(u.knockoutStages?.[round.key] ?? [], actualMatches)
       map.set(u.label, {
         locked,
         potential: potential.map(c => ({ ...c, prob: crossingProbability(c, probByMatch) })),
+        missed,
       })
     }
     return map
@@ -338,7 +400,7 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
     )
   }
 
-  const { locked, potential } = crossings
+  const { locked, potential, missed } = crossings
   const matesFor = (c: Crossing) =>
     crossingParticipants(users, c.matchNum, c.teams[0].team, c.teams[1].team, user?.label)
 
@@ -348,8 +410,19 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   const potentialWithProb = potential.map(c => ({ c, prob: crossingProbability(c, probByMatch) }))
   const livePotential = potentialWithProb.filter(p => probStatus !== 'ready' || p.prob === null || p.prob > 0)
   const deadPotential = potentialWithProb.filter(p => probStatus === 'ready' && p.prob === 0)
+  // Once we have probabilities, lead with the best chance. While they're still
+  // computing we keep the most-resolved-first order computeUserCrossings gave us.
+  if (probStatus === 'ready') {
+    livePotential.sort((a, b) => (b.prob ?? 0) - (a.prob ?? 0) || a.c.matchNum - b.c.matchNum)
+  }
 
-  const hasCrossings = locked.length + potential.length > 0
+  // "Won't happen" = pairings the model rules out (0%) plus ones already broken by
+  // a team the bettor didn't pick. Same message either way, so they share one
+  // category; each card still spells out its own reason.
+  const gone = deadPotential.length + missed.length
+
+  // locked + live + gone accounts for every match in the round.
+  const hasCrossings = locked.length + potential.length + missed.length > 0
 
   return (
     <div className="cx-view" dir="rtl">
@@ -365,9 +438,9 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
 
           <div className="cx-summary">
             <span className="cx-summary-stat cx-summary-stat--locked"><b>{locked.length}</b> נעולות</span>
-            <span className="cx-summary-stat cx-summary-stat--potential"><b>{livePotential.length}</b> עוד בפוטנציאל</span>
-            {deadPotential.length > 0 && (
-              <span className="cx-summary-stat cx-summary-stat--dead"><b>{deadPotential.length}</b> כבר לא ריאליות</span>
+            <span className="cx-summary-stat cx-summary-stat--potential"><b>{livePotential.length}</b> בפוטנציאל</span>
+            {gone > 0 && (
+              <span className="cx-summary-stat cx-summary-stat--dead"><b>{gone}</b> לא יקרו</span>
             )}
           </div>
 
@@ -398,7 +471,7 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
                 {livePotential.map(({ c, prob }) => (
                   <CrossingCard
                     key={c.matchNum} crossing={c} locked={false}
-                    prob={prob} status={probStatus}
+                    prob={prob} breakdown={crossingBreakdown(c, probByMatch)} status={probStatus}
                     mates={matesFor(c)} expanded={openMates.has(c.matchNum)} onToggle={() => toggleMates(c.matchNum)}
                   />
                 ))}
@@ -406,13 +479,19 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
             </section>
           )}
 
-          {deadPotential.length > 0 && (
+          {gone > 0 && (
             <section className="cx-sec">
               <div className="cx-sec-head">
-                <span className="cx-sec-title cx-sec-title--dead">❌ כבר לא ריאליות</span>
-                <span className="cx-sec-sub">הסימולציה כבר פוסלת את הזוגות האלה (0%) — לא נספרים בפוטנציאל</span>
+                <span className="cx-sec-title cx-sec-title--dead">❌ לא יקרו</span>
+                <span className="cx-sec-sub">נכנסה קבוצה אחרת, או שאין כבר סיכוי שהזוג ייפגש — לא ייתן נקודות</span>
               </div>
               <div className="cx-cards">
+                {missed.map(c => (
+                  <CrossingCard
+                    key={c.matchNum} crossing={c} locked={false} missed prob={null} status={probStatus}
+                    mates={matesFor(c)} expanded={openMates.has(c.matchNum)} onToggle={() => toggleMates(c.matchNum)}
+                  />
+                ))}
                 {deadPotential.map(({ c }) => (
                   <CrossingCard
                     key={c.matchNum} crossing={c} locked={false} ruledOut prob={0} status={probStatus}
