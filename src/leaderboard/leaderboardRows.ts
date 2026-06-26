@@ -9,7 +9,7 @@ import { isPlayerParticipatingInKOMatch } from '../formView/knockout/knockout'
 import { competitionRanks } from './rank'
 import type { User } from '../users'
 
-export type Scope = 'all' | GroupLetter | 'range' | 'prob' | 'summary' | 'oleh' | 'crossings'
+export type Scope = 'all' | GroupLetter | 'range' | 'prob' | 'summary' | 'oleh' | 'crossings' | 'timelapse'
 
 // One bettor's group-stage עולות/מיקומים story, team by team, for the dedicated
 // breakdown tab: which qualifiers they tipped right (4 pts each) and which exact

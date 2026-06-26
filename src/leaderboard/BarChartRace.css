@@ -1,0 +1,184 @@
+.bcr-section {
+  margin-top: 0.25rem;
+}
+
+.bcr-intro {
+  margin-bottom: 0.6rem;
+}
+
+.bcr-intro-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  color: var(--navy);
+  margin: 0;
+  font-weight: 400;
+}
+
+.bcr-intro-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.15rem 0 0;
+}
+
+/* The running counter — the date is the hero, like the year in a GDP race. */
+.bcr-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.2rem 0.1rem 0.6rem;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 0.6rem;
+}
+
+.bcr-counter-date {
+  font-size: clamp(1.6rem, 7vw, 2.3rem);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bcr-counter-match {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bcr-stage { width: 100%; }
+
+.bcr-svg {
+  display: block;
+  overflow: visible;
+  /* Predictable text-anchor geometry: names/values are positioned in SVG
+     coordinates (x grows right), independent of the page's RTL flow. Hebrew
+     names still render right-to-left as their own bidi run. */
+  direction: ltr;
+}
+
+/* rect fill is set per-bettor inline — keep it out of CSS so it isn't overridden.
+   "You" gets the site's gold-on-navy identity: a navy bar (set inline) ringed in
+   gold, with the name and running total in gold — unmistakable in the field. */
+.bcr-bar--me .bcr-rect {
+  stroke: var(--gold);
+  stroke-width: 2px;
+}
+
+.bcr-name {
+  font-family: 'Heebo', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.bcr-bar--me .bcr-name {
+  font-weight: 900;
+  font-size: 13.5px;
+  fill: var(--gold);
+  paint-order: stroke;
+  stroke: var(--navy);
+  stroke-width: 2.6px;
+  stroke-linejoin: round;
+}
+
+.bcr-bar--me .bcr-value {
+  fill: var(--navy);
+  font-weight: 900;
+}
+
+/* Your rival (the other half of the /rivalry pair) gets a matching pink
+   treatment: pink bar (set inline) and a bold pink-on-navy name. */
+.bcr-bar--rival .bcr-rect {
+  stroke: var(--pink);
+  stroke-width: 2px;
+}
+
+.bcr-bar--rival .bcr-name {
+  font-weight: 900;
+  font-size: 13.5px;
+  fill: var(--pink);
+  paint-order: stroke;
+  stroke: var(--navy);
+  stroke-width: 2.6px;
+  stroke-linejoin: round;
+}
+
+.bcr-bar--rival .bcr-value {
+  fill: var(--navy);
+  font-weight: 900;
+}
+
+.bcr-value {
+  font-family: 'Heebo', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bcr-avatar {
+  /* clipped to a circle via the clip-path attribute on the element */
+}
+
+/* Controls — quiet, editorial, sized for thumbs. */
+.bcr-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.bcr-play {
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 2px solid var(--navy);
+  background: var(--navy);
+  color: var(--paper);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.bcr-play:hover { background: #0e2c57; }
+
+.bcr-scrub {
+  flex: 1;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.bcr-speeds {
+  flex: none;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.bcr-speed {
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.bcr-speed--active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.bcr-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem 1rem;
+}

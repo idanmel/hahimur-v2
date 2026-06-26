@@ -1206,7 +1206,9 @@
 /* ── Mode strip: one segmented control instead of a sea of chips ── */
 
 .lb-scope-modes {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   border: 1.5px solid var(--navy);
 }
 
