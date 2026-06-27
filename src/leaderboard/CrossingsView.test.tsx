@@ -97,6 +97,16 @@ test('clicking the chance explains what must happen for your own pick', () => {
   expect(calc.getByText(/הסיכוי ששתיהן/)).toBeInTheDocument()
 })
 
+test('an all-but-certain open crossing never reads as 100%', () => {
+  const actual = [km(75, 'Brazil', 'סגנית ו')]
+  const user = userWith([km(75, 'Brazil', 'Netherlands')])
+  const probByMatch = { 75: { 'Brazil|Netherlands': 0.999 } }
+  render(<CrossingsList user={user} users={[user]} actualMatches={actual} probByMatch={probByMatch} probStatus="ready" />)
+  // it's all but sealed, but it's not locked — so show 99%+, never 100%
+  expect(screen.getByText('99%+')).toBeInTheDocument()
+  expect(screen.queryByText(/100%/)).not.toBeInTheDocument()
+})
+
 test('reads the chance regardless of team order', () => {
   const actual = [km(75, 'Brazil', 'סגנית ו')]
   const user = userWith([km(75, 'Netherlands', 'Brazil')])
@@ -151,7 +161,8 @@ test('groups a ruled-out crossing (0%) in its own section, not under open', () =
   // ...but it does appear, in the merged "won't happen" section, for a full picture
   expect(screen.getByText('❌ לא יקרו')).toBeInTheDocument()
   expect(screen.getByTestId('crossing-card')).toBeInTheDocument()
-  expect(screen.getByText(/אין סיכוי שייפגשו/)).toBeInTheDocument()
+  // and it explains *why* concretely: the team that can no longer reach the slot
+  expect(screen.getByText(/הולנד כבר לא יכולה להגיע/)).toBeInTheDocument()
 })
 
 test('orders open crossings by chance, highest first', () => {

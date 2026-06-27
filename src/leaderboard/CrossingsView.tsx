@@ -38,7 +38,11 @@ export const ROUNDS: RoundCfg[] = [
 ]
 
 function fmtPct(p: number): string {
-  if (p >= 0.995) return '~100%'
+  // Never claim 100% for an open crossing: only a *locked* pair (both teams already
+  // in the slot) is truly certain, and those don't render a percentage at all. A
+  // simulated ~100% just means "all but sealed" — show it as 99%+ so it doesn't read
+  // as done while sitting outside "נעולות".
+  if (p >= 0.995) return '99%+'
   if (p > 0 && p < 0.005) return '<1%'
   return `${Math.round(p * 100)}%`
 }
@@ -48,6 +52,17 @@ function fmtPct(p: number): string {
 function probColor(p: number): string {
   const hue = Math.round(Math.max(0, Math.min(1, p)) * 120) // 0=red, 120=green
   return `hsl(${hue} 75% 38%)`
+}
+
+// For a 0%-chance ("ruled out") crossing, which of the bettor's still-open teams
+// can no longer reach the slot — the real reason the pair won't happen. Returns the
+// Hebrew name of that team, or null when both are still reachable but simply can't
+// end up together (then it's a generic "no chance", not one team being knocked out).
+function deadBlocker(crossing: Crossing, breakdown?: CrossingBreakdown | null): string | null {
+  if (!breakdown) return null
+  const reach = [breakdown.reachA, breakdown.reachB]
+  const blocked = crossing.teams.filter((t, i) => !t.confirmed && reach[i] === 0)
+  return blocked.length === 1 ? teamHe(blocked[0].team) : null
 }
 
 // Explains the percentage for *the bettor's own pick*: for each predicted team,
@@ -138,6 +153,7 @@ function CrossingCard({ crossing, locked, ruledOut = false, missed = false, prob
 }) {
   const [a, b] = crossing.teams
   const cls = locked ? ' cx-card--locked' : missed ? ' cx-card--missed' : ruledOut ? ' cx-card--dead' : ''
+  const deadBlk = ruledOut ? deadBlocker(crossing, breakdown) : null
   // On a missed crossing, neither predicted team is "in as predicted", so don't
   // hand out a green "בפנים ✓" — just show them as the (failed) bet.
   const tagFor = (t: { confirmed: boolean }) => (!missed && t.confirmed ? 'בפנים ✓' : 'הניחוש שלך')
@@ -165,7 +181,7 @@ function CrossingCard({ crossing, locked, ruledOut = false, missed = false, prob
         </div>
       ) : ruledOut ? (
         <div className="cx-card-foot cx-card-foot--dead">
-          <span className="cx-dead-tag">אין סיכוי שייפגשו · 0%</span>
+          <span className="cx-dead-tag">{deadBlk ? `${deadBlk} כבר לא יכולה להגיע למשבצת` : 'אין סיכוי שהזוג ייפגש'}</span>
           {crossing.pendingSlots.length > 0 && (
             <span className="cx-pending">היה ממתין ל־{crossing.pendingSlots.join(' · ')}</span>
           )}
@@ -195,7 +211,7 @@ interface StandingDetailData {
   missed: Crossing[]
 }
 
-function StandingDetail({ detail, status }: { detail: StandingDetailData; status: WinProbStatus }) {
+function StandingDetail({ detail, status, probByMatch }: { detail: StandingDetailData; status: WinProbStatus; probByMatch: Record<number, Record<string, number>> }) {
   const { locked, potential, missed } = detail
   // Separate live open pairings from ones the model rules out (a flat 0% once
   // ready) — the live ones rank by chance, the dead ones join the broken ones in a
@@ -242,12 +258,16 @@ function StandingDetail({ detail, status }: { detail: StandingDetailData; status
         <div className="cx-board-detail-sec">
           <span className="cx-board-detail-h cx-board-detail-h--dead">לא יקרו ({gone.length})</span>
           <div className="cx-board-pairs">
-            {gone.map(c => (
-              <span key={c.matchNum} className="cx-board-pair cx-board-pair--dead">
-                {teamHe(c.teams[0].team)} × {teamHe(c.teams[1].team)}
-                <span className="cx-board-pair-tag cx-board-pair-tag--dead">{c.actualTeams ? 'נשברה' : '0%'}</span>
-              </span>
-            ))}
+            {gone.map(c => {
+              const blk = c.actualTeams ? null : deadBlocker(c, crossingBreakdown(c, probByMatch))
+              const tag = c.actualTeams ? 'נשברה' : blk ? `${blk} לא תגיע` : 'אין סיכוי'
+              return (
+                <span key={c.matchNum} className="cx-board-pair cx-board-pair--dead">
+                  {teamHe(c.teams[0].team)} × {teamHe(c.teams[1].team)}
+                  <span className="cx-board-pair-tag cx-board-pair-tag--dead">{tag}</span>
+                </span>
+              )
+            })}
           </div>
         </div>
       )}
@@ -259,12 +279,13 @@ function StandingDetail({ detail, status }: { detail: StandingDetailData; status
 // crossings correctly. Ranked by expected hits (locked = certain, open ones
 // weighted by their simulated chance), with a bar, medals and the viewer pinned.
 // Tapping a row opens that bettor's exact pairs and per-pair chances.
-function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun }: {
+function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun, probByMatch }: {
   standings: CrossingStanding[]
   detailByLabel: Map<string, StandingDetailData>
   me?: string
   status: WinProbStatus
   noun: string
+  probByMatch: Record<number, Record<string, number>>
 }) {
   const [openLabel, setOpenLabel] = useState<string | null>(null)
   if (standings.length === 0) return null
@@ -309,7 +330,7 @@ function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun }: {
                   <span className="cx-board-exp-label">{ready ? 'צפויות' : 'נעולות'}</span>
                 </span>
               </button>
-              {isOpen && detail && <StandingDetail detail={detail} status={status} />}
+              {isOpen && detail && <StandingDetail detail={detail} status={status} probByMatch={probByMatch} />}
             </li>
           )
         })}
@@ -494,7 +515,8 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
                 ))}
                 {deadPotential.map(({ c }) => (
                   <CrossingCard
-                    key={c.matchNum} crossing={c} locked={false} ruledOut prob={0} status={probStatus}
+                    key={c.matchNum} crossing={c} locked={false} ruledOut prob={0}
+                    breakdown={crossingBreakdown(c, probByMatch)} status={probStatus}
                     mates={matesFor(c)} expanded={openMates.has(c.matchNum)} onToggle={() => toggleMates(c.matchNum)}
                   />
                 ))}
@@ -509,7 +531,7 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
         </div>
       )}
 
-      <CrossingsLeaderboard standings={standings} detailByLabel={detailByLabel} me={user?.label} status={probStatus} noun={round.noun} />
+      <CrossingsLeaderboard standings={standings} detailByLabel={detailByLabel} me={user?.label} status={probStatus} noun={round.noun} probByMatch={probByMatch} />
     </div>
   )
 }
