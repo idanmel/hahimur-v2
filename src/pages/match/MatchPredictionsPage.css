@@ -1042,7 +1042,7 @@
   text-shadow: 0 0 24px rgba(212, 160, 22, 0.5);
 }
 
-/* penalty-shootout winner on a drawn knockout scoreline, tucked under the score */
+/* the team that advances from a drawn knockout scoreline, tucked under the score */
 .score-freq__pens {
   display: block;
   margin-top: 2px;

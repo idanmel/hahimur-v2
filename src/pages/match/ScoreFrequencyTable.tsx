@@ -11,8 +11,9 @@ type Props = {
   // predictions map; knockout pages pass an orientation-corrected lookup so a
   // bettor who had the two teams reversed still groups under the real scoreline.
   scoreFor?: (u: User) => MatchScores | null | undefined
-  // Team labels, used to name the penalty-shootout winner on a drawn knockout
-  // scoreline. Group matches never carry a drawWinner, so they go unused there.
+  // Team labels, used to name the team that advances from a drawn knockout
+  // scoreline (a 90' draw decided in extra time or on penalties). Group matches
+  // never carry a drawWinner, so they go unused there.
   homeLabel?: string
   awayLabel?: string
 }
@@ -30,7 +31,7 @@ export default function ScoreFrequencyTable({ matchId, users, actualScore = null
     return group + ' score-freq__row--miss'
   }
 
-  const penWinner = (score: MatchScores): string | undefined =>
+  const advancer = (score: MatchScores): string | undefined =>
     score.drawWinner === 'home' ? homeLabel : score.drawWinner === 'away' ? awayLabel : undefined
 
   return (
@@ -58,7 +59,7 @@ export default function ScoreFrequencyTable({ matchId, users, actualScore = null
                 {score.away}–{score.home}
                 {score.drawWinner && (
                   <span className="score-freq__pens">
-                    {penWinner(score) ? `פנדלים ל${penWinner(score)}` : 'פנדלים'}
+                    {advancer(score) ? `${advancer(score)} מעפילה` : 'מעפילה'}
                   </span>
                 )}
               </span>
