@@ -1,5 +1,6 @@
 import { GROUPS, TEAMS } from '../../shared/groups'
-import { isUnpredicted, type KnockoutMatch, type MatchScores, type TournamentResults } from '../../shared/types'
+import { isUnpredicted, type KnockoutMatch, type MatchScores, type Standing, type TournamentResults } from '../../shared/types'
+import { byOverallGD } from '../../shared/standings'
 import {
   singleMatchOutcome,
   singleMatchPoints,
@@ -380,29 +381,86 @@ function groupStageEliminated(results: TournamentResults): Set<string> {
   return out
 }
 
-/** Teams that are out of the tournament, derived purely from real results:
- *  - any team already mathematically eliminated in the group stage,
- *  - the loser of any resolved knockout match, and
- *  - once the official knockout bracket is populated (group stage decided),
- *    any team that didn't make it in.
- *  Before any of that resolves (empty results) this is empty — nobody's out. */
-export function eliminatedTeams(results: TournamentResults): Set<string> {
+/** Teams knocked out by an actual on-pitch result: mathematically eliminated in
+ *  the group stage, or the loser of a resolved knockout match. Unlike
+ *  {@link eliminatedTeams} this does NOT sweep in teams that simply never reached
+ *  the real bracket — it only counts teams that demonstrably lost their way out. */
+export function knockedOutTeams(results: TournamentResults): Set<string> {
   const s = results.knockoutStages
   const all = [...s.r32, ...s.r16, ...s.qf, ...s.sf, ...s.thirdPlace, ...s.final]
-  const eliminated = groupStageEliminated(results)
-  const inBracket = new Set<string>()
+  const out = groupStageEliminated(results)
   for (const m of all) {
-    if (m.home) inBracket.add(m.home)
-    if (m.away) inBracket.add(m.away)
     const winner = knockoutWinner(m)
-    if (winner) eliminated.add(winner === m.home ? m.away : m.home)
+    if (winner) out.add(winner === m.home ? m.away : m.home)
   }
-  if (inBracket.size > 0) {
-    for (const team of Object.keys(TEAMS)) {
-      if (!inBracket.has(team)) eliminated.add(team)
-    }
+  return out
+}
+
+// World Cup 2026: the eight best third-placed teams join the 24 group
+// winners/runners-up in the round of 32.
+const BEST_THIRDS_COUNT = 8
+
+/** Whether finished-group third `x` is guaranteed to outrank finished-group third
+ *  `t` in the best-thirds table — the official order is points, then overall goal
+ *  difference, then goals for (see {@link sortThirdPlaceTeams}/{@link byOverallGD}).
+ *  Both teams' groups are done, so this comparison can never flip; a dead-even tie
+ *  (identical on all three) is NOT counted as "above", since the real cut leaves
+ *  such a tie unresolved rather than ordering it. */
+function thirdRanksAbove(x: Standing, t: Standing): boolean {
+  if (x.points !== t.points) return x.points > t.points
+  return byOverallGD(x, t) < 0
+}
+
+/** Teams that are out of the tournament, computed from the real standings rather
+ *  than from bracket slots. The official bracket can't be trusted for this: in
+ *  reality many R32 slots stay as descriptors ("סגנית א", "שלישית א/ב/ג") long
+ *  after the teams that fill them have safely qualified, so a "not named in the
+ *  bracket ⇒ out" sweep wrongly buries live teams. Instead, a team is out when:
+ *   - it lost a resolved knockout match, or
+ *   - it's mathematically locked out mid-group, or
+ *   - its group is finished and it placed 4th or lower, or
+ *   - it placed 3rd and can no longer reach the best-thirds cut — either the cut
+ *     is resolved and it missed it, or at least eight third-placed teams from
+ *     other finished groups are already locked in ahead of it on points.
+ *  A 3rd-placed team that still has a path to the best-thirds stays in — the
+ *  function never reports a false elimination. */
+export function eliminatedTeams(results: TournamentResults): Set<string> {
+  const out = knockedOutTeams(results)
+
+  const tpq = results.thirdPlaceQualification
+  const thirdsResolved = tpq.resolved
+  const qualifiedThirds = new Set(thirdsResolved ? tpq.qualifiers.map(t => t.team) : [])
+
+  // Third-placed teams of already-finished groups. While the best-thirds cut is
+  // still open, these are the only rivals guaranteed to be in the race for a
+  // third-place berth, and their full standings are fixed so the ordering between
+  // any two of them can never change.
+  const settledThirds: Standing[] = []
+  for (const standings of Object.values(results.groupTables)) {
+    if (isGroupComplete(standings) && standings[2]) settledThirds.push(standings[2])
   }
-  return eliminated
+
+  for (const standings of Object.values(results.groupTables)) {
+    if (!isGroupComplete(standings)) continue
+    standings.forEach((s, idx) => {
+      if (idx < 2) return // top two advance directly
+      if (idx === 2) {
+        if (thirdsResolved) {
+          if (!qualifiedThirds.has(s.team)) out.add(s.team)
+          return
+        }
+        // Open cut: out only if eight other settled thirds already outrank it by
+        // the official tiebreak (so it is ninth at best, and only eight berths
+        // exist). Teams from unfinished groups can only pile on more rivals, never
+        // rescue it, so this is a guaranteed elimination — no false positives.
+        const lockedAhead = settledThirds.filter(o => o.team !== s.team && thirdRanksAbove(o, s)).length
+        if (lockedAhead >= BEST_THIRDS_COUNT) out.add(s.team)
+        return
+      }
+      out.add(s.team) // fourth and below
+    })
+  }
+  return out
 }
 
 /** Per-stage points side-by-side, so you can see where the gap comes from. */

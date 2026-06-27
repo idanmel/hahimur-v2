@@ -169,22 +169,6 @@ describe('eliminatedTeams', () => {
     expect(out.has('Germany')).toBe(false)
   })
 
-  test('once the bracket is populated, teams not in it are out as non-qualifiers', () => {
-    const results: TournamentResults = {
-      ...EMPTY_RESULTS,
-      knockoutStages: {
-        ...EMPTY_RESULTS.knockoutStages,
-        r32: [ko(73, 'Brazil', 'Haiti')],
-      },
-    }
-    const out = eliminatedTeams(results)
-    // present in the bracket → still in
-    expect(out.has('Brazil')).toBe(false)
-    expect(out.has('Haiti')).toBe(false)
-    // a real team absent from the bracket → didn't qualify
-    expect(out.has('Mexico')).toBe(true)
-  })
-
   test('a team locked into last place in its group is out before the bracket exists', () => {
     const results: TournamentResults = {
       ...EMPTY_RESULTS,
@@ -236,6 +220,130 @@ describe('eliminatedTeams', () => {
     // Croatia finished third but only two teams are above it → still a best-third hopeful.
     expect(out.has('Croatia')).toBe(false)
     expect(out.has('Albania')).toBe(true)
+  })
+})
+
+describe('eliminatedTeams — standings, not bracket slots', () => {
+  function group(teams: [string, number, number][]): Standing[] {
+    return teams.map(([team, played, points]) => standing(team, played, points))
+  }
+
+  function completeGroup(letter: string, thirdTeam: string, thirdPoints: number): Standing[] {
+    return group([[`${letter}1`, 3, 9], [`${letter}2`, 3, 6], [thirdTeam, 3, thirdPoints], [`${letter}4`, 3, 0]])
+  }
+
+  // A finished group whose third place is a fully-specified standing (so its goal
+  // difference / goals for participate in the best-thirds tiebreak).
+  function third(team: string, points: number, gf: number, ga: number): Standing {
+    return { team, played: 3, won: 0, drawn: 0, lost: 0, goalsFor: gf, goalsAgainst: ga, points }
+  }
+  function groupWithThird(letter: string, thirdStanding: Standing): Standing[] {
+    return [standing(`${letter}1`, 3, 9), standing(`${letter}2`, 3, 6), thirdStanding, standing(`${letter}4`, 3, 0)]
+  }
+
+  test('qualified teams stay in even when their bracket slot is an unresolved descriptor', () => {
+    // The real R32 pairs the group winner against a "best third" descriptor — the
+    // winner is named, the opponent is still "שלישית א/ב/ג". The old bracket-sweep
+    // would have buried every team not literally named in the bracket.
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: {
+        A: group([['Argentina', 3, 9], ['Norway', 3, 6], ['Senegal', 3, 3], ['Iraq', 3, 0]]),
+      },
+      knockoutStages: {
+        ...EMPTY_RESULTS.knockoutStages,
+        r32: [ko(73, 'Argentina', 'שלישית ב/ה/ו/ט/י')],
+      },
+    }
+    const out = eliminatedTeams(results)
+    expect(out.has('Argentina')).toBe(false) // group winner — obviously still in
+    expect(out.has('Norway')).toBe(false) // runner-up
+    expect(out.has('Iraq')).toBe(true) // last place in a finished group
+  })
+
+  test('with few groups settled and the cut open, third place stays alive', () => {
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      thirdPlaceQualification: { resolved: false, all: [], tied: [] },
+      groupTables: {
+        A: group([['Mexico', 3, 9], ['South Africa', 3, 4], ['South Korea', 3, 3], ['Czech Republic', 3, 1]]),
+      },
+    }
+    const out = eliminatedTeams(results)
+    expect(out.has('South Korea')).toBe(false) // 3rd — could still be a best third
+    expect(out.has('Czech Republic')).toBe(true) // 4th — done
+  })
+
+  test('a low third is out once eight better thirds are locked in ahead of it', () => {
+    // Real WC26 mid-tournament shape: groups A–I finished, J/K/L still playing, so
+    // the best-thirds cut is unresolved. Uruguay's 2-point third is behind eight
+    // other settled thirds (all on 3–4 pts) → mathematically out of the cut.
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      thirdPlaceQualification: { resolved: false, all: [], tied: [] },
+      groupTables: {
+        A: completeGroup('A', 'South Korea', 3),
+        B: completeGroup('B', 'Bosnia', 4),
+        C: completeGroup('C', 'Scotland', 3),
+        D: completeGroup('D', 'Paraguay', 4),
+        E: completeGroup('E', 'Ecuador', 4),
+        F: completeGroup('F', 'Sweden', 4),
+        G: completeGroup('G', 'Iran', 3),
+        H: group([['Spain', 3, 7], ['Cape Verde', 3, 3], ['Uruguay', 3, 2], ['Saudi Arabia', 3, 2]]),
+        I: completeGroup('I', 'Senegal', 3),
+        J: group([['Argentina', 2, 6], ['Austria', 2, 3], ['Algeria', 2, 3], ['Jordan', 2, 0]]),
+      },
+    }
+    const out = eliminatedTeams(results)
+    expect(out.has('Uruguay')).toBe(true) // eight thirds already ahead on points
+    expect(out.has('South Korea')).toBe(false) // only four are strictly ahead — still alive
+    expect(out.has('Algeria')).toBe(false) // group J unfinished — nobody out on position
+  })
+
+  test('a third tied on points is out when the goal-difference tiebreak leaves eight above it', () => {
+    // Every settled third has the same 3 points; only goal difference separates them.
+    // "Lowball" shares the points but trails all eight others on GD, so the official
+    // tiebreak (points → GD → goals for) locks it into ninth — a points-only check
+    // would have wrongly kept it alive.
+    const better = (letter: string) => groupWithThird(letter, third(`${letter}3`, 3, 3, 2)) // GD +1
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      thirdPlaceQualification: { resolved: false, all: [], tied: [] },
+      groupTables: {
+        A: better('A'), B: better('B'), C: better('C'), D: better('D'),
+        E: better('E'), F: better('F'), G: better('G'), H: better('H'),
+        I: groupWithThird('I', third('Lowball', 3, 1, 6)), // same points, GD -5
+      },
+    }
+    const out = eliminatedTeams(results)
+    expect(out.has('Lowball')).toBe(true) // eight thirds rank above on the tiebreak
+    expect(out.has('A3')).toBe(false) // a joint-best third is still alive
+  })
+
+  test('once the best-thirds are resolved, a non-qualifying third is out', () => {
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      thirdPlaceQualification: {
+        resolved: true,
+        all: [],
+        qualifiers: [{ ...standing('Scotland', 3, 4), group: 'C' }],
+      },
+      groupTables: {
+        A: group([['Mexico', 3, 9], ['South Africa', 3, 4], ['South Korea', 3, 3], ['Czech Republic', 3, 1]]),
+      },
+    }
+    const out = eliminatedTeams(results)
+    expect(out.has('South Korea')).toBe(true) // 3rd and not among the qualified thirds
+  })
+
+  test('an unfinished group eliminates nobody on position alone', () => {
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: {
+        K: group([['Colombia', 2, 6], ['Portugal', 2, 4], ['DR Congo', 2, 1], ['Uzbekistan', 2, 0]]),
+      },
+    }
+    expect(eliminatedTeams(results).size).toBe(0)
   })
 })
 
