@@ -3,6 +3,7 @@ import GroupScopeTable from './GroupScopeTable'
 import GroupDetailView from './GroupDetailView'
 import CrossingsView from './CrossingsView'
 import TimelapseView from './TimelapseView'
+import RecordsView from './RecordsView'
 import WinProbabilityView from './winprob/WinProbabilityView'
 import { buildLeaderboardRows, buildGroupScopeRows, buildGroupSummaryRows, buildGroupDetailRows, buildRangeRows, rangePlaceMovement, rankTrajectories, hitStats } from './leaderboardRows'
 import type { Scope } from './leaderboardRows'
@@ -21,6 +22,7 @@ export default function ScopedLeaderboard({ users, results, realResults, scope, 
   me?: string
 }) {
   if (scope === 'prob') return <WinProbabilityView results={realResults} me={me} />
+  if (scope === 'records') return <RecordsView users={users} results={realResults} me={me} />
   if (scope === 'timelapse') return <TimelapseView users={users} results={results} me={me} />
   if (scope === 'crossings') return <CrossingsView user={users.find(u => u.label === me)} users={users} results={realResults} />
   if (scope === 'oleh') return (

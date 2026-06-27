@@ -1,0 +1,373 @@
+.rec-view {
+  padding: 0.6rem 0 1.2rem;
+  direction: rtl;
+}
+
+/* ── Marquee: overall points leader ─────────────────────────── */
+.rec-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "crown kicker value"
+    "crown name   value"
+    "me    me     me";
+  align-items: center;
+  column-gap: 0.9rem;
+  row-gap: 0.1rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.3rem;
+  background: linear-gradient(135deg, #0f2f5e 0%, #0a1d3a 100%);
+  border-top: 3px solid var(--gold);
+  border-radius: 4px;
+  box-shadow: 0 6px 22px rgba(11, 34, 68, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.rec-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: radial-gradient(circle at left center, rgba(212, 160, 22, 0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.rec-hero-crown {
+  grid-area: crown;
+  font-size: clamp(2rem, 8vw, 2.8rem);
+  line-height: 1;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
+}
+
+.rec-hero-kicker {
+  grid-area: kicker;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.28em;
+  color: rgba(212, 160, 22, 0.75);
+}
+
+.rec-hero-name {
+  grid-area: name;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.6rem, 6vw, 2.3rem);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: var(--cream);
+}
+
+.rec-hero-name--me { color: var(--gold); }
+
+.rec-hero-value {
+  grid-area: value;
+  display: flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(2.2rem, 9vw, 3.2rem);
+  line-height: 1;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-hero-unit {
+  font-size: 0.42em;
+  letter-spacing: 0.08em;
+  color: rgba(239, 228, 184, 0.65);
+}
+
+.rec-hero-me {
+  grid-area: me;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(212, 160, 22, 0.2);
+  font-size: 0.78rem;
+  color: rgba(239, 228, 184, 0.7);
+}
+
+.rec-hero-me b {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.15rem;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-hero-me-val {
+  margin-inline-start: auto;
+  color: rgba(239, 228, 184, 0.55);
+}
+
+/* ── Record cards grid ──────────────────────────────────────── */
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 0.85rem;
+}
+
+.rec-card {
+  position: relative;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  padding: 0.9rem 1rem 1rem;
+  box-shadow: 0 2px 10px rgba(11, 34, 68, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rec-card::before {
+  content: '';
+  position: absolute;
+  top: -1.5px;
+  right: -1.5px;
+  left: -1.5px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold), rgba(212, 160, 22, 0.35));
+  border-radius: 5px 5px 0 0;
+}
+
+.rec-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.rec-card-head:disabled { cursor: default; }
+
+.rec-card-chevron {
+  margin-inline-start: auto;
+  font-size: 1.1rem;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.rec-card--open .rec-card-chevron { transform: rotate(90deg); }
+
+.rec-emblem {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  font-size: 1.4rem;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.rec-card-titles {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rec-card-title {
+  display: block;
+  margin: 0;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.rec-card-blurb {
+  display: block;
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.rec-card-empty {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* The viewer's own standing, pinned below the top three when they're not in it */
+.rec-list--me {
+  margin-top: 0.1rem;
+  padding-top: 0.1rem;
+  border-top: 1px dashed var(--border);
+}
+
+.rec-gap {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 0.6;
+  letter-spacing: 0.1em;
+}
+
+/* Expand / collapse the full ranked list */
+.rec-more {
+  align-self: stretch;
+  margin-top: 0.2rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--cream);
+  color: var(--navy);
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+
+.rec-more:hover { background: rgba(212, 160, 22, 0.18); }
+
+/* When opened, keep a long list tidy with its own scroll */
+.rec-card--open .rec-list {
+  max-height: 19rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* ── Podium rows ────────────────────────────────────────────── */
+.rec-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rec-row {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(3.5rem, auto) 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 6px;
+}
+
+.rec-row--me {
+  background: rgba(212, 160, 22, 0.14);
+  outline: 1px solid rgba(212, 160, 22, 0.4);
+}
+
+.rec-medal {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.rec-row--rank-1 .rec-medal,
+.rec-row--rank-2 .rec-medal,
+.rec-row--rank-3 .rec-medal {
+  font-size: 1.15rem;
+}
+
+.rec-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-row--rank-1 .rec-name { font-weight: 800; color: var(--navy); }
+
+.rec-me-badge {
+  flex: 0 0 auto;
+  background: var(--gold);
+  color: var(--navy);
+  border-radius: 999px;
+  padding: 0.04rem 0.4rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.rec-bar-wrap {
+  position: relative;
+  height: 0.55rem;
+  background: rgba(200, 184, 122, 0.3);
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 36px;
+}
+
+.rec-bar {
+  position: absolute;
+  inset: 0 0 0 auto; /* fill from the right edge for RTL */
+  height: 100%;
+  background: linear-gradient(270deg, #1f5d7a, var(--navy));
+  border-radius: 999px;
+}
+
+.rec-row--rank-1 .rec-bar {
+  background: linear-gradient(270deg, var(--gold), #b8850f);
+}
+
+.rec-val {
+  display: flex;
+  align-items: baseline;
+  gap: 0.12rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-row--rank-1 .rec-val { color: var(--medal-gold); }
+
+.rec-unit {
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-family: 'Heebo', sans-serif;
+}
+
+/* ── Empty state ────────────────────────────────────────────── */
+.rec-view--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  padding: 2.8rem 1rem;
+  text-align: center;
+}
+
+.rec-empty-icon { font-size: 2.4rem; }
+
+.rec-empty-text {
+  margin: 0;
+  max-width: 24rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 639px) {
+  .rec-grid { grid-template-columns: 1fr; }
+}
