@@ -63,6 +63,21 @@ describe('computeUserCrossings', () => {
     expect(potential[0].pendingSlots).toEqual(['מנצח א', 'שלישית א/ב/ג'])
   })
 
+  it('locks a pairing the bettor predicted at a different slot than reality routed it', () => {
+    // Reality routes Portugal × Croatia through slot 83; the bettor predicted that
+    // exact pairing at slot 87. Scoring (koMatchPoints) credits a pairing wherever the
+    // two teams meet, so the crossing is locked — not broken — even at a different slot.
+    const actual = [km(83, 'Portugal', 'Croatia'), km(87, 'Colombia', 'שלישית ד')]
+    const user = [km(87, 'Portugal', 'Croatia'), km(83, 'Colombia', 'Ghana')]
+    const { locked, missed } = computeUserCrossings(user, actual)
+    const pc = locked.find(c => c.teams.some(t => t.team === 'Portugal'))
+    expect(pc).toBeDefined()
+    expect(pc!.matchNum).toBe(83) // keyed to where the pairing actually lives
+    expect(pc!.teams.every(t => t.confirmed)).toBe(true)
+    // and it must NOT be reported as a broken crossing
+    expect(missed.some(c => c.teams.some(t => t.team === 'Portugal'))).toBe(false)
+  })
+
   it('marks a crossing broken by a confirmed team the bettor did not pick as missed', () => {
     const actual = [km(76, 'Brazil', 'סגנית ג')] // Brazil confirmed, bettor paired neither
     const user = [km(76, 'Mexico', 'Canada')]
@@ -190,6 +205,28 @@ describe('computeDeterminedCrossings', () => {
     ]
     const out = computeDeterminedCrossings(bettors, actual)
     expect(out[0].predictors).toEqual(['דני', 'רוני'])
+  })
+
+  it('counts a bettor who predicted the pairing at a different slot in the same round', () => {
+    // Reality routes Portugal × Croatia through slot 83; this bettor predicted the
+    // exact same pairing but slotted it at 87 (different group finishes, same meeting).
+    const actual = [km(83, 'Portugal', 'Croatia')]
+    const bettors = [
+      bettor('ליכטר', [km(87, 'Portugal', 'Croatia'), km(83, 'Colombia', 'Ghana')]),
+    ]
+    const out = computeDeterminedCrossings(bettors, actual)
+    expect(out[0].predictors).toEqual(['ליכטר'])
+  })
+
+  it('does not count a pairing the bettor predicted in a different round', () => {
+    // Same two teams, but the bettor put their meeting in R16 (89), not R32 — that's
+    // a different prediction, so it shouldn't count toward the R32 crossing.
+    const actual = [km(83, 'Portugal', 'Croatia')]
+    const bettors: CrossingsBettor[] = [
+      { label: 'דני', knockoutStages: { r32: [], r16: [km(89, 'Portugal', 'Croatia')], qf: [], sf: [], thirdPlace: [], final: [] } as never },
+    ]
+    const out = computeDeterminedCrossings(bettors, actual)
+    expect(out[0].predictors).toEqual([])
   })
 
   it('sorts by predictor count, most-called first', () => {

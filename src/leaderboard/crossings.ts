@@ -121,21 +121,28 @@ export interface CrossingsBettor {
   knockoutStages?: KnockoutStages
 }
 
-// The bettor's predicted match at this number, searched across every knockout
-// round so callers don't have to know which round a matchNum belongs to.
-function userKoMatch(u: CrossingsBettor, matchNum: number): KnockoutMatch | undefined {
-  const ks = u.knockoutStages
-  if (!ks) return undefined
-  for (const arr of Object.values(ks) as KnockoutMatch[][]) {
-    const m = arr?.find(x => x.matchNum === matchNum)
-    if (m) return m
-  }
-  return undefined
+// The matchNum span of each knockout round, so a real-bracket matchNum maps to the
+// round it belongs to (mirrors deriveKnockoutStages). A crossing is a *round*-level
+// pairing: two teams meeting in the round of 32, regardless of which structural slot
+// each bettor's group finishes route them through.
+const ROUND_RANGES: { key: keyof KnockoutStages; lo: number; hi: number }[] = [
+  { key: 'r32', lo: 73, hi: 88 },
+  { key: 'r16', lo: 89, hi: 96 },
+  { key: 'qf', lo: 97, hi: 100 },
+  { key: 'sf', lo: 101, hi: 102 },
+  { key: 'thirdPlace', lo: 103, hi: 103 },
+  { key: 'final', lo: 104, hi: 104 },
+]
+
+function roundKeyForMatch(matchNum: number): keyof KnockoutStages | undefined {
+  return ROUND_RANGES.find(r => matchNum >= r.lo && matchNum <= r.hi)?.key
 }
 
-// Labels of all bettors who predicted the *same* pairing (side-agnostic) at this
-// knockout match — i.e. who else is "in" this crossing. Optionally excludes one
-// label (the viewer), so the card can say "N other people also called it".
+// Labels of all bettors who predicted the *same* pairing (side-agnostic) in the same
+// round as this match — i.e. who else is "in" this crossing. Matched by the pairing
+// within the round, NOT by the exact slot: a bettor whose group finishes route the
+// two teams into a different R32 slot than reality still called the same meeting, so
+// they count. Optionally excludes one label (the viewer).
 export function crossingParticipants(
   bettors: CrossingsBettor[],
   matchNum: number,
@@ -144,11 +151,15 @@ export function crossingParticipants(
   exclude?: string,
 ): string[] {
   const key = crossingPairKey(teamA, teamB)
+  const roundKey = roundKeyForMatch(matchNum)
+  if (!roundKey) return []
   const out: string[] = []
   for (const u of bettors) {
     if (u.label === exclude) continue
-    const m = userKoMatch(u, matchNum)
-    if (m && isRealTeam(m.home) && isRealTeam(m.away) && crossingPairKey(m.home, m.away) === key) out.push(u.label)
+    const matches = u.knockoutStages?.[roundKey] ?? []
+    if (matches.some(m => isRealTeam(m.home) && isRealTeam(m.away) && crossingPairKey(m.home, m.away) === key)) {
+      out.push(u.label)
+    }
   }
   return out
 }
@@ -278,13 +289,43 @@ export function computeUserCrossings(
   const potential: Crossing[] = []
   const missed: Crossing[] = []
 
-  for (const actual of actualR32) {
-    const um = userR32.find(m => m.matchNum === actual.matchNum)
+  // Reality's formally-locked R32 pairings, keyed side-agnostically to the real slot
+  // they occupy. Scoring (koMatchPoints) credits a predicted pairing wherever its two
+  // teams actually meet, not at the slot the bettor routed them through — so a pairing
+  // is "locked" the moment both teams meet *anywhere* in the round. We walk the
+  // bettor's own pairings (one crossing each) and judge each against reality.
+  const lockedByPair = new Map<string, KnockoutMatch>()
+  for (const a of actualR32) {
+    if (isRealTeam(a.home) && isRealTeam(a.away)) lockedByPair.set(crossingPairKey(a.home, a.away), a)
+  }
+
+  for (const um of userR32) {
     // The bettor's own bracket is fully filled, so both teams should be real; guard anyway.
-    if (!um || !isRealTeam(um.home) || !isRealTeam(um.away)) continue
+    if (!isRealTeam(um.home) || !isRealTeam(um.away)) continue
 
     const userTeams = [um.home, um.away] as const
     const userSet = new Set<string>(userTeams)
+    const predicted = um.scores && !isUnpredicted(um.scores)
+      ? { home: um.scores.home as number, away: um.scores.away as number }
+      : null
+
+    // 1) The exact pairing already meets somewhere in reality → locked, keyed to the
+    //    real slot it occupies (both teams confirmed there), regardless of the slot
+    //    the bettor predicted it in.
+    const realLock = lockedByPair.get(crossingPairKey(userTeams[0], userTeams[1]))
+    if (realLock) {
+      const teams: [CrossingTeam, CrossingTeam] = [
+        { team: userTeams[0], confirmed: true },
+        { team: userTeams[1], confirmed: true },
+      ]
+      locked.push({ matchNum: realLock.matchNum, teams, pendingSlots: [], predicted })
+      continue
+    }
+
+    // 2) Not yet meeting anywhere — judge the pairing against the bracket slot the
+    //    bettor predicted it in (which team is in, what the open side must become).
+    const actual = actualR32.find(m => m.matchNum === um.matchNum)
+    if (!actual) continue
 
     const slots = [actual.home, actual.away]
     const confirmed = slots.filter(isRealTeam)
@@ -298,11 +339,8 @@ export function computeUserCrossings(
       mkTeam(userTeams[0], confirmed, openSlots),
       mkTeam(userTeams[1], confirmed, openSlots),
     ]
-    const predicted = um.scores && !isUnpredicted(um.scores)
-      ? { home: um.scores.home as number, away: um.scores.away as number }
-      : null
 
-    // A confirmed team the bettor didn't pair means the crossing already broke.
+    // A confirmed team the bettor didn't pair means this slot's crossing already broke.
     if (confirmed.some(t => !userSet.has(t))) {
       missed.push({ matchNum: actual.matchNum, teams, pendingSlots, predicted, actualTeams: confirmed })
       continue

@@ -126,7 +126,7 @@ describe('buildRecords — crossings', () => {
   test('counts the cross-bracket pairings each bettor nailed', () => {
     const both = koUser('Both', [km(73, 'Mexico', 'Canada'), km(74, 'Brazil', 'Spain')])
     const one = koUser('One', [km(73, 'Canada', 'Mexico')])           // reversed order still matches
-    const none = koUser('None', [km(73, 'Brazil', 'Spain')])          // wrong pairing for slot 73
+    const none = koUser('None', [km(73, 'Germany', 'France')])        // pairing absent from the results entirely
     const c = cat(buildRecords([both, one, none], koResults), 'crossings')
     expect(c.entries[0]).toMatchObject({ label: 'Both', value: 2 })
     expect(c.entries[1]).toMatchObject({ label: 'One', value: 1 })
