@@ -87,4 +87,62 @@ describe('interactive Bracket', () => {
     )
     expect(container.querySelector('.bk-mine')).toBeNull()
   })
+
+  test('shows the predicted score as one gold digit per team, home then away', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(
+      <Bracket
+        stages={stages}
+        predictions={{}}
+        onChange={() => {}}
+        participatingMatchIds={new Set(['73'])}
+        participatingPredictions={{ '73': { home: 2, away: 1 } }}
+      />,
+    )
+    const digits = container.querySelectorAll('.bk-pred')
+    expect(digits.length).toBe(2)
+    expect(digits[0].textContent).toBe('2') // home row
+    expect(digits[1].textContent).toBe('1') // away row
+  })
+
+  test('shows the predicted digits on a read-only participating card too', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(
+      <Bracket
+        stages={stages}
+        participatingMatchIds={new Set(['73'])}
+        participatingPredictions={{ '73': { home: 0, away: 3 } }}
+      />,
+    )
+    const digits = container.querySelectorAll('.bk-pred')
+    expect(digits.length).toBe(2)
+    expect(digits[0].textContent).toBe('0')
+    expect(digits[1].textContent).toBe('3')
+  })
+
+  test('marks the advancing side on the team row when the participant predicted a level scoreline', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(
+      <Bracket
+        stages={stages}
+        participatingMatchIds={new Set(['73'])}
+        participatingPredictions={{ '73': { home: 1, away: 1, drawWinner: 'away' } }}
+      />,
+    )
+    const digits = container.querySelectorAll('.bk-pred')
+    expect(digits[0].classList.contains('bk-pred--adv')).toBe(false) // home: not advancing
+    expect(digits[1].classList.contains('bk-pred--adv')).toBe(true)  // away: advances
+  })
+
+  test('no predicted digits when the participant left the score blank', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(
+      <Bracket
+        stages={stages}
+        participatingMatchIds={new Set(['73'])}
+        participatingPredictions={{ '73': { home: null, away: null } }}
+      />,
+    )
+    expect(container.querySelector('.bk-pred')).toBeNull()
+  })
 })

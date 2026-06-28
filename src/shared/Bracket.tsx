@@ -29,6 +29,10 @@ interface CardCtx {
   // match numbers (as strings) the current user has a stake in — they predicted
   // both teams that meet here. Drives the "you're in this one" marker.
   participatingMatchIds?: Set<string>
+  // the score the current user predicted for each participating match, already
+  // oriented to the actual fixture's home/away. Shown under the marker so they
+  // can see how their bet's scoreline compares to the real result.
+  participatingPredictions?: Record<string, MatchScores>
 }
 
 // Corner chip flagging a match the current user participates in (they predicted
@@ -40,6 +44,36 @@ function MineMark() {
     <span className="bk-mine" title="ניחשת את שתי הנבחרות במשחק הזה">
       <span className="bk-mine-dot" aria-hidden="true" />
       משתתף
+    </span>
+  )
+}
+
+// The participant's predicted scoreline, broken into one digit per team so it can
+// sit on each team's own row — a gold "ghost" column read top-to-bottom exactly
+// like the real scores, keeping the bet on the same vertical axis as the match.
+// Null when no full scoreline was predicted (nothing to show). `advHome/advAway`
+// flag the team they had advancing on a level bet (a knockout can't end drawn).
+function predDigits(scores?: MatchScores) {
+  if (!scores || scores.home === null || scores.away === null) return null
+  const level = scores.home === scores.away
+  return {
+    home: scores.home,
+    away: scores.away,
+    advHome: level && scores.drawWinner === 'home',
+    advAway: level && scores.drawWinner === 'away',
+  }
+}
+
+// One gold digit of the participant's bet, on a team's own row beside the real
+// score. A filled chip + caret marks the side they had advancing after a level bet.
+function PredDigit({ value, advancing }: { value: number; advancing: boolean }) {
+  return (
+    <span
+      className={`bk-pred${advancing ? ' bk-pred--adv' : ''}`}
+      title={advancing ? 'הניחוש שלך — הנבחרת הזו עולה' : 'הניחוש שלך'}
+    >
+      {value}
+      {advancing && <span className="bk-pred-caret" aria-hidden="true">▲</span>}
     </span>
   )
 }
@@ -57,24 +91,35 @@ function MatchMeta({ m }: { m: KnockoutMatch }) {
   )
 }
 
-function ReadOnlyCard({ m, mine, className = '' }: { m: KnockoutMatch; mine: boolean; className?: string }) {
+function ReadOnlyCard({ m, mine, minePred, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; className?: string }) {
+  const pd = predDigits(minePred)
+  const teamLine = (name: string, value: number, advancing: boolean) =>
+    pd
+      ? (
+        <div className="bk-ro-row">
+          <TeamSlot name={name} />
+          <PredDigit value={value} advancing={advancing} />
+        </div>
+      )
+      : <TeamSlot name={name} />
   return (
     <a href={`/matches/${m.matchNum}`} className={`bk-match ${className}`}>
       {mine && <MineMark />}
       <MatchMeta m={m} />
-      <TeamSlot name={m.home} />
-      <TeamSlot name={m.away} />
+      {teamLine(m.home, pd?.home ?? 0, pd?.advHome ?? false)}
+      {teamLine(m.away, pd?.away ?? 0, pd?.advAway ?? false)}
     </a>
   )
 }
 
 function EditableCard({
-  m, ctx, mine, className = '',
-}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; className?: string }) {
+  m, ctx, mine, minePred, className = '',
+}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; className?: string }) {
   const { predictions, onChange, lockedMatchIds } = ctx
   const id = String(m.matchNum)
   const locked = lockedMatchIds?.has(id) ?? false
   const pred = predictions?.[id] ?? { home: null, away: null }
+  const pd = predDigits(minePred)
 
   // A knockout match can't end level, so a drawn scoreline means "pick who advances".
   const isDraw = m.resolved && pred.home !== null && pred.away !== null && pred.home === pred.away
@@ -108,6 +153,7 @@ function EditableCard({
             disabled={!m.resolved}
             onChange={v => onChange(id, side === 'home' ? { home: v, away: pred.away } : { home: pred.home, away: v })}
           />}
+      {pd && <PredDigit value={side === 'home' ? pd.home : pd.away} advancing={side === 'home' ? pd.advHome : pd.advAway} />}
     </div>
   )
 
@@ -128,9 +174,10 @@ function EditableCard({
 
 function MatchCard({ m, ctx, className = '' }: { m: KnockoutMatch; ctx: CardCtx; className?: string }) {
   const mine = ctx.participatingMatchIds?.has(String(m.matchNum)) ?? false
+  const minePred = mine ? ctx.participatingPredictions?.[String(m.matchNum)] : undefined
   const cls = `${className}${mine ? ' bk-match--mine' : ''}`
-  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} className={cls} />
-  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} className={cls} />
+  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} className={cls} />
+  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} className={cls} />
 }
 
 function Column({ rkey, matches, ctx }: { rkey: keyof OrderedRounds; matches: KnockoutMatch[]; ctx: CardCtx }) {
@@ -148,8 +195,8 @@ interface BracketProps extends CardCtx {
   stages: KnockoutStages
 }
 
-export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds }: BracketProps) {
-  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds }
+export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions }: BracketProps) {
+  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions }
   const rounds = orderedRounds(stages)
   const final = stages.final[0]
   const thirdPlace = stages.thirdPlace[0]

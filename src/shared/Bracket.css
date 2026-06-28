@@ -208,6 +208,58 @@ a.bk-match:hover {
   background: var(--navy);
 }
 
+/* The participant's predicted scoreline, one gold "ghost" digit per team row.
+   Read top-to-bottom it gives the bet on the same vertical axis as the match,
+   sitting beside the real score for a direct compare. Gold means "yours" — the
+   same language as the "משתתף" chip — so it needs no label. No extra row, so the
+   card height (and the connector geometry it drives) is unchanged. */
+.bk-pred {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  margin-inline-end: 4px;
+  padding: 0 3px;
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--navy);
+  background: rgba(212, 160, 22, 0.16);
+  border: 1px solid rgba(212, 160, 22, 0.5);
+  border-radius: 4px;
+}
+/* the side the bettor had advancing after a level scoreline: a solid gold chip
+   with a small caret, so "who goes through" lives on that team's own row */
+.bk-pred--adv {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 1px 3px rgba(11, 34, 68, 0.22);
+}
+.bk-pred-caret {
+  position: absolute;
+  top: -7px;
+  inset-inline-end: -4px;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--gold);
+  text-shadow: 0 0 1px rgba(11, 34, 68, 0.35);
+}
+
+/* read-only card: pair each team with its predicted digit on one row, pushing the
+   digit to the inline-end. Carries the dashed divider the bare .ko-slot pair uses. */
+.bk-ro-row {
+  display: flex;
+  align-items: center;
+}
+.bk-ro-row > .ko-slot { flex: 1 1 auto; min-width: 0; }
+.bk-ro-row + .bk-ro-row { border-top: 1px dashed rgba(200, 184, 122, 0.55); }
+.bk-match > .bk-ro-row:first-of-type { border-radius: 4px 4px 0 0; }
+.bk-match > .bk-ro-row:last-of-type  { border-radius: 0 0 4px 4px; }
+
 /* ── Final + third place ─────────────────────────────────────── */
 
 .bk-match--final {
