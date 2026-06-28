@@ -13,6 +13,7 @@ import { playedGroupMatchesChrono, playedMatchLabel } from '../../leaderboard/le
 import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
+import { allKO, predictedPairing } from '../../formView/knockout/koRounds'
 import { useTournament } from '../../shared/useTournament'
 import { useCurrentUser } from '../../shared/useCurrentUser'
 import { useLiveScores } from '../../shared/useLiveScores'
@@ -262,6 +263,15 @@ export default function ResultsPage({ users }: { users: User[] }) {
     playerMatchGoals: livePlayerMatchGoals,
   }
 
+  // Matches I have a stake in — I predicted both teams that meet here — so the
+  // bracket can flag them. Empty (and unmarked) until I'm signed in as a bettor.
+  const myBracketMatchIds = new Set<string>()
+  if (myUser) {
+    for (const m of allKO(tournamentResults.knockoutStages)) {
+      if (predictedPairing(myUser.knockoutStages, m)) myBracketMatchIds.add(String(m.matchNum))
+    }
+  }
+
   // chronological timeline the "טווח" selectors choose from (grows as you simulate)
   const playedMatchLabels = playedGroupMatchesChrono(tournamentResults).map(playedMatchLabel)
   const rangeFrom = Math.min(lbRangeFrom, playedMatchLabels.length)
@@ -411,6 +421,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
               predictions={editedResults}
               onChange={updateMatch}
               lockedMatchIds={LOCKED_MATCH_IDS}
+              participatingMatchIds={myBracketMatchIds}
             />
           </CollapsibleSection>
           <CollapsibleSection label="מלך השערים">

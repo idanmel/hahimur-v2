@@ -174,6 +174,40 @@ a.bk-match:hover {
   color: var(--muted);
 }
 
+/* ── "You're in this one" marker ──────────────────────────────────
+   Flags a match the current user participates in (predicted both teams
+   that meet here). Gold left edge for the at-a-glance scan; a small
+   labelled chip so the meaning is explicit, not a colour to decode. */
+.bk-match--mine {
+  border-color: var(--gold);
+  box-shadow: inset 3px 0 0 var(--gold), 0 1px 4px rgba(11, 34, 68, 0.06);
+}
+.bk-mine {
+  position: absolute;
+  top: -8px;
+  inset-inline-start: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 2px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--navy);
+  background: var(--gold);
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(11, 34, 68, 0.22);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.bk-mine-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--navy);
+}
+
 /* ── Final + third place ─────────────────────────────────────── */
 
 .bk-match--final {

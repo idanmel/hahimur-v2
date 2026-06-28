@@ -26,6 +26,22 @@ interface CardCtx {
   predictions?: Record<string, MatchScores>
   onChange?: (matchId: string, scores: MatchScores) => void
   lockedMatchIds?: Set<string>
+  // match numbers (as strings) the current user has a stake in — they predicted
+  // both teams that meet here. Drives the "you're in this one" marker.
+  participatingMatchIds?: Set<string>
+}
+
+// Corner chip flagging a match the current user participates in (they predicted
+// both teams that meet here), so they can scan the bracket for the fixtures their
+// bet rides on. Labelled, not just a colour — the word carries the meaning, the
+// gold edge carries the glance. Wording mirrors the "לא משתתף" home-page card.
+function MineMark() {
+  return (
+    <span className="bk-mine" title="ניחשת את שתי הנבחרות במשחק הזה">
+      <span className="bk-mine-dot" aria-hidden="true" />
+      משתתף
+    </span>
+  )
 }
 
 // The kickoff date + time, carried on each fixture from KO_DATES. Compact line at
@@ -41,9 +57,10 @@ function MatchMeta({ m }: { m: KnockoutMatch }) {
   )
 }
 
-function ReadOnlyCard({ m, className = '' }: { m: KnockoutMatch; className?: string }) {
+function ReadOnlyCard({ m, mine, className = '' }: { m: KnockoutMatch; mine: boolean; className?: string }) {
   return (
     <a href={`/matches/${m.matchNum}`} className={`bk-match ${className}`}>
+      {mine && <MineMark />}
       <MatchMeta m={m} />
       <TeamSlot name={m.home} />
       <TeamSlot name={m.away} />
@@ -52,8 +69,8 @@ function ReadOnlyCard({ m, className = '' }: { m: KnockoutMatch; className?: str
 }
 
 function EditableCard({
-  m, ctx, className = '',
-}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; className?: string }) {
+  m, ctx, mine, className = '',
+}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; className?: string }) {
   const { predictions, onChange, lockedMatchIds } = ctx
   const id = String(m.matchNum)
   const locked = lockedMatchIds?.has(id) ?? false
@@ -96,6 +113,7 @@ function EditableCard({
 
   return (
     <div className={`bk-match bk-match--editable ${className}${m.resolved ? ' bk-match--resolved' : ''}${needsDrawWinner ? ' bk-match--draw-pending' : ''}`}>
+      {mine && <MineMark />}
       <MatchMeta m={m} />
       {slot('home', m.home, pred.home)}
       <div className="bk-row-divider" />
@@ -109,8 +127,10 @@ function EditableCard({
 }
 
 function MatchCard({ m, ctx, className = '' }: { m: KnockoutMatch; ctx: CardCtx; className?: string }) {
-  if (!ctx.onChange) return <ReadOnlyCard m={m} className={className} />
-  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} className={className} />
+  const mine = ctx.participatingMatchIds?.has(String(m.matchNum)) ?? false
+  const cls = `${className}${mine ? ' bk-match--mine' : ''}`
+  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} className={cls} />
+  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} className={cls} />
 }
 
 function Column({ rkey, matches, ctx }: { rkey: keyof OrderedRounds; matches: KnockoutMatch[]; ctx: CardCtx }) {
@@ -128,8 +148,8 @@ interface BracketProps extends CardCtx {
   stages: KnockoutStages
 }
 
-export default function Bracket({ stages, predictions, onChange, lockedMatchIds }: BracketProps) {
-  const ctx: CardCtx = { predictions, onChange, lockedMatchIds }
+export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds }: BracketProps) {
+  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds }
   const rounds = orderedRounds(stages)
   const final = stages.final[0]
   const thirdPlace = stages.thirdPlace[0]

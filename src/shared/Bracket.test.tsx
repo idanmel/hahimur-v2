@@ -64,4 +64,27 @@ describe('interactive Bracket', () => {
     expect(meta.textContent).toContain('28 ביוני')
     expect(meta.textContent).toContain('22:00')
   })
+
+  test('marks a match the current user participates in', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(
+      <Bracket stages={stages} predictions={{}} onChange={() => {}} participatingMatchIds={new Set(['73'])} />,
+    )
+    expect(container.querySelector('.bk-match--mine')).not.toBeNull()
+    expect(container.querySelector('.bk-mine')).not.toBeNull()
+  })
+
+  test('marks a participating match on a read-only card too', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(<Bracket stages={stages} participatingMatchIds={new Set(['73'])} />)
+    expect(container.querySelector('.bk-mine')).not.toBeNull()
+  })
+
+  test('no marker when the user does not participate in the match', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
+    const { container } = render(
+      <Bracket stages={stages} predictions={{}} onChange={() => {}} participatingMatchIds={new Set()} />,
+    )
+    expect(container.querySelector('.bk-mine')).toBeNull()
+  })
 })
