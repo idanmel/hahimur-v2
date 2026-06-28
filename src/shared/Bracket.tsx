@@ -33,6 +33,9 @@ interface CardCtx {
   // oriented to the actual fixture's home/away. Shown under the marker so they
   // can see how their bet's scoreline compares to the real result.
   participatingPredictions?: Record<string, MatchScores>
+  // match numbers (as strings) currently in progress, from the live feed → the
+  // card's score is a running live one, flagged with a "חי" badge and the minute.
+  liveMatches?: Record<string, { clock: string | null }>
 }
 
 // Corner chip flagging a match the current user participates in (they predicted
@@ -79,8 +82,19 @@ function PredDigit({ value, advancing }: { value: number; advancing: boolean }) 
 }
 
 // The kickoff date + time, carried on each fixture from KO_DATES. Compact line at
-// the top of every card so the bracket reads as a schedule, not just a tree.
-function MatchMeta({ m }: { m: KnockoutMatch }) {
+// the top of every card so the bracket reads as a schedule, not just a tree. While
+// the match is in progress the live "חי" badge (with the minute) stands in for it —
+// the running score is what matters then, not the kickoff time.
+function MatchMeta({ m, live }: { m: KnockoutMatch; live?: { clock: string | null } | null }) {
+  if (live) {
+    return (
+      <div className="bk-meta bk-meta--live" data-testid="bk-live" dir="rtl">
+        <span className="bk-live-dot" aria-hidden="true" />
+        <span>חי</span>
+        {live.clock && <span className="bk-live-clock" dir="ltr">{live.clock}</span>}
+      </div>
+    )
+  }
   if (!m.matchDate && !m.kickoffIST) return null
   return (
     <div className="bk-meta">
@@ -91,7 +105,7 @@ function MatchMeta({ m }: { m: KnockoutMatch }) {
   )
 }
 
-function ReadOnlyCard({ m, mine, minePred, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; className?: string }) {
+function ReadOnlyCard({ m, mine, minePred, live, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; live?: { clock: string | null } | null; className?: string }) {
   const pd = predDigits(minePred)
   const teamLine = (name: string, value: number, advancing: boolean) =>
     pd
@@ -105,7 +119,7 @@ function ReadOnlyCard({ m, mine, minePred, className = '' }: { m: KnockoutMatch;
   return (
     <a href={`/matches/${m.matchNum}`} className={`bk-match ${className}`}>
       {mine && <MineMark />}
-      <MatchMeta m={m} />
+      <MatchMeta m={m} live={live} />
       {teamLine(m.home, pd?.home ?? 0, pd?.advHome ?? false)}
       {teamLine(m.away, pd?.away ?? 0, pd?.advAway ?? false)}
     </a>
@@ -113,8 +127,8 @@ function ReadOnlyCard({ m, mine, minePred, className = '' }: { m: KnockoutMatch;
 }
 
 function EditableCard({
-  m, ctx, mine, minePred, className = '',
-}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; className?: string }) {
+  m, ctx, mine, minePred, live, className = '',
+}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; live?: { clock: string | null } | null; className?: string }) {
   const { predictions, onChange, lockedMatchIds } = ctx
   const id = String(m.matchNum)
   const locked = lockedMatchIds?.has(id) ?? false
@@ -158,9 +172,9 @@ function EditableCard({
   )
 
   return (
-    <div className={`bk-match bk-match--editable ${className}${m.resolved ? ' bk-match--resolved' : ''}${needsDrawWinner ? ' bk-match--draw-pending' : ''}`}>
+    <div className={`bk-match bk-match--editable ${className}${m.resolved ? ' bk-match--resolved' : ''}${needsDrawWinner ? ' bk-match--draw-pending' : ''}${live ? ' bk-match--live' : ''}`}>
       {mine && <MineMark />}
-      <MatchMeta m={m} />
+      <MatchMeta m={m} live={live} />
       {slot('home', m.home, pred.home)}
       <div className="bk-row-divider" />
       {slot('away', m.away, pred.away)}
@@ -175,9 +189,10 @@ function EditableCard({
 function MatchCard({ m, ctx, className = '' }: { m: KnockoutMatch; ctx: CardCtx; className?: string }) {
   const mine = ctx.participatingMatchIds?.has(String(m.matchNum)) ?? false
   const minePred = mine ? ctx.participatingPredictions?.[String(m.matchNum)] : undefined
+  const live = ctx.liveMatches?.[String(m.matchNum)] ?? null
   const cls = `${className}${mine ? ' bk-match--mine' : ''}`
-  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} className={cls} />
-  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} className={cls} />
+  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} live={live} className={cls} />
+  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} live={live} className={cls} />
 }
 
 function Column({ rkey, matches, ctx }: { rkey: keyof OrderedRounds; matches: KnockoutMatch[]; ctx: CardCtx }) {
@@ -195,8 +210,8 @@ interface BracketProps extends CardCtx {
   stages: KnockoutStages
 }
 
-export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions }: BracketProps) {
-  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions }
+export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, liveMatches }: BracketProps) {
+  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, liveMatches }
   const rounds = orderedRounds(stages)
   const final = stages.final[0]
   const thirdPlace = stages.thirdPlace[0]

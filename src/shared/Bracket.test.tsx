@@ -65,6 +65,18 @@ describe('interactive Bracket', () => {
     expect(meta.textContent).toContain('22:00')
   })
 
+  test('a live match shows a חי badge with the minute in place of the kickoff time', () => {
+    const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true, matchDate: '28 ביוני', kickoffIST: '22:00' })
+    const { container } = render(
+      <Bracket stages={stages} predictions={{ '73': { home: 1, away: 0 } }} onChange={() => {}} liveMatches={{ '73': { clock: "67'" } }} />,
+    )
+    const live = container.querySelector('[data-testid="bk-live"]')!
+    expect(live.textContent).toContain('חי')
+    expect(live.textContent).toContain("67'")
+    // The live badge stands in for the kickoff schedule line.
+    expect(container.querySelector('.bk-meta')!.textContent).not.toContain('22:00')
+  })
+
   test('marks a match the current user participates in', () => {
     const stages = withR32({ matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true })
     const { container } = render(

@@ -2,11 +2,20 @@ import { render, screen, within } from '@testing-library/react'
 import { vi } from 'vitest'
 import KnockoutMatchPage from './KnockoutMatchPage'
 import { findKnockoutMatch } from './koMatch'
+import { useLiveResults } from '../../shared/useLiveResults'
+import { tournamentResults } from '../../tournament-results'
 import type { KnockoutMatch } from '../../shared/types'
 import type { User } from '../../users/index'
 
 // Nav renders a participant picker we don't care about here.
 vi.mock('../../Nav', () => ({ default: () => null, USER_STORAGE_EVENT: 'userStorageUpdated' }))
+
+// The live feed is stubbed so a test can put a knockout match "in progress".
+// Default: nothing live, so the page sees the baked (mocked) results unchanged.
+vi.mock('../../shared/useLiveResults', () => ({ useLiveResults: vi.fn() }))
+beforeEach(() => {
+  vi.mocked(useLiveResults).mockReturnValue(tournamentResults)
+})
 
 // Pin the baked results to empty so the knockout points table reflects only the
 // bettors' knockout predictions, not whatever live group scores happen to exist.
@@ -36,7 +45,9 @@ test('shows a descriptor for the pending slot and the resolved team', () => {
     matchNum: 73, home: 'סגנית א', away: 'Canada', resolved: false,
     scores: { home: null, away: null }, matchDate: '28 ביוני', kickoffIST: '22:00',
   })
-  render(<KnockoutMatchPage matchNum={73} />)
+  // Pin "now" before kickoff so the header shows the kickoff meta row, not the
+  // live indicator (this test is about the slot descriptors, not liveness).
+  render(<KnockoutMatchPage matchNum={73} now={new Date('2026-06-27T12:00:00Z')} />)
   const teamNames = Array.from(document.querySelectorAll('.match-team__name')).map(n => n.textContent)
   expect(teamNames).toEqual(expect.arrayContaining(['סגנית א', 'קנדה']))
   expect(screen.getByText(/שלב ה-32/)).toBeInTheDocument()
@@ -82,6 +93,33 @@ test('shows the real score in the header for a finished match', () => {
   expect(score.textContent).toContain('0')
   expect(score.textContent).toContain('1')
   expect(screen.getByText('נגמר')).toBeInTheDocument()
+})
+
+// Parity with the group page: while a knockout match is being played the header
+// shows the live score from the feed with a "חי" badge and the minute — not the
+// kickoff time and not the "נגמר" badge.
+test('shows the live score with a חי badge while a knockout match is in progress', () => {
+  vi.mocked(findKnockoutMatch).mockReturnValueOnce({
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: false,
+    scores: { home: null, away: null }, matchDate: '28 ביוני', kickoffIST: '22:00',
+  })
+  const stages = tournamentResults.knockoutStages
+  vi.mocked(useLiveResults).mockReturnValueOnce({
+    ...tournamentResults,
+    knockoutStages: {
+      ...stages,
+      r32: stages.r32.map(m => (m.matchNum === 73 ? { ...m, scores: { home: 1, away: 0 } } : m)),
+    },
+    live: { '73': { clock: "67'" } },
+  })
+  render(<KnockoutMatchPage matchNum={73} />)
+  const score = screen.getByTestId('real-score')
+  expect(score.textContent).toContain('1')
+  expect(score.textContent).toContain('0')
+  const badge = screen.getByTestId('live-score-badge')
+  expect(badge).toHaveTextContent('חי')
+  expect(badge).toHaveTextContent("67'")
+  expect(screen.queryByText('נגמר')).not.toBeInTheDocument()
 })
 
 // Step to the neighbouring knockout matches in kickoff order, not by number: the

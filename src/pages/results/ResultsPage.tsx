@@ -114,10 +114,11 @@ export default function ResultsPage({ users }: { users: User[] }) {
   // recorded here so the live feed never overwrites their what-if scores.
   const liveOverlay = useLiveScores()
   const userEditedIds = useRef<Set<string>>(new Set())
-  const livePlayerMatchGoals = useMemo(
-    () => mergeLiveResults(realTournamentResults, liveOverlay).playerMatchGoals,
-    [liveOverlay],
-  )
+  const liveMerged = useMemo(() => mergeLiveResults(realTournamentResults, liveOverlay), [liveOverlay])
+  const livePlayerMatchGoals = liveMerged.playerMatchGoals
+  // In-progress knockout matches (final-baked ones already filtered out), so the
+  // bracket can badge the live fixture with its running minute.
+  const liveBracketMatches = liveMerged.live
 
   const players = predictedPlayers(users)
   const myUser = useMemo(() => users.find(u => u.label === me), [users, me])
@@ -429,6 +430,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
               lockedMatchIds={LOCKED_MATCH_IDS}
               participatingMatchIds={myBracketMatchIds}
               participatingPredictions={myBracketPredictions}
+              liveMatches={liveBracketMatches}
             />
           </CollapsibleSection>
           <CollapsibleSection label="מלך השערים">

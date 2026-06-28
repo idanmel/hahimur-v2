@@ -3,9 +3,10 @@ import PageLayout from '../../shared/PageLayout'
 import type { Score } from '../../shared/types'
 import type { User } from '../../users/index'
 import { TEAMS } from '../../shared/groups'
+import { isLive } from '../../shared/matchOrder'
 import { useLiveResults } from '../../shared/useLiveResults'
 import { useCurrentUser } from '../../shared/useCurrentUser'
-import { findKnockoutMatch, roundLabel, vennStage, knockoutChronoNav } from './koMatch'
+import { findKnockoutMatch, findInStages, roundLabel, vennStage, knockoutChronoNav } from './koMatch'
 import { LAST_GROUP_MATCH } from './matchUtils'
 import MatchHeader from './MatchHeader'
 import KnockoutMatchLeaderboard from './KnockoutMatchLeaderboard'
@@ -23,7 +24,7 @@ function teamForSlot(slot: string): { iso?: string; he: string } {
   return team ? { iso: team.iso, he: team.he } : { he: slot }
 }
 
-export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: number; users?: User[] }) {
+export default function KnockoutMatchPage({ matchNum, users = [], now = new Date() }: { matchNum: number; users?: User[]; now?: Date }) {
   const match = findKnockoutMatch(matchNum)
   const results = useLiveResults()
   const { me } = useCurrentUser()
@@ -38,9 +39,20 @@ export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: 
     )
   }
 
-  const realScore = match.resolved && match.scores && match.scores.home !== null && match.scores.away !== null
-    ? match.scores
-    : null
+  const matchId = String(matchNum)
+  // Present only while the match is actually being played (from the live feed),
+  // which is how the header tells "in progress" from "finished".
+  const liveScore = results.live?.[matchId] ?? null
+  // The score to show: while in progress it's the live one overlaid onto the
+  // bracket (keyed by matchNum); once final it's the match's own baked score.
+  // Mirrors the group match page so a knockout fixture lights up live too.
+  const overlaidScore = liveScore ? findInStages(results.knockoutStages, matchNum)?.scores ?? null : null
+  const realScore = overlaidScore && overlaidScore.home !== null && overlaidScore.away !== null
+    ? overlaidScore
+    : match.resolved && match.scores && match.scores.home !== null && match.scores.away !== null
+      ? match.scores
+      : null
+  const live = isLive({ matchDate: match.matchDate, kickoffIST: match.kickoffIST }, now)
 
   // Which "who predicted each team this far" Venn this match feeds, if any.
   const venn = vennStage(matchNum)
@@ -68,7 +80,7 @@ export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: 
           match={{ id: String(matchNum), matchDate: match.matchDate, kickoffIST: match.kickoffIST }}
           home={teamForSlot(match.home)} away={teamForSlot(match.away)}
           homeScore={homeScore} awayScore={awayScore} onHomeScore={setHomeScore} onAwayScore={setAwayScore}
-          realScore={realScore}
+          realScore={realScore} live={live} liveScore={liveScore}
           badge={{ label: `${roundLabel(matchNum)} · משחק ${matchNum}` }}
           prevId={prevId}
           nextId={nextId}

@@ -134,6 +134,27 @@ a.bk-match:hover {
 }
 .bk-meta-sep { opacity: 0.55; }
 
+/* While a fixture is in progress its meta line becomes a live badge: a pulsing
+   red dot + "חי" + the minute, so a glance at the bracket shows which match is
+   being played right now. */
+.bk-meta--live {
+  color: #c0392b;
+  font-weight: 800;
+}
+.bk-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c0392b;
+  animation: bk-live-pulse 1.4s ease-in-out infinite;
+}
+.bk-live-clock { opacity: 0.85; font-weight: 700; }
+.bk-match--live { box-shadow: inset 0 2px 0 #c0392b, 0 1px 4px rgba(11, 34, 68, 0.06); }
+@keyframes bk-live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 /* self-contained slot styling so the bracket renders without the form-page CSS */
 .bk .ko-slot {
   display: flex;
