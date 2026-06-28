@@ -4,7 +4,7 @@ import type { RoundKey } from './crossings'
 import { rankTrajectories } from './leaderboardRows'
 import { isUnpredicted } from '../shared/types'
 import type { MatchScores, TournamentResults } from '../shared/types'
-import { isPairing, orientPrediction } from '../formView/knockout/koRounds'
+import { isPairing, orientPrediction, KO_ROUND_RANGES } from '../formView/knockout/koRounds'
 import type { User } from '../users'
 
 // The biggest single-game leap up the standings: ranks are 1-based and listed
@@ -38,7 +38,7 @@ function groupOutcomes(user: User, results: TournamentResults): Outcomes {
   return acc
 }
 
-const KO_ROUNDS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
+const KO_ROUNDS = KO_ROUND_RANGES.map(r => r.key)
 
 function knockoutOutcomes(user: User, results: TournamentResults): Outcomes {
   const acc: Outcomes = { tzelifot: 0, pgiot: 0 }

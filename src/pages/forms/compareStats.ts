@@ -160,10 +160,6 @@ function koWinnerTeam(m: KnockoutMatch): string | null {
   return null
 }
 
-function sameMatchup(a: KnockoutMatch, b: KnockoutMatch): boolean {
-  return isPairing(a, b.home, b.away)
-}
-
 function goalsFor(m: KnockoutMatch, team: string): number | null {
   if (!m.scores) return null
   if (team === m.home) return m.scores.home
@@ -181,7 +177,7 @@ export function buildKnockoutDiff(userA: User, userB: User): MatchDiffRow[] {
     const aByNum = new Map(userA.knockoutStages[stage].map(m => [m.matchNum, m]))
     for (const bM of userB.knockoutStages[stage]) {
       const aM = aByNum.get(bM.matchNum)
-      if (!aM || !sameMatchup(aM, bM)) continue
+      if (!aM || !isPairing(aM, bM.home, bM.away)) continue
       const aWinner = koWinnerTeam(aM)
       const bWinner = koWinnerTeam(bM)
       if (aWinner == null || bWinner == null) continue

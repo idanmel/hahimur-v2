@@ -278,7 +278,15 @@ export function computeUserCrossings(
   // is "locked" the moment both teams meet *anywhere* in the round. We walk the
   // bettor's own pairings (one crossing each) and judge each against reality.
   const lockedByPair = new Map<string, KnockoutMatch>()
+  // The real slot each confirmed team has reached, and every slot by match number —
+  // built once so judging a pairing below is O(1) lookups rather than rescanning
+  // actualR32 three times per bettor pairing. A team is in at most one R32 slot.
+  const slotByTeam = new Map<string, KnockoutMatch>()
+  const slotByMatchNum = new Map<number, KnockoutMatch>()
   for (const a of actualR32) {
+    slotByMatchNum.set(a.matchNum, a)
+    if (isRealTeam(a.home)) slotByTeam.set(a.home, a)
+    if (isRealTeam(a.away)) slotByTeam.set(a.away, a)
     if (isRealTeam(a.home) && isRealTeam(a.away)) lockedByPair.set(crossingPairKey(a.home, a.away), a)
   }
 
@@ -313,11 +321,9 @@ export function computeUserCrossings(
     //    meet. Anchoring to where a paired team really landed measures the pairing against
     //    its own future. Fall back to the bettor's slot only when neither team has reached
     //    the round yet (both sides open — nothing to contradict).
-    const teamSlot = (team: string) =>
-      actualR32.find(m => (isRealTeam(m.home) && m.home === team) || (isRealTeam(m.away) && m.away === team))
-    const slot0 = teamSlot(userTeams[0])
-    const slot1 = teamSlot(userTeams[1])
-    const actual = slot0 ?? slot1 ?? actualR32.find(m => m.matchNum === um.matchNum)
+    const slot0 = slotByTeam.get(userTeams[0])
+    const slot1 = slotByTeam.get(userTeams[1])
+    const actual = slot0 ?? slot1 ?? slotByMatchNum.get(um.matchNum)
     if (!actual) continue
 
     const slots = [actual.home, actual.away]

@@ -1,4 +1,5 @@
-import { knockoutParticipantScore, orientToActual } from './koParticipants'
+import { knockoutParticipantScore } from './koParticipants'
+import { orientPrediction } from '../../formView/knockout/koRounds'
 import type { KnockoutMatch } from '../../shared/types'
 import type { User } from '../../users/index'
 
@@ -30,8 +31,8 @@ test('flips a reversed prediction (and its draw winner) onto the real orientatio
   expect(knockoutParticipantScore(actual, u)).toEqual({ home: 1, away: 1, drawWinner: 'away' })
 })
 
-test('orientToActual leaves an aligned fixture untouched', () => {
-  expect(orientToActual(actual, ko('South Korea', 'Canada', 3, 1))).toEqual({ home: 3, away: 1, drawWinner: undefined })
+test('orientPrediction leaves an aligned fixture untouched', () => {
+  expect(orientPrediction(ko('South Korea', 'Canada', 3, 1), actual)).toEqual({ home: 3, away: 1, drawWinner: undefined })
 })
 
 test('counts a bettor who predicted the pairing at a different slot in the same round', () => {
