@@ -52,10 +52,11 @@ function getInitialState(): PredictionsState {
 interface CollapsibleSectionProps {
   label: string
   children: React.ReactNode
+  defaultOpen?: boolean
 }
 
-function CollapsibleSection({ label, children }: CollapsibleSectionProps) {
-  const [open, setOpen] = useState(false)
+function CollapsibleSection({ label, children, defaultOpen = false }: CollapsibleSectionProps) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
     <div className={`pg-collapsible${open ? ' pg-collapsible--open' : ''}`}>
       <button
@@ -404,7 +405,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
           <CollapsibleSection label="דירוג נבחרות במקום השלישי">
             <ThirdPlaceTable qualification={thirdPlaceQual} allGroupsFilled={allGroupsFilled} />
           </CollapsibleSection>
-          <CollapsibleSection label="בראקט">
+          <CollapsibleSection label="בראקט" defaultOpen>
             <Bracket
               stages={tournamentResults.knockoutStages}
               predictions={editedResults}
