@@ -30,6 +30,13 @@ test('renders a real round-of-32 team from the derived results', () => {
   expect(screen.getAllByText('ברזיל').length).toBeGreaterThan(0)
 })
 
+test('each match card links to its match page', () => {
+  render(<BracketPage />)
+  // R32 matches are numbered 73–88; every match in the board should be a link to /matches/<num>.
+  const link = document.querySelector('a[href="/matches/73"]')
+  expect(link).not.toBeNull()
+})
+
 test('reports a bracket-view usage signal on load', () => {
   const fetchSpy = vi.fn(() => Promise.resolve(new Response()))
   vi.stubGlobal('fetch', fetchSpy)

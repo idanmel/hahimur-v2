@@ -102,6 +102,16 @@
   box-shadow: 0 1px 4px rgba(11, 34, 68, 0.06);
   /* no overflow:hidden — it would clip the connector lines drawn in the gutter */
   min-width: 0;
+  /* each card is a link to its match page — strip the default anchor look */
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.bk-match:hover {
+  border-color: var(--accent, #0b2244);
+  box-shadow: 0 2px 8px rgba(11, 34, 68, 0.14);
 }
 
 /* keep the dashed divider + corner chip inside the rounded card without clipping
