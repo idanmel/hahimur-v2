@@ -1,6 +1,6 @@
-import { nextMatches, recentMatches, topPrediction } from './nextMatch'
+import { nextMatches, recentMatches, topPrediction, upcomingCards, koTopPrediction } from './nextMatch'
 import { makeUser } from '../../leaderboard/testFixtures'
-import type { GroupMatch } from '../../shared/types'
+import type { GroupMatch, KnockoutMatch } from '../../shared/types'
 
 // Kickoffs are Israel time (UTC+3):
 //   A1 -> 11 Jun 19:00Z
@@ -146,3 +146,52 @@ test('topPrediction returns the most common predicted score and its count', () =
 test('topPrediction returns null when nobody predicted the match', () => {
   expect(topPrediction([makeUser()], 'A2')).toBeNull()
 })
+
+// Knockout fixtures join the upcoming feed once the groups are done.
+// Match 73 (the R32 opener) kicks off 28 June 22:00 IST (19:00Z).
+const KO_OPENER: KnockoutMatch = {
+  matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+  matchDate: '28 ביוני', kickoffIST: '22:00',
+}
+
+test('upcomingCards rolls into the knockouts once the group stage is over', () => {
+  const now = new Date('2026-06-28T18:00:00Z') // an hour before the R32 opener
+  const cards = upcomingCards([], [KO_OPENER], now)
+  expect(cards.map(c => c.match.id)).toEqual(['73'])
+  expect(cards[0].match.homeTeam).toBe('South Korea')
+  expect(cards[0].heading).toBe('שלב ה-32') // round label, not a group letter
+  expect(cards[0].ko).toBe(KO_OPENER)
+})
+
+test('upcomingCards keeps unresolved knockout fixtures out of the feed', () => {
+  const placeholder: KnockoutMatch = {
+    matchNum: 89, home: 'מנצחת 73', away: 'מנצחת 74', resolved: false,
+    matchDate: '5 ביולי', kickoffIST: '00:00',
+  }
+  const now = new Date('2026-07-04T18:00:00Z')
+  expect(upcomingCards([], [placeholder], now)).toEqual([])
+})
+
+test('upcomingCards merges group and knockout fixtures in kickoff order', () => {
+  // A late group match the evening before the R32 opener shares its 15h burst.
+  const lateGroup: GroupMatch = { id: 'L6', homeTeam: 'Mexico', awayTeam: 'Canada', matchDate: '28 ביוני', kickoffIST: '17:00' }
+  const now = new Date('2026-06-28T13:00:00Z')
+  const cards = upcomingCards([lateGroup], [KO_OPENER], now)
+  expect(cards.map(c => c.match.id)).toEqual(['L6', '73'])
+})
+
+test('koTopPrediction tallies the popular score by the teams that actually met', () => {
+  const r32 = (scores: { home: number; away: number }) => ({
+    r32: [{ matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true, scores }],
+    r16: [], qf: [], sf: [], thirdPlace: [], final: [],
+  })
+  const users = [
+    makeUser({ knockoutStages: r32({ home: 2, away: 1 }) }),
+    makeUser({ knockoutStages: r32({ home: 2, away: 1 }) }),
+    makeUser({ knockoutStages: r32({ home: 0, away: 0 }) }),
+    makeUser(), // predicted a different bracket → not in this match
+  ]
+  expect(koTopPrediction(users, KO_OPENER)).toEqual({ home: 2, away: 1, count: 2, total: 3 })
+})
+
+

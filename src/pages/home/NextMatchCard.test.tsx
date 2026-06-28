@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import NextMatchCard from './NextMatchCard'
 import { makeUser } from '../../leaderboard/testFixtures'
-import type { GroupMatch } from '../../shared/types'
+import type { GroupMatch, KnockoutMatch } from '../../shared/types'
 
 const NOW = new Date('2026-06-11T20:00:00Z') // A1 finished (score in), A2 is next
 
@@ -96,7 +96,34 @@ test('shows a card per match when two matches kick off simultaneously', () => {
   expect(links.map(l => l.getAttribute('href'))).toEqual(['/matches/A3', '/matches/A4'])
 })
 
-test('renders nothing when the group stage is over', () => {
-  const { container } = render(<NextMatchCard users={users} now={new Date('2026-07-20T00:00:00Z')} matches={MATCHES} />)
+test('renders nothing when nothing is upcoming', () => {
+  const { container } = render(<NextMatchCard users={users} now={new Date('2026-07-20T00:00:00Z')} matches={MATCHES} koMatches={[]} />)
   expect(container).toBeEmptyDOMElement()
+})
+
+test('rolls into the knockouts: shows the R32 opener as a card like a group match', () => {
+  // Groups done, no group match upcoming; the R32 opener (28 June 22:00 IST) is next.
+  const koOpener: KnockoutMatch = {
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+    matchDate: '28 ביוני', kickoffIST: '22:00',
+  }
+  // A bettor who predicted exactly this pairing plays the match — matched by team.
+  const r32Pick = (home: number, away: number) => ({
+    r32: [{ matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true, scores: { home, away } }],
+    r16: [], qf: [], sf: [], thirdPlace: [], final: [],
+  })
+  const koUsers = [
+    makeUser({ knockoutStages: r32Pick(2, 1) }),
+    makeUser({ knockoutStages: r32Pick(2, 1) }),
+  ]
+  const me = makeUser({ label: 'עידן מלמד', knockoutStages: r32Pick(3, 0) })
+  const now = new Date('2026-06-28T18:00:00Z')
+  render(<NextMatchCard users={koUsers} now={now} matches={[]} koMatches={[koOpener]} currentUser={me} />)
+
+  expect(screen.getByText('דרום קוריאה')).toBeInTheDocument()
+  expect(screen.getByText('קנדה')).toBeInTheDocument()
+  expect(screen.getByText(/שלב ה-32/)).toBeInTheDocument() // round label, not "בית"
+  expect(screen.getByRole('link', { name: /לעמוד המשחק/ })).toHaveAttribute('href', '/matches/73')
+  expect(screen.getByTestId('consensus')).toHaveTextContent('1–2') // away–home, team-matched
+  expect(screen.getByTestId('your-prediction')).toHaveTextContent('0–3') // my own pick
 })

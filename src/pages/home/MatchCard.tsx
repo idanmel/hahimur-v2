@@ -3,7 +3,7 @@ import type { GroupMatch, MatchScores } from '../../shared/types'
 import type { User } from '../../users/index'
 import { singleMatchOutcome, singleMatchPoints, OUTCOME_LABEL, POINTS_PER_GOAL } from '../../leaderboard/points'
 import { isLive } from '../../shared/matchOrder'
-import { topPrediction } from './nextMatch'
+import { topPrediction, type TopPrediction } from './nextMatch'
 import './MatchCard.css'
 
 type Props = {
@@ -11,6 +11,15 @@ type Props = {
   match: GroupMatch
   currentUser?: User
   isNext?: boolean
+  // Knockout overrides: a group card derives these from the match id, but a
+  // knockout fixture has no group letter and its predictions are matched by
+  // team, not id. When supplied they drive the card; when absent it falls back
+  // to the group behavior. `heading` replaces "בית X" with the round label;
+  // `consensus`/`mine` carry the team-matched popular and personal predictions
+  // (null/undefined means "computed, nobody" — distinct from "not supplied").
+  heading?: string
+  consensus?: TopPrediction | null
+  mine?: MatchScores
   // When set, the match has been played: show the real score and, if the user
   // predicted it, how they did. This is what turns a "next" card into a "result" card.
   result?: MatchScores
@@ -26,11 +35,11 @@ type Props = {
   liveMatches?: Record<string, { clock: string | null; home?: number; away?: number }>
 }
 
-export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date(), liveMatches }: Props) {
+export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date(), liveMatches, heading, consensus: consensusOverride, mine: mineOverride }: Props) {
   const home = TEAMS[match.homeTeam]
   const away = TEAMS[match.awayTeam]
-  const consensus = topPrediction(users, match.id)
-  const mine = currentUser?.predictions[match.id]
+  const consensus = consensusOverride !== undefined ? consensusOverride : topPrediction(users, match.id)
+  const mine = mineOverride !== undefined ? mineOverride : currentUser?.predictions[match.id]
   const outcome = result && mine ? singleMatchOutcome(mine, result) : null
   const points = result && mine ? singleMatchPoints(match.id, mine, result) : 0
   const scorerGoals = currentUser ? playerMatchGoals[currentUser.topGoalscorer]?.[match.id] ?? 0 : 0
@@ -47,7 +56,7 @@ export default function MatchCard({ users, match, currentUser, isNext = false, r
 
   return (
     <div dir="rtl" className={`next-match${live ? ' next-match--live' : ''}`} data-testid="next-match">
-      <div className="next-match__heading">{isNext ? 'המשחק הבא · ' : ''}בית {GROUPS[match.id[0]].he}</div>
+      <div className="next-match__heading">{isNext ? 'המשחק הבא · ' : ''}{heading ?? `בית ${GROUPS[match.id[0]].he}`}</div>
 
       <div className="next-match__teams">
         <div className="next-match__team">

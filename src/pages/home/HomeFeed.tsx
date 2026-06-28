@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { GroupMatch } from '../../shared/types'
 import type { User } from '../../users/index'
-import { recentMatches, nextMatches, SCORED_MATCHES } from './nextMatch'
+import type { KnockoutMatch } from '../../shared/types'
+import { recentMatches, upcomingCards, SCORED_MATCHES, KO_FEED_MATCHES } from './nextMatch'
 import RecentMatchesCard from './RecentMatchesCard'
 import NextMatchCard from './NextMatchCard'
 import './HomeFeed.css'
@@ -12,6 +13,7 @@ type Props = {
   currentUser?: User
   now?: Date
   matches?: GroupMatch[]
+  koMatches?: KnockoutMatch[]
   playerMatchGoals?: Record<string, Record<string, number>>
   // The live feed's in-progress matches (match id → status). Drives the "live"
   // badge so it tracks the feed (and disappears the moment a match finishes)
@@ -23,9 +25,9 @@ type Props = {
 // The home page's match feed: one tap swaps between the last few results and the
 // next few fixtures, so the two never stack into a scroll wall. Opens on the
 // upcoming fixtures — the "what's next" view.
-export default function HomeFeed({ users, currentUser, now = new Date(), matches = SCORED_MATCHES, playerMatchGoals, liveMatches }: Props) {
+export default function HomeFeed({ users, currentUser, now = new Date(), matches = SCORED_MATCHES, koMatches = KO_FEED_MATCHES, playerMatchGoals, liveMatches }: Props) {
   const [view, setView] = useState<View>('fixtures')
-  const list = view === 'results' ? recentMatches(matches, now) : nextMatches(matches, now)
+  const list = view === 'results' ? recentMatches(matches, now) : upcomingCards(matches, koMatches, now)
 
   return (
     <section className="home-feed" dir="rtl">
@@ -51,7 +53,7 @@ export default function HomeFeed({ users, currentUser, now = new Date(), matches
       ) : view === 'results' ? (
         <RecentMatchesCard users={users} currentUser={currentUser} now={now} matches={matches} playerMatchGoals={playerMatchGoals} />
       ) : (
-        <NextMatchCard users={users} currentUser={currentUser} now={now} matches={matches} liveMatches={liveMatches} />
+        <NextMatchCard users={users} currentUser={currentUser} now={now} matches={matches} koMatches={koMatches} liveMatches={liveMatches} />
       )}
     </section>
   )
