@@ -30,7 +30,7 @@ export default function NextMatchCard({ users, now = new Date(), matches = SCORE
           // Knockout predictions are matched by team, not id, so feed the card
           // the team-matched consensus and the user's own called score.
           consensus={ko ? koTopPrediction(users, ko) : undefined}
-          mine={ko ? (currentUser ? knockoutParticipantScore(ko, currentUser) ?? undefined : undefined) : undefined}
+          mine={ko ? (currentUser ? knockoutParticipantScore(ko, currentUser) : null) : undefined}
           isNext={!!next && match.matchDate === next.matchDate && match.kickoffIST === next.kickoffIST}
           currentUser={currentUser}
           now={now}

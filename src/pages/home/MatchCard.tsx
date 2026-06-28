@@ -19,7 +19,9 @@ type Props = {
   // (null/undefined means "computed, nobody" — distinct from "not supplied").
   heading?: string
   consensus?: TopPrediction | null
-  mine?: MatchScores
+  // null = "computed, nobody" (a KO card where the user didn't call this pairing) —
+  // distinct from undefined = "not supplied" (a group card that falls back to id).
+  mine?: MatchScores | null
   // When set, the match has been played: show the real score and, if the user
   // predicted it, how they did. This is what turns a "next" card into a "result" card.
   result?: MatchScores
@@ -39,7 +41,15 @@ export default function MatchCard({ users, match, currentUser, isNext = false, r
   const home = TEAMS[match.homeTeam]
   const away = TEAMS[match.awayTeam]
   const consensus = consensusOverride !== undefined ? consensusOverride : topPrediction(users, match.id)
-  const mine = mineOverride !== undefined ? mineOverride : currentUser?.predictions[match.id]
+  // A KO card supplies `mine` explicitly (a score, or null when the user didn't
+  // call this pairing) — never fall back to predictions[id], whose numeric KO key
+  // holds the user's *slot* pick for different teams. Only an unsupplied (group)
+  // override falls back to the by-id group prediction.
+  const mine = mineOverride !== undefined ? (mineOverride ?? undefined) : currentUser?.predictions[match.id]
+  // A KO card explicitly says "nobody" (null) when the selected user didn't call
+  // this pairing — show "לא משתתף" rather than nothing, so it's clear they're out
+  // of this match (not just missing a score). Only meaningful with a user picked.
+  const koNonParticipant = mineOverride === null && !!currentUser
   const outcome = result && mine ? singleMatchOutcome(mine, result) : null
   const points = result && mine ? singleMatchPoints(match.id, mine, result) : 0
   const scorerGoals = currentUser ? playerMatchGoals[currentUser.topGoalscorer]?.[match.id] ?? 0 : 0
@@ -115,6 +125,10 @@ export default function MatchCard({ users, match, currentUser, isNext = false, r
       ) : mine ? (
         <div className="next-match__mine" data-testid="your-prediction">
           הניחוש שלך: <strong dir="ltr">{mine.away}–{mine.home}</strong>
+        </div>
+      ) : koNonParticipant ? (
+        <div className="next-match__mine next-match__mine--out" data-testid="not-participating">
+          לא משתתף
         </div>
       ) : null}
 

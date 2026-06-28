@@ -127,3 +127,38 @@ test('rolls into the knockouts: shows the R32 opener as a card like a group matc
   expect(screen.getByTestId('consensus')).toHaveTextContent('1–2') // away–home, team-matched
   expect(screen.getByTestId('your-prediction')).toHaveTextContent('0–3') // my own pick
 })
+
+test('says "לא משתתף" on a KO card when I did not predict this pairing', () => {
+  // The real R32 fixture is South Korea vs Canada. I didn't call that meeting —
+  // in my bracket slot 73 holds Spain vs Brazil. derivePredictions flattens that
+  // by match number into predictions['73'], so the card must not fall back to it
+  // and pin my Spain–Brazil score onto South Korea vs Canada; it says I'm out.
+  const koOpener: KnockoutMatch = {
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+    matchDate: '28 ביוני', kickoffIST: '22:00',
+  }
+  const me = makeUser({
+    label: 'עידן מלמד',
+    knockoutStages: {
+      r32: [{ matchNum: 73, home: 'Spain', away: 'Brazil', resolved: true, scores: { home: 3, away: 0 } }],
+      r16: [], qf: [], sf: [], thirdPlace: [], final: [],
+    },
+    predictions: { '73': { home: 3, away: 0 } }, // what derivePredictions writes
+  })
+  const now = new Date('2026-06-28T18:00:00Z')
+  render(<NextMatchCard users={[]} now={now} matches={[]} koMatches={[koOpener]} currentUser={me} />)
+
+  expect(screen.queryByTestId('your-prediction')).not.toBeInTheDocument()
+  expect(screen.getByTestId('not-participating')).toHaveTextContent('לא משתתף')
+})
+
+test('shows no "לא משתתף" on a KO card when no user is selected', () => {
+  const koOpener: KnockoutMatch = {
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+    matchDate: '28 ביוני', kickoffIST: '22:00',
+  }
+  const now = new Date('2026-06-28T18:00:00Z')
+  render(<NextMatchCard users={[]} now={now} matches={[]} koMatches={[koOpener]} />)
+
+  expect(screen.queryByTestId('not-participating')).not.toBeInTheDocument()
+})

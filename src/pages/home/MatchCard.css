@@ -196,6 +196,13 @@
   color: var(--ink);
 }
 
+/* Not in this knockout match — the pairing you called didn't reach it. Muted so
+   it reads as a quiet "you're out", not an error. */
+.next-match__mine--out {
+  color: var(--ink-muted, #6b7280);
+  font-style: italic;
+}
+
 /* The Golden Boot moment: your picked striker scored, so this match paid out.
    Mirrors the verdict strip's shape, tinted gold to echo "המלך" and the boot. */
 .next-match__scorer {
