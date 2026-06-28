@@ -23,6 +23,13 @@ test('renders MatchPredictionsPage at /matches/b1 with correct teams', () => {
   expect(screen.getAllByText('קנדה').length).toBeGreaterThan(0)
 })
 
+test('renders the read-only bracket page at /bracket', () => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response())))
+  vi.stubGlobal('location', { hostname: 'example.com', pathname: '/bracket', search: '' })
+  render(<App />)
+  expect(screen.getByText('שלב ה-32')).toBeInTheDocument()
+})
+
 test('routes every round-of-32 numeric id to the knockout match page', () => {
   for (let num = 73; num <= 88; num++) {
     vi.stubGlobal('location', { pathname: `/matches/${num}`, search: '' })

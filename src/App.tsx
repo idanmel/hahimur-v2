@@ -5,6 +5,7 @@ import HomePage from './pages/home/HomePage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
 import KnockoutMatchPage from './pages/match/KnockoutMatchPage'
 import ResultsPage from './pages/results/ResultsPage'
+import BracketPage from './pages/bracket/BracketPage'
 import WinProbPage from './pages/winprob/WinProbPage'
 import RivalryPage from './pages/rivalry/RivalryPage'
 import StatsPage from './pages/stats/StatsPage'
@@ -40,6 +41,7 @@ export default function App() {
        matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :
+       pathname === '/bracket'                            ? <BracketPage /> :
        pathname === '/odds-9k2'                            ? <WinProbPage /> :
        pathname === '/stats'                             ? <StatsPage users={USERS} /> :
        pathname === '/forms'                              ? <FormsPage users={USERS} usersSorted={USERS_SORTED} /> :

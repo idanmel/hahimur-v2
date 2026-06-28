@@ -1,0 +1,169 @@
+/* ── Wikipedia-style knockout bracket ──────────────────────────
+   One column per round, R32 on the right funnelling left to the final.
+   Each round's slot height doubles, so every match centres exactly
+   between the pair that feeds it; gold connector elbows join them. The
+   board is wider than the screen and scrolls horizontally. */
+
+.bk {
+  --m-h: 44px;          /* match-card height */
+  --gap-v: 16px;        /* base vertical gap between R32 matches */
+  --gut: 26px;          /* horizontal gutter between columns (also the connectors) */
+  --col-w: 144px;
+  --line: rgba(11, 34, 68, 0.3);
+  --slot0: calc(var(--m-h) + var(--gap-v));
+
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+}
+
+.bk-board {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gut);
+  width: max-content;
+  /* centre on wide screens; auto margins collapse to 0 once the board overflows,
+     so narrow screens still scroll from the start without clipping. */
+  margin-inline: auto;
+  padding: 0.25rem var(--gut) 1.5rem;
+}
+
+/* ── Columns ─────────────────────────────────────────────────── */
+
+.bk-col {
+  width: var(--col-w);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+/* the vertical slot each match is centred within — doubles every round */
+.bk-col--r32   { --slot: var(--slot0); }
+.bk-col--r16   { --slot: calc(2 * var(--slot0)); }
+.bk-col--qf    { --slot: calc(4 * var(--slot0)); }
+.bk-col--sf    { --slot: calc(8 * var(--slot0)); }
+.bk-col--final { --slot: calc(16 * var(--slot0)); }
+
+.bk-col-title {
+  height: 26px;
+  margin: 0 0 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  color: var(--navy);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.bk-col-body { display: flex; flex-direction: column; }
+
+/* a match centred in its round's slot — this is what makes children align with
+   the midpoint of their two feeders one column over. */
+.bk-col-body > .bk-match {
+  height: var(--m-h);
+  margin: calc((var(--slot) - var(--m-h)) / 2) 0;
+}
+
+/* ── Connector elbows (drawn by each child toward its feeders on the right) ── */
+
+.bk-col:not(.bk-col--r32) .bk-col-body > .bk-match::before { /* stub from card to bar */
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: calc(-1 * var(--gut));
+  width: var(--gut);
+  height: 2px;
+  background: var(--line);
+}
+.bk-col:not(.bk-col--r32) .bk-col-body > .bk-match::after {  /* vertical bar joining feeders */
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: calc(-1 * var(--gut));
+  width: 2px;
+  height: calc(var(--slot) / 2);
+  transform: translateY(-50%);
+  background: var(--line);
+}
+
+/* ── Match card ──────────────────────────────────────────────── */
+
+.bk-match {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(11, 34, 68, 0.06);
+  /* no overflow:hidden — it would clip the connector lines drawn in the gutter */
+  min-width: 0;
+}
+
+/* keep the dashed divider + corner chip inside the rounded card without clipping
+   the connectors: round the slot rows themselves at the card's corners */
+.bk-match > .ko-slot:first-of-type { border-radius: 4px 4px 0 0; }
+.bk-match > .ko-slot:last-of-type  { border-radius: 0 0 4px 4px; }
+
+/* self-contained slot styling so the bracket renders without the form-page CSS */
+.bk .ko-slot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+.bk .ko-slot + .ko-slot { border-top: 1px dashed rgba(200, 184, 122, 0.55); }
+.bk .ko-slot-flag {
+  width: 20px;
+  height: 15px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.bk .ko-slot-flag-ph {
+  width: 20px;
+  height: 15px;
+  border-radius: 2px;
+  background: rgba(122, 104, 69, 0.1);
+  border: 1px dashed rgba(122, 104, 69, 0.4);
+  flex-shrink: 0;
+}
+.bk .ko-slot-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+.bk .ko-slot--pending .ko-slot-name {
+  font-size: 10px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* ── Final + third place ─────────────────────────────────────── */
+
+.bk-match--final {
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 4px 16px rgba(212, 160, 22, 0.22);
+}
+.bk-match--final::after { background: var(--gold) !important; opacity: 0.7; }
+.bk-match--final::before { background: var(--gold) !important; opacity: 0.7; }
+
+.bk-third { margin-top: 1.25rem; opacity: 0.9; }
+.bk-third-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-align: center;
+  margin: 0 0 0.35rem;
+}
