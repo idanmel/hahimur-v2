@@ -1,11 +1,11 @@
 import { computeUserPoints, computeGroupBreakdown, computeGroupTeamDetail, isGroupComplete, singleMatchOutcome, singleMatchPoints, POINTS_PER_GOAL, OLEH_POINTS, PLACE_POINT } from './points'
-import type { GroupTeamHit } from './points'
+import type { GroupTeamHit, PointsBreakdown } from './points'
 import { ALL_GROUP_LETTERS, TEAMS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import { isUnpredicted } from '../shared/types'
-import type { GroupMatch, KnockoutMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
+import type { GroupMatch, KnockoutMatch, KnockoutStages, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import { matchSortKey, latestBySortKey } from '../shared/matchOrder'
-import { isPairing } from '../formView/knockout/koRounds'
+import { isPairing, orientPrediction } from '../formView/knockout/koRounds'
 import { competitionRanks } from './rank'
 import type { User } from '../users'
 
@@ -101,6 +101,89 @@ export function playedGroupMatchesChrono(results: TournamentResults): GroupMatch
 export const playedMatchLabel = (m: GroupMatch): string =>
   `${TEAMS[m.homeTeam].he} ${m.scores!.home}–${m.scores!.away} ${TEAMS[m.awayTeam].he}`
 
+// One entry in the chronological timeline the "טווח" range spans. Group and
+// knockout matches share one list so the range can stretch across the whole
+// tournament, not just the group stage. A KO match carries the same scoreline
+// shape as a group one, but is scored by a different rule (oriented pairing).
+export type PlayedMatch =
+  | { kind: 'group'; match: GroupMatch }
+  | { kind: 'ko'; match: KnockoutMatch }
+
+const playedSortKey = (p: PlayedMatch) => matchSortKey(p.match.matchDate, p.match.kickoffIST)
+
+// Every played match — group AND knockout — in true chronological order, the
+// timeline the range selector and range-scoped leaderboard both index into.
+export function playedMatchesChrono(results: TournamentResults): PlayedMatch[] {
+  const group: PlayedMatch[] = Object.values(results.groupMatches).flat()
+    .filter(m => m.scores && !isUnpredicted(m.scores))
+    .map(match => ({ kind: 'group', match }))
+  const ks = results.knockoutStages
+  const ko: PlayedMatch[] = ks
+    ? [...ks.r32, ...ks.r16, ...ks.qf, ...ks.sf, ...ks.thirdPlace, ...ks.final]
+        .filter(m => m.scores && !isUnpredicted(m.scores))
+        .map(match => ({ kind: 'ko', match }))
+    : []
+  return [...group, ...ko].sort((a, b) => playedSortKey(a) - playedSortKey(b))
+}
+
+// Range-selector label for a unified timeline entry. KO team names are stored as
+// TEAMS keys too, so both kinds resolve to the same Hebrew "בית 2–1 חוץ" shape.
+export const playedMatchChronoLabel = (p: PlayedMatch): string =>
+  p.kind === 'group'
+    ? playedMatchLabel(p.match)
+    : `${TEAMS[p.match.home]?.he ?? p.match.home} ${p.match.scores!.home}–${p.match.scores!.away} ${TEAMS[p.match.away]?.he ?? p.match.away}`
+
+// A bettor's צליפה/פגיעה tally and match points across a set of played knockout
+// matches. Mirrors the group-match loop in rowsForPlayedMatches but routes through
+// the pairing matcher: a KO fixture is credited wherever the bettor predicted its
+// two teams to meet (same round, either order), oriented to the real home/away.
+function koHits(user: User, koMatches: KnockoutMatch[]): { tzelifa: number; pgiya: number; points: number } {
+  if (koMatches.length === 0) return { tzelifa: 0, pgiya: 0, points: 0 }
+  const uko = user.knockoutStages
+  const userMatches = [...uko.r32, ...uko.r16, ...uko.qf, ...uko.sf, ...uko.thirdPlace, ...uko.final]
+  let tzelifa = 0, pgiya = 0, points = 0
+  for (const rm of koMatches) {
+    if (!rm.scores || isUnpredicted(rm.scores) || !rm.home || !rm.away) continue
+    const um = userMatches.find(m => isPairing(m, rm.home, rm.away))
+    if (!um || !um.scores || isUnpredicted(um.scores)) continue
+    const predicted = orientPrediction(um, rm)!
+    const outcome = singleMatchOutcome(predicted, rm.scores)
+    if (outcome === 'tzelifa') tzelifa++
+    else if (outcome === 'pgiya') pgiya++
+    points += singleMatchPoints(String(rm.matchNum), predicted, rm.scores)
+  }
+  return { tzelifa, pgiya, points }
+}
+
+// The match number whose result settles a knockout round's advancement — the
+// chronologically-last played match of that round (once it's played, the next
+// round's line-up, hence who "advanced", is known). Undefined while the round
+// is still unfolding.
+function koRoundDecider(matches: KnockoutMatch[]): number | undefined {
+  return latestBySortKey(matches.filter(m => m.scores && !isUnpredicted(m.scores)))?.matchNum
+}
+
+// The bettor's non-match KO points that fall inside this stretch: per-round
+// advancement (R32–SF) plus the third-place-winner and champion bonuses. Each is
+// "owned" by the match that decides it (advancement by its round's last match,
+// the title bonuses by the third-place match / the final), so the range credits
+// it only when that deciding match is in the slice — mirroring how a group's
+// advancement is owned by its completing match.
+function koAdvancementForSlice(breakdown: PointsBreakdown, ko: KnockoutStages, koMatches: KnockoutMatch[]): number {
+  if (koMatches.length === 0) return 0
+  const inSlice = new Set(koMatches.map(m => m.matchNum))
+  const owned = (decider: number | undefined, value: number) =>
+    decider != null && inSlice.has(decider) ? value : 0
+  return (
+    owned(koRoundDecider(ko.r32), breakdown.r32.advancementPoints) +
+    owned(koRoundDecider(ko.r16), breakdown.r16.advancementPoints) +
+    owned(koRoundDecider(ko.qf), breakdown.qf.advancementPoints) +
+    owned(koRoundDecider(ko.sf), breakdown.sf.advancementPoints) +
+    owned(ko.thirdPlace[0]?.matchNum, breakdown.third.thirdPlaceWinner) +
+    owned(ko.final[0]?.matchNum, breakdown.final.champion)
+  )
+}
+
 // The match that decides a group: its chronologically-last played match, but
 // only once the group's table is complete. Advancement/place points are awarded
 // at this moment, so a range "owns" them iff it contains this match. Null while
@@ -140,7 +223,17 @@ function completionScopedResults(results: TournamentResults, sliceIds: Set<strin
 // (ranksAsOf) pass false to skip the full-tournament computeUserPoints, which
 // they never read — that recompute dominates the trajectory cost otherwise.
 export function rowsForMatches(users: User[], results: TournamentResults, matches: GroupMatch[], withTournamentTotal = true): GroupScopeRow[] {
-  const scoped = completionScopedResults(results, new Set(matches.map(m => m.id)))
+  return rowsForPlayedMatches(users, results, matches.map(match => ({ kind: 'group', match })), withTournamentTotal)
+}
+
+// The unified per-stretch scorer: group matches score by id as before, knockout
+// matches by oriented pairing (koHits). Group advancement/place points still ride
+// in via completionScopedResults, gated on the group-completing match being in
+// the slice — KO advancement is layered on separately (see buildRangeRows).
+export function rowsForPlayedMatches(users: User[], results: TournamentResults, played: PlayedMatch[], withTournamentTotal = true): GroupScopeRow[] {
+  const groupMatches = played.flatMap(p => p.kind === 'group' ? [p.match] : [])
+  const koMatches = played.flatMap(p => p.kind === 'ko' ? [p.match] : [])
+  const scoped = completionScopedResults(results, new Set(groupMatches.map(m => m.id)))
   return users.map(user => {
     const predictionById: Record<string, MatchScores> = {}
     for (const m of Object.values(user.groupMatches).flat()) {
@@ -149,33 +242,42 @@ export function rowsForMatches(users: User[], results: TournamentResults, matche
     let tzelifaCount = 0
     let pgiyaCount = 0
     let matchPoints = 0
-    for (const match of matches) {
+    for (const match of groupMatches) {
       const predicted = predictionById[match.id] ?? { home: null, away: null }
       const outcome = singleMatchOutcome(predicted, match.scores!)
       if (outcome === 'tzelifa') tzelifaCount++
       else if (outcome === 'pgiya') pgiyaCount++
       matchPoints += singleMatchPoints(match.id, predicted, match.scores!)
     }
+    const ko = koHits(user, koMatches)
+    tzelifaCount += ko.tzelifa
+    pgiyaCount += ko.pgiya
+    matchPoints += ko.points
     const goalsByMatch = results.playerMatchGoals?.[user.topGoalscorer]
-    const goalsPoints = matches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0) * POINTS_PER_GOAL
-    const { advancementPoints, placePoints } = scoped
-      ? computeGroupBreakdown(user, scoped)
-      : { advancementPoints: 0, placePoints: 0 }
+    const goalsPoints = groupMatches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0) * POINTS_PER_GOAL
+    // computeUserPoints drives both the full-tournament total and (per round) the
+    // KO advancement/title bonus we attribute to the round-deciding match. Compute
+    // it once when either is needed.
+    const breakdown = withTournamentTotal || koMatches.length > 0 ? computeUserPoints(user, results) : null
+    const group = scoped ? computeGroupBreakdown(user, scoped) : { advancementPoints: 0, placePoints: 0 }
+    const koAdvancement = breakdown ? koAdvancementForSlice(breakdown, results.knockoutStages, koMatches) : 0
+    const advancementPoints = group.advancementPoints + koAdvancement
+    const placePoints = group.placePoints
     const total = matchPoints + advancementPoints + placePoints + goalsPoints
-    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, placePoints, goalsPoints, total, tournamentTotal: withTournamentTotal ? computeUserPoints(user, results).total : 0 }
+    return { label: user.label, tzelifaCount, pgiyaCount, matchPoints, advancementPoints, placePoints, goalsPoints, total, tournamentTotal: withTournamentTotal ? breakdown!.total : 0 }
   })
 }
 
-// Points gained over a chosen stretch — played group matches from `fromIndex`
-// through `toIndex` (1-based, inclusive) in chronological order. A form table:
-// sort by total to see who gained the most across the stretch.
+// Points gained over a chosen stretch — played matches (group and knockout) from
+// `fromIndex` through `toIndex` (1-based, inclusive) in chronological order. A
+// form table: sort by total to see who gained the most across the stretch.
 export function buildRangeRows(users: User[], results: TournamentResults, fromIndex: number, toIndex: number): GroupScopeRow[] {
-  return rowsForMatches(users, results, playedGroupMatchesChrono(results).slice(fromIndex - 1, toIndex))
+  return rowsForPlayedMatches(users, results, playedMatchesChrono(results).slice(fromIndex - 1, toIndex))
 }
 
 // Each bettor's cumulative rank as of the first `count` played matches.
-function ranksAsOf(users: User[], results: TournamentResults, chrono: GroupMatch[], count: number): Record<string, number> {
-  const rows = rowsForMatches(users, results, chrono.slice(0, count), false).sort(GROUP_SORTERS.total)
+function ranksAsOf(users: User[], results: TournamentResults, chrono: PlayedMatch[], count: number): Record<string, number> {
+  const rows = rowsForPlayedMatches(users, results, chrono.slice(0, count), false).sort(GROUP_SORTERS.total)
   const ranks = competitionRanks(rows, r => r.total)
   return Object.fromEntries(rows.map((r, i) => [r.label, ranks[i]]))
 }
@@ -186,16 +288,17 @@ function ranksAsOf(users: User[], results: TournamentResults, chrono: GroupMatch
 // Null when the stretch starts at game 1 — there's no "before" to compare to.
 export function rangePlaceMovement(users: User[], results: TournamentResults, fromIndex: number, toIndex: number): Record<string, number | null> {
   if (fromIndex <= 1) return Object.fromEntries(users.map(u => [u.label, null]))
-  const chrono = playedGroupMatchesChrono(results)
+  const chrono = playedMatchesChrono(results)
   const before = ranksAsOf(users, results, chrono, fromIndex - 1)
   const after = ranksAsOf(users, results, chrono, toIndex)
   return Object.fromEntries(users.map(u => [u.label, before[u.label] - after[u.label]]))
 }
 
-// Each bettor's rank after every played match, chronologically:
-// trajectory[label][i] = their cumulative rank as of played match i+1.
+// Each bettor's rank after every played group match, chronologically:
+// trajectory[label][i] = their cumulative rank as of played match i+1. Stays
+// group-only — the timelapse chart is a group-stage view.
 export function rankTrajectories(users: User[], results: TournamentResults): Record<string, number[]> {
-  const chrono = playedGroupMatchesChrono(results)
+  const chrono: PlayedMatch[] = playedGroupMatchesChrono(results).map(match => ({ kind: 'group', match }))
   const snapshots = Array.from({ length: chrono.length }, (_, i) => ranksAsOf(users, results, chrono, i + 1))
   return Object.fromEntries(users.map(u => [u.label, snapshots.map(s => s[u.label])]))
 }

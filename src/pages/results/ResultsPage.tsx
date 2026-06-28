@@ -9,7 +9,7 @@ import type { User } from '../../users/index'
 import ScopedLeaderboard from '../../leaderboard/ScopedLeaderboard'
 import { reportUsage } from '../../shared/reportUsage'
 import type { Scope } from '../../leaderboard/leaderboardRows'
-import { playedGroupMatchesChrono, playedMatchLabel } from '../../leaderboard/leaderboardRows'
+import { playedMatchesChrono, playedMatchChronoLabel } from '../../leaderboard/leaderboardRows'
 import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
@@ -34,7 +34,7 @@ Object.values(GROUPS).forEach(group =>
 )
 
 const LOCKED_MATCH_IDS = getLockedMatchIds(realTournamentResults)
-const INITIAL_PLAYED_COUNT = playedGroupMatchesChrono(realTournamentResults).length
+const INITIAL_PLAYED_COUNT = playedMatchesChrono(realTournamentResults).length
 // Frozen at load from the committed real scores — the by-date view scrolls here
 const NEXT_MATCH_ID = nextUnplayedMatchId(realTournamentResults)
 
@@ -280,7 +280,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }
 
   // chronological timeline the "טווח" selectors choose from (grows as you simulate)
-  const playedMatchLabels = playedGroupMatchesChrono(tournamentResults).map(playedMatchLabel)
+  const playedMatchLabels = playedMatchesChrono(tournamentResults).map(playedMatchChronoLabel)
   const rangeFrom = Math.min(lbRangeFrom, playedMatchLabels.length)
   const rangeTo = Math.min(lbRangeTo, playedMatchLabels.length)
   // keep the stretch valid (from ≤ to) as either end moves

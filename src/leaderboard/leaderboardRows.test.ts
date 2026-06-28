@@ -167,6 +167,82 @@ test('combined sorter breaks total ties by tzelifot', () => {
 const datedMatch = (id: string, matchDate: string, kickoffIST: string, scores?: { home: number; away: number }): GroupMatch =>
   ({ id, homeTeam: 'H', awayTeam: 'A', matchDate, kickoffIST, scores: scores ?? { home: null, away: null } })
 
+const koResult = (matchNum: number, home: string, away: string, matchDate: string, kickoffIST: string, scores: { home: number; away: number; drawWinner?: 'home' | 'away' }): KnockoutMatch =>
+  ({ matchNum, home, away, resolved: true, matchDate, kickoffIST, scores })
+const koPick = (matchNum: number, home: string, away: string, scores: { home: number; away: number; drawWinner?: 'home' | 'away' }): KnockoutMatch =>
+  ({ matchNum, home, away, resolved: true, scores })
+
+test('buildRangeRows scores knockout match points within the range', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: { A: [datedMatch('a1', '11 ביוני', '22:00', { home: 1, away: 0 })] },
+    knockoutStages: {
+      ...EMPTY_RESULTS.knockoutStages,
+      r32: [koResult(73, 'Brazil', 'France', '28 ביוני', '22:00', { home: 2, away: 1 })],
+    },
+  }
+  // Dana: tzelifa on the group match (a1) and an exact call on KO #73 (R32 tzelifa = 7)
+  const dana = makeUser({
+    label: 'Dana',
+    groupMatches: { A: [grpMatch('a1', 1, 0)] },
+    knockoutStages: { ...EMPTY_RESULTS.knockoutStages, r32: [koPick(73, 'Brazil', 'France', { home: 2, away: 1 })] },
+  })
+  // Yossi: predicted France to win #73 — wrong outcome, no points
+  const yossi = makeUser({
+    label: 'Yossi',
+    groupMatches: { A: [grpMatch('a1', 0, 1)] },
+    knockoutStages: { ...EMPTY_RESULTS.knockoutStages, r32: [koPick(73, 'Brazil', 'France', { home: 0, away: 1 })] },
+  })
+
+  // Range over match #2 only (KO #73): Dana banks the R32 tzelifa, Yossi nothing
+  const koOnly = buildRangeRows([dana, yossi], results, 2, 2)
+  expect(koOnly.map(r => ({ label: r.label, tzelifaCount: r.tzelifaCount, matchPoints: r.matchPoints }))).toEqual([
+    { label: 'Dana', tzelifaCount: 1, matchPoints: 7 },
+    { label: 'Yossi', tzelifaCount: 0, matchPoints: 0 },
+  ])
+
+  // Full stretch a1..#73: Dana's group tzelifa (4) + KO tzelifa (7) = 11
+  const [danaFull] = buildRangeRows([dana], results, 1, 2)
+  expect(danaFull.tzelifaCount).toBe(2)
+  expect(danaFull.matchPoints).toBe(11)
+})
+
+test('buildRangeRows credits KO advancement and the title bonus to the range with the deciding match', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    knockoutStages: {
+      ...EMPTY_RESULTS.knockoutStages,
+      r32: [
+        koResult(73, 'Brazil', 'France', '28 ביוני', '22:00', { home: 2, away: 1 }),
+        koResult(88, 'Italy', 'Spain', '29 ביוני', '22:00', { home: 1, away: 0 }), // chronologically completes R32
+      ],
+      r16: [koResult(89, 'Brazil', 'Italy', '5 ביולי', '22:00', { home: 1, away: 0 })],
+      final: [koResult(104, 'Brazil', 'Italy', '19 ביולי', '22:00', { home: 2, away: 0 })],
+    },
+    champion: 'Brazil',
+  }
+  // Dana tips Brazil + Italy to reach R16 (2 × OLEH r32 = 14) and Brazil as champion (25)
+  const dana = makeUser({
+    label: 'Dana',
+    predictedChampion: 'Brazil',
+    knockoutStages: {
+      ...EMPTY_RESULTS.knockoutStages,
+      r32: [koPick(73, 'Brazil', 'France', { home: 2, away: 1 }), koPick(88, 'Italy', 'Spain', { home: 1, away: 0 })],
+      r16: [koPick(89, 'Brazil', 'Italy', { home: 1, away: 0 })],
+    },
+  })
+
+  // Range ending before the last R32 match (#73 only): R32 advancement not yet owned
+  const [before] = buildRangeRows([dana], results, 1, 1)
+  expect(before.advancementPoints).toBe(0)
+  // Range holding the completing R32 match (#88): the R32 advancement lands here
+  const [atR32] = buildRangeRows([dana], results, 1, 2)
+  expect(atR32.advancementPoints).toBe(2 * OLEH_POINTS.r32)
+  // Range over the final only (#104): the champion bonus lands here, R32 advancement does not
+  const [atFinal] = buildRangeRows([dana], results, 4, 4)
+  expect(atFinal.advancementPoints).toBe(OLEH_POINTS.champion)
+})
+
 test('buildRangeRows scores only the chosen stretch of games', () => {
   const results: TournamentResults = {
     ...EMPTY_RESULTS,
