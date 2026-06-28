@@ -1,12 +1,22 @@
 import { isUnpredicted, type MatchScores } from '../../shared/types'
 import type { User } from '../../users/index'
 
-type Props = { matchId: string; homeLabel: string; awayLabel: string; users: User[]; actualScore?: MatchScores | null }
+type Props = {
+  matchId: string
+  homeLabel: string
+  awayLabel: string
+  users: User[]
+  actualScore?: MatchScores | null
+  // How to read a user's predicted score for this match. Defaults to the flat
+  // predictions map; knockout pages pass an orientation-corrected lookup so a
+  // bettor who had the two teams reversed still counts toward the real side.
+  scoreFor?: (u: User) => MatchScores | null | undefined
+}
 
-export default function PredictionSummary({ matchId, homeLabel, awayLabel, users, actualScore = null }: Props) {
+export default function PredictionSummary({ matchId, homeLabel, awayLabel, users, actualScore = null, scoreFor }: Props) {
   let homeWins = 0, draws = 0, awayWins = 0
   for (const u of users) {
-    const p = u.predictions[matchId]
+    const p = scoreFor ? scoreFor(u) : u.predictions[matchId]
     if (!p || isUnpredicted(p)) continue
     if (p.home! > p.away!) homeWins++
     else if (p.home! < p.away!) awayWins++

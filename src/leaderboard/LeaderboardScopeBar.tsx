@@ -71,6 +71,12 @@ export default function LeaderboardScopeBar({ scope, onScopeChange, rangeFrom, r
           aria-pressed={mode === 'records'}
           onClick={() => onScopeChange('records')}
         >שיאים</button>
+        <button
+          type="button"
+          className={modeBtn(mode === 'prob')}
+          aria-pressed={mode === 'prob'}
+          onClick={() => onScopeChange('prob')}
+        >סיכויי זכייה</button>
       </div>
 
       {mode === 'group' && (

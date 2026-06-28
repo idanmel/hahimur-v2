@@ -127,6 +127,30 @@ test('shows a points table for the bettors on a resolved knockout match', () => 
   expect(aliceRow.querySelector('.match-lb__pts')!.textContent).toBe('7')
 })
 
+// Parity with the group page: the knockout match also shows the win/draw/win
+// "ניחושים · סך הכל" tally, counting participants by their (orientation-corrected)
+// outcome so a reversed call still lands on the right side.
+test('shows the predictions summary tally for the bettors on a resolved knockout match', () => {
+  const resolved: KnockoutMatch = {
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+    scores: { home: 1, away: 0 }, matchDate: '28 ביוני', kickoffIST: '22:00',
+  }
+  vi.mocked(findKnockoutMatch).mockReturnValueOnce(resolved)
+  const users = [
+    // South Korea win, stored straight
+    koUser('Alice', [{ matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true, scores: { home: 2, away: 1 }, matchDate: '28 ביוני', kickoffIST: '22:00' }]),
+    // South Korea win, stored reversed (Canada 1 – S.Korea 2) → same side as Alice
+    koUser('Bob', [{ matchNum: 73, home: 'Canada', away: 'South Korea', resolved: true, scores: { home: 1, away: 2 }, matchDate: '28 ביוני', kickoffIST: '22:00' }]),
+    // didn't predict this fixture → not counted
+    koUser('Carol', []),
+  ]
+  render(<KnockoutMatchPage matchNum={73} users={users} />)
+  expect(screen.getByText('סך הכל')).toBeInTheDocument()
+  // [away, draw, home] columns; both bettors are on the home (South Korea) side.
+  const counts = screen.getAllByTestId('pred-count').map(el => Number(el.textContent))
+  expect(counts).toEqual([0, 0, 2])
+})
+
 // The old per-bettor participants list is replaced by the same score-distribution
 // summary the group pages show: bettors bucketed by their (orientation-corrected)
 // scoreline, with the points recap once the match is decided.

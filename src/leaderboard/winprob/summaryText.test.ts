@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import type { Row, AdvancementSummary, PickStatus, StageReach, StageStat } from '../../../sim-core'
-import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline } from './summaryText'
+import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, potentialClause, fragilityClause } from './summaryText'
 
 function pick(over: Partial<PickStatus> & { team: string; predictedRank: number; stage: PickStatus['stage'] }): PickStatus {
   return { teamHe: over.team, reach: 0, groupFirst: 0, topsGroup: false, ...over }
@@ -10,8 +10,8 @@ function summary(picks: PickStatus[]): AdvancementSummary {
   return { picks, secured: c('secured'), likely: c('likely'), bubble: c('bubble'), longshot: c('longshot'), out: c('out'), total: picks.length, decided: c('bubble') + c('longshot') === 0 }
 }
 const sr = (over: Partial<StageReach>): StageReach => ({ r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0, ...over })
-function stage(key: string, label: string, edge: number): StageStat {
-  return { key: key as StageStat['key'], label, val: 0, field: 0, edge }
+function stage(key: string, label: string, edge: number, val = 0, field = 0): StageStat {
+  return { key: key as StageStat['key'], label, val, field, edge }
 }
 function row(over: Partial<Row>): Row {
   return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', reason: '', stages: [], ...over }
@@ -55,21 +55,105 @@ describe('edgeClause', () => {
   })
 })
 
+describe('advancersClause', () => {
+  test('counts the backed teams that escaped the group and the points banked', () => {
+    const adv = summary([
+      pick({ team: 'ספרד', predictedRank: 1, stage: 'secured', reach: 1 }),
+      pick({ team: 'גרמניה', predictedRank: 2, stage: 'secured', reach: 1 }),
+      pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 }),
+    ])
+    expect(advancersClause(adv)).toBe('2 מתוך 3 שבחרת עלו מהבתים — 8 נק׳ עלייה כבר בכיס')
+  })
+  test('reads honestly when none advanced', () => {
+    expect(advancersClause(summary([pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 })])))
+      .toBe('אף אחת מ-1 הקבוצות שבחרת לא עלתה מהבתים')
+  })
+  test('returns null with no advancement picks', () => {
+    expect(advancersClause(summary([]))).toBeNull()
+  })
+  test('adds the group-stage comparison vs the field when a row is given', () => {
+    const adv = summary([pick({ team: 'ספרד', predictedRank: 1, stage: 'secured', reach: 1 })])
+    const r = row({ stages: [stage('group', 'שלב הבתים', 18)] })
+    r.stages[0] = { ...r.stages[0], val: 70, field: 52 }
+    expect(advancersClause(adv, r)).toBe('1 מתוך 1 שבחרת עלו מהבתים — 4 נק׳ עלייה כבר בכיס · בשלב הבתים 70 נק׳ מול 52 בממוצע (+18)')
+  })
+})
+
+describe('crossingsClause', () => {
+  test('joins locked, still-possible (with the likeliest named), and broken', () => {
+    expect(crossingsClause({ locked: 3, liveCount: 2, broken: 1, topLive: { a: 'ספרד', b: 'גרמניה', pct: 41 } }))
+      .toBe('3 כבר נעולות — המפגש מובטח · 2 עוד אפשריות (הקרובה: ספרד–גרמניה 41%) · 1 כבר נשברו')
+  })
+  test('returns null when there is nothing to say', () => {
+    expect(crossingsClause({ locked: 0, liveCount: 0, broken: 0 })).toBeNull()
+  })
+  test('appends the R32 points comparison vs the field when a row is given', () => {
+    const r = row({ stages: [stage('r32', 'שלב 32', -9)] })
+    r.stages[0] = { ...r.stages[0], val: 24, field: 33 }
+    expect(crossingsClause({ locked: 2, liveCount: 0, broken: 1 }, r))
+      .toBe('2 כבר נעולות — המפגש מובטח · 1 כבר נשברו · בשלב ה-32 24 נק׳ צפויות מול 33 בממוצע (−9)')
+  })
+})
+
+describe('potentialClause', () => {
+  test('sums the per-stage edges into a total gap and names the biggest lever', () => {
+    const r = row({ stages: [stage('group', 'שלב הבתים', 8), stage('final', 'גמר', 22), stage('gb', 'נעל זהב', -5)] })
+    expect(potentialClause(r)).toBe('הצפי הכולל שלך כ-25 נק׳ מעל ממוצע המהמרים — עיקר היתרון: גמר +22 נק׳')
+  })
+  test('frames a deficit when the bettor trails the field', () => {
+    const r = row({ stages: [stage('group', 'שלב הבתים', -4), stage('sf', 'חצי גמר', -16)] })
+    expect(potentialClause(r)).toBe('הצפי הכולל שלך כ-20 נק׳ מתחת לממוצע המהמרים — עיקר הפיגור: חצי גמר −16 נק׳')
+  })
+  test('returns null without stage data', () => {
+    expect(potentialClause(row({ stages: [] }))).toBeNull()
+  })
+})
+
+describe('fragilityClause', () => {
+  test('leads with the rare differentiating picks and notes the consensus ones', () => {
+    expect(fragilityClause({
+      rare: [{ teamHe: 'צרפת', others: 2 }, { teamHe: 'ספרד', others: 0 }],
+      consensus: [{ teamHe: 'אנגליה', others: 11 }],
+    })).toBe('מה שבאמת מזיז את הסיכוי שלך: צרפת (עוד 2), ספרד (ייחודית לך) — מעטים הימרו עליהן, שם נקבע הפער מול המתחרים. אנגליה (עוד 11) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
+  })
+  test('shows only the consensus note when nothing is rare', () => {
+    expect(fragilityClause({ rare: [], consensus: [{ teamHe: 'ספרד', others: 9 }] }))
+      .toBe('ספרד (עוד 9) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
+  })
+  test('returns null when there is nothing differentiating', () => {
+    expect(fragilityClause({ rare: [], consensus: [] })).toBeNull()
+  })
+})
+
+describe('goldenBootClause', () => {
+  test('shows goals so far and the edge when meaningful', () => {
+    expect(goldenBootClause({ scorerHe: 'הארי קיין', goalsSoFar: 4, alive: true, edge: 8 }))
+      .toBe('הארי קיין — 4 שערים עד כה · +8 נק׳ מול הממוצע')
+  })
+  test('flags an eliminated scorer team over the edge', () => {
+    expect(goldenBootClause({ scorerHe: 'ויניסיוס ג׳וניור', goalsSoFar: 0, alive: false, edge: 10 }))
+      .toBe('ויניסיוס ג׳וניור — טרם כבש · הקבוצה הודחה')
+  })
+  test('returns null without a scorer pick', () => {
+    expect(goldenBootClause({ scorerHe: '—', goalsSoFar: 0, alive: true, edge: 0 })).toBeNull()
+  })
+})
+
 describe('buildBettorHeadline', () => {
   const ME = { self: true, firstName: 'דני' } as const
 
-  test('shows standing, the deepest pick route, other marquee calls, strengths/weaknesses, and fallen picks', () => {
+  test('shows standing, the deepest pick route, other marquee calls, advancers, edge, and eliminated picks', () => {
     const adv = summary([
-      pick({ team: 'צרפת', predictedRank: 7, stage: 'likely' }),
-      pick({ team: 'אנגליה', predictedRank: 6, stage: 'likely' }),
-      pick({ team: 'ספרד', predictedRank: 5, stage: 'likely' }),
-      pick({ team: 'טורקיה', predictedRank: 2, stage: 'out' }),
+      pick({ team: 'צרפת', predictedRank: 7, stage: 'likely', reach: 1 }),
+      pick({ team: 'אנגליה', predictedRank: 6, stage: 'likely', reach: 1 }),
+      pick({ team: 'ספרד', predictedRank: 5, stage: 'likely', reach: 1 }),
+      pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 }),
     ])
     const reach = {
       צרפת: sr({ r16: 0.82, qf: 0.55, sf: 0.3, final: 0.21, champion: 0.13 }),
       אנגליה: sr({ final: 0.16 }), ספרד: sr({ sf: 0.43 }),
     }
-    const r = row({ curRank: 1, expRank: 5, winPct: 24, top5Pct: 63.6, avgPts: 402, stages: [stage('group', 'שלב הבתים', 22), stage('gb', 'נעל זהב', 7)] })
+    const r = row({ curRank: 1, expRank: 5, winPct: 24, top5Pct: 63.6, avgPts: 402, stages: [stage('group', 'שלב הבתים', 22, 80, 58), stage('gb', 'נעל זהב', 7)] })
     const h = buildBettorHeadline(r, adv, reach, 27, ME)
     // standing reads as a verdict: place in words, the title odds, and the projected slip
     expect(h.standing).toContain('אתה בראש הטבלה, מקום 1 מתוך 27')
@@ -80,9 +164,11 @@ describe('buildBettorHeadline', () => {
     expect(h.route).toEqual({ teamHe: 'צרפת', ladder: 'שמינית 82% ← רבע 55% ← חצי 30% ← גמר 21% ← אלופה 13%' })
     // the *other* marquee calls, deepest first (the route team is not repeated)
     expect(h.bigBets).toBe('אנגליה לגמר (16%), ספרד לחצי הגמר (43%)')
-    expect(h.strength).toBe('שלב הבתים +22, נעל זהב +7 (נק׳ מעל ממוצע המהמרים)')
-    expect(h.weakness).toBeUndefined()
-    expect(h.fallen).toBe('טורקיה')
+    // three of four backed teams escaped the group → 12 banked, plus the field comparison
+    expect(h.advancers).toBe('3 מתוך 4 שבחרת עלו מהבתים — 12 נק׳ עלייה כבר בכיס · בשלב הבתים 80 נק׳ מול 58 בממוצע (+22)')
+    // the gap-explainer: total edge summed across stages, biggest lever named
+    expect(h.potential).toBe('הצפי הכולל שלך כ-29 נק׳ מעל ממוצע המהמרים — עיקר היתרון: שלב הבתים +22 נק׳')
+    expect(h.eliminated).toBe('טורקיה')
   })
 
   test('writes the standing in third person for another bettor', () => {
@@ -93,14 +179,24 @@ describe('buildBettorHeadline', () => {
     expect(h.standing).toContain('סיום סביב מקום 9')
   })
 
-  test('flags an eliminated marquee pick and reports a weakness', () => {
+  test('flags an eliminated marquee pick and explains the points deficit', () => {
     const adv = summary([pick({ team: 'ברזיל', predictedRank: 7, stage: 'out' })])
-    const r = row({ stages: [stage('gb', 'נעל זהב', -15), stage('group', 'שלב הבתים', 5)] })
+    const r = row({ stages: [stage('gb', 'נעל זהב', -15), stage('group', 'שלב הבתים', 5, 30, 25)] })
     const h = buildBettorHeadline(r, adv, {}, 27, ME)
     expect(h.route).toBeUndefined()
     expect(h.bigBets).toBe('ברזיל (לאליפות) — הודחה')
-    expect(h.strength).toBe('שלב הבתים +5 (נק׳ מעל ממוצע המהמרים)')
-    expect(h.weakness).toBe('נעל זהב −15 (נק׳ מתחת לממוצע)')
+    expect(h.potential).toBe('הצפי הכולל שלך כ-10 נק׳ מתחת לממוצע המהמרים — עיקר הפיגור: נעל זהב −15 נק׳')
+    expect(h.eliminated).toBe('ברזיל')
+  })
+
+  test('threads the crossings and golden-boot digests into the read', () => {
+    const adv = summary([pick({ team: 'ספרד', predictedRank: 5, stage: 'likely', reach: 1 })])
+    const r = row({ scorer: 'הארי קיין', stages: [] })
+    const h = buildBettorHeadline(r, adv, {}, 27, ME,
+      { locked: 2, liveCount: 1, broken: 1, topLive: { a: 'גרמניה', b: 'ברזיל', pct: 38 } },
+      { scorerHe: 'הארי קיין', goalsSoFar: 3, alive: true, edge: 6 })
+    expect(h.crossings).toBe('2 כבר נעולות — המפגש מובטח · 1 עוד אפשריות (הקרובה: גרמניה–ברזיל 38%) · 1 כבר נשברו')
+    expect(h.goldenBoot).toBe('הארי קיין — 3 שערים עד כה · +6 נק׳ מול הממוצע')
   })
 
   test('routes a semifinal pick only as deep as it was backed', () => {

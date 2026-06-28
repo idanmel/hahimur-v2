@@ -21,7 +21,7 @@ export default function ScopedLeaderboard({ users, results, realResults, scope, 
   rangeTo: number
   me?: string
 }) {
-  if (scope === 'prob') return <WinProbabilityView results={realResults} me={me} />
+  if (scope === 'prob') return <WinProbabilityView results={realResults} me={me} users={users} />
   if (scope === 'records') return <RecordsView users={users} results={realResults} me={me} />
   if (scope === 'timelapse') return <TimelapseView users={users} results={results} me={me} />
   if (scope === 'crossings') return <CrossingsView user={users.find(u => u.label === me)} users={users} results={realResults} />

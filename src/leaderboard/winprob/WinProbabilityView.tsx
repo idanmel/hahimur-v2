@@ -1,11 +1,16 @@
 import { Fragment, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
 import type { Row, AdvancementSummary, StageReach } from '../../../sim-core'
 import { realEliminations, effectiveEliminations, advancementSummaryForLabel } from '../../../sim-core'
+import type { User } from '../../users'
+import { TEAMS } from '../../shared/groups'
+import { SCORERS } from '../../../golden-boot'
+import { computeUserCrossings, crossingProbability } from '../crossings'
 import { playedChrono, playedStateUpTo } from './realPlayed'
 import { useWinProbabilities } from './useWinProbabilities'
 import { fmtPct, buildBettorHeadline } from './summaryText'
-import type { BettorHeadline, HeadlineSubject } from './summaryText'
+import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, FragilityDigest } from './summaryText'
 
 const KO_KEYS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
 
@@ -43,19 +48,47 @@ function ExpectedPlace({ curRank, expRank }: { curRank: number; expRank: number 
   )
 }
 
+// Inline emphasis for the dense personal-read lines: the figures that carry the
+// meaning — percentages, point totals, and the ± gaps vs the field — are bolded, and a
+// signed gap is tinted green (advantage) or red (deficit) so it reads at a glance. The
+// text builders stay pure strings (unit-tested); the highlighting lives only here, at
+// render time, by wrapping matched number tokens. Order in the alternation matters:
+// "<0.1%" and percentages before the points/paren forms so they win the match.
+// A leading ±sign on a points token only counts when it isn't glued to a letter, so the
+// hyphen in the Hebrew prefix "כ-" (≈, as in "כ-402 נק׳") is NOT read as a red minus.
+const HL_TOKEN = /(<0\.1%|\d+(?:\.\d+)?%|(?<!\p{L})[+\-−]?\d+ נק׳|\([+\-−]\d+\))/gu
+function tokenClass(tok: string): string {
+  const t = tok.replace(/^\(/, '')
+  if (t.startsWith('+')) return 'wp-hl wp-hl--up'
+  if (t.startsWith('−') || t.startsWith('-')) return 'wp-hl wp-hl--down'
+  return 'wp-hl'
+}
+function emphasize(text: string): ReactNode {
+  // String.split with a capturing group interleaves plain text (even indices) and the
+  // captured number tokens (odd indices).
+  return text.split(HL_TOKEN).map((part, i) =>
+    i % 2 === 1
+      ? <b key={i} className={tokenClass(part)}>{part}</b>
+      : <Fragment key={i}>{part}</Fragment>,
+  )
+}
+
 // The shared body of a bettor's personal read: the standing paragraph plus the
 // labelled storyline lines. Rendered identically at the top of the page and inside
 // any row's expand-on-tap detail, so the two never drift apart.
 function HeadlineBody({ h }: { h: BettorHeadline }) {
   return (
     <>
-      <p className="wp-me-standing">{h.standing}</p>
+      <p className="wp-me-standing">{emphasize(h.standing)}</p>
       <ul className="wp-me-lines">
-        {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{h.route.ladder}</span></li>}
-        {h.bigBets && <li><span className="wp-me-label">עוד קלפים גדולים</span><span>{h.bigBets}</span></li>}
-        {h.strength && <li><span className="wp-me-label">החוזקות</span><span>{h.strength}</span></li>}
-        {h.weakness && <li><span className="wp-me-label">החולשות</span><span>{h.weakness}</span></li>}
-        {h.fallen && <li><span className="wp-me-label">כבר נפלו מהבית</span><span>{h.fallen}</span></li>}
+        {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{emphasize(h.route.ladder)}</span></li>}
+        {h.bigBets && <li><span className="wp-me-label">עוד קלפים גדולים</span><span>{emphasize(h.bigBets)}</span></li>}
+        {h.advancers && <li><span className="wp-me-label">עולות</span><span>{emphasize(h.advancers)}</span></li>}
+        {h.crossings && <li><span className="wp-me-label">הצלבות R32</span><span>{emphasize(h.crossings)}</span></li>}
+        {h.potential && <li><span className="wp-me-label">פוטנציאל מול השדה</span><span>{emphasize(h.potential)}</span></li>}
+        {h.fragility && <li><span className="wp-me-label">תלות בתוצאות</span><span>{emphasize(h.fragility)}</span></li>}
+        {h.goldenBoot && <li><span className="wp-me-label">נעל זהב</span><span>{emphasize(h.goldenBoot)}</span></li>}
+        {h.eliminated && <li><span className="wp-me-label">הודחו</span><span className="wp-elim">{h.eliminated}</span></li>}
       </ul>
     </>
   )
@@ -64,12 +97,13 @@ function HeadlineBody({ h }: { h: BettorHeadline }) {
 // Tap-to-open personal read for one bettor — the very same synthesis shown in the
 // featured card up top, just for the clicked row (named, third person; or "אתה"
 // when it's the viewer's own row).
-function RowDetail({ row, advancement, stageReach, totalPlayers, isMe }: {
+function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, fragility }: {
   row: Row; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number; isMe: boolean
+  crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
 }) {
   const firstName = row.label.split(' ')[0]
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
-  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject)
+  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, fragility)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
@@ -81,11 +115,12 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe }: {
 // The featured personal read for the identified bettor, pinned to the top of the
 // page so they don't have to find and expand their own row — identical prose to the
 // row detail. Built entirely from this bettor's own picks (no generic filler).
-function MyHeadline({ name, row, advancement, stageReach, totalPlayers }: {
+function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, fragility }: {
   name: string; row: Row; advancement: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number
+  crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
 }) {
   const firstName = name.split(' ')[0]
-  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName })
+  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
@@ -98,7 +133,7 @@ function MyHeadline({ name, row, advancement, stageReach, totalPlayers }: {
 // pre-tournament priors, with everything simulated from team strength alone.
 const PRE_TOURNAMENT = '__pre__'
 
-export default function WinProbabilityView({ results, me }: { results: TournamentResults; me?: string }) {
+export default function WinProbabilityView({ results, me, users = [] }: { results: TournamentResults; me?: string; users?: User[] }) {
   const chrono = useMemo(() => playedChrono(results), [results])
   const [openLabel, setOpenLabel] = useState<string | null>(null)
   // selected "point in time": a played match id, the PRE_TOURNAMENT sentinel, or
@@ -113,7 +148,8 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
       : (chrono.length ? chrono[chrono.length - 1].id : null)
   const isLatest = !selectedPre && !!effId && chrono.length > 0 && effId === chrono[chrono.length - 1].id
   const played = useMemo(() => (!selectedPre && effId ? playedStateUpTo(chrono, effId) : {}), [chrono, effId, selectedPre])
-  const eliminations = useMemo(() => realEliminations(resultsUpTo(results, played)), [results, played])
+  const trimmed = useMemo(() => resultsUpTo(results, played), [results, played])
+  const eliminations = useMemo(() => realEliminations(trimmed), [trimmed])
   // Real golden-boot goals accrued up to the viewed point, so the projection and
   // current rank reward a picked scorer who's already scoring.
   const playerGoals = useMemo(() => {
@@ -129,11 +165,90 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
     return cur
   }, [results, played])
 
-  const { status, rows, reachByTeam, groupFirstByTeam, stageReachByTeam } = useWinProbabilities(played, playerGoals)
+  const { status, rows, reachByTeam, groupFirstByTeam, stageReachByTeam, crossingProbByMatch } = useWinProbabilities(played, playerGoals)
   // Certain real exits, widened by the model's verdict: a pick the simulation gives
   // essentially no path to the knockouts is shown as eliminated even before its
   // group formally closes — so "still alive" never contradicts a ~0% pick.
   const eliminationsEff = useMemo(() => effectiveEliminations(eliminations, reachByTeam), [eliminations, reachByTeam])
+
+  // The R32 bracket as it stands at the viewed point — the reality each bettor's
+  // cross-bracket pairings are judged against.
+  const actualR32 = trimmed.knockoutStages.r32
+  const usersByLabel = useMemo(() => new Map(users.map(u => [u.label, u])), [users])
+  const scorerTeam = useMemo(() => new Map(SCORERS.map(s => [s.name, s.team])), [])
+
+  // One bettor's crossings picture, digested for the headline: locked (the meeting is
+  // guaranteed), still-possible (with the likeliest named), and broken pairings.
+  const crossingsDigestFor = (label: string): CrossingsDigest | null => {
+    const u = usersByLabel.get(label)
+    if (!u) return null
+    const { locked, potential, missed } = computeUserCrossings(u.knockoutStages?.r32 ?? [], actualR32, crossingProbByMatch)
+    const live = potential
+      .map(c => ({ c, p: crossingProbability(c, crossingProbByMatch) ?? 0 }))
+      .filter(x => x.p > 0)
+      .sort((a, b) => b.p - a.p)
+    if (!locked.length && !live.length && !missed.length) return null
+    const top = live[0]
+    return {
+      locked: locked.length,
+      liveCount: live.length,
+      broken: missed.length + (potential.length - live.length),
+      topLive: top
+        ? { a: TEAMS[top.c.teams[0].team]?.he ?? top.c.teams[0].team, b: TEAMS[top.c.teams[1].team]?.he ?? top.c.teams[1].team, pct: Math.round(top.p * 100) }
+        : undefined,
+    }
+  }
+
+  // How many bettors back each team as a *deep* pick (QF+). The same team in many
+  // brackets is a consensus call; in few, a differentiator — the basis for judging how
+  // much a given team's fate actually swings one bettor's standing vs the field.
+  const deepBackers = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of rows) {
+      const adv = advancementSummaryForLabel(r.label, reachByTeam, groupFirstByTeam, eliminationsEff)
+      for (const p of adv?.picks ?? []) {
+        if (p.predictedRank >= 4) m.set(p.team, (m.get(p.team) ?? 0) + 1)
+      }
+    }
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, reachByTeam, groupFirstByTeam, eliminationsEff])
+
+  // Pool-relative fragility for one bettor: split their live deep picks into the rare
+  // ones (few co-backers → where their standing diverges from the field) and the
+  // consensus ones (widely shared → a collapse drags everyone down together).
+  const fragilityDigestFor = (row: Row): FragilityDigest | null => {
+    const total = rows.length
+    if (!total) return null
+    const adv = advancementSummaryForLabel(row.label, reachByTeam, groupFirstByTeam, eliminationsEff)
+    const deep = (adv?.picks ?? [])
+      .filter(p => p.stage !== 'out' && p.predictedRank >= 4)
+      .sort((a, b) => b.predictedRank - a.predictedRank)
+    const rare: { teamHe: string; others: number }[] = []
+    const consensus: { teamHe: string; others: number }[] = []
+    for (const p of deep) {
+      const backers = deepBackers.get(p.team) ?? 1
+      const others = Math.max(0, backers - 1)
+      const share = backers / total
+      if (share <= 0.33) rare.push({ teamHe: p.teamHe, others })
+      else if (share >= 0.5) consensus.push({ teamHe: p.teamHe, others })
+    }
+    if (!rare.length && !consensus.length) return null
+    return { rare: rare.slice(0, 3), consensus: consensus.slice(0, 2) }
+  }
+
+  // The picked scorer's live status for one bettor's row.
+  const goldenBootDigestFor = (row: Row): GoldenBootDigest | null => {
+    if (!row.scorer || row.scorer === '—') return null
+    const team = scorerTeam.get(row.scorer)
+    const gb = row.stages.find(s => s.key === 'gb')
+    return {
+      scorerHe: row.scorer,
+      goalsSoFar: playerGoals[row.scorer] ?? 0,
+      alive: team ? !eliminationsEff.has(team) : true,
+      edge: gb?.edge ?? 0,
+    }
+  }
 
   if (status === 'unsupported') {
     return <div className="lb-prob lb-prob--msg">הדפדפן הזה לא תומך בחישוב הסיכויים. נסו דפדפן עדכני.</div>
@@ -147,11 +262,6 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
 
   return (
     <div className="lb-prob">
-      <p className="lb-prob-caption">
-        הסיכוי לסיים ראשון מבין כל המהמרים{' '}
-        {isLatest ? 'לפי התוצאות האמיתיות' : selectedPre ? 'לפי המצב לפני תחילת הטורניר' : 'לפי המצב אחרי המשחק שנבחר'}
-      </p>
-
       {chrono.length >= 1 && (
         <div className="lb-prob-controls">
           <label className="wp-picker-label" htmlFor="wp-point">נקודת זמן</label>
@@ -193,6 +303,9 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
             advancement={advancementSummaryForLabel(me!, reachByTeam, groupFirstByTeam, eliminationsEff)}
             stageReach={stageReachByTeam}
             totalPlayers={rows.length}
+            crossings={crossingsDigestFor(me!)}
+            goldenBoot={goldenBootDigestFor(meRow)}
+            fragility={fragilityDigestFor(meRow)}
           />
         ) : null
       })()}
@@ -248,6 +361,9 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
                           stageReach={stageReachByTeam}
                           totalPlayers={rows.length}
                           isMe={isMe}
+                          crossings={crossingsDigestFor(r.label)}
+                          goldenBoot={goldenBootDigestFor(r)}
+                          fragility={fragilityDigestFor(r)}
                         />
                       </td>
                     </tr>
@@ -262,7 +378,9 @@ export default function WinProbabilityView({ results, me }: { results: Tournamen
       <p className="lb-prob-note">
         <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «מקום צפוי» = הדירוג הממוצע בסיום,
         וחץ מראה אם צפויים לעלות או לרדת. <b>לחצו על שם</b> לסיכום אישי מלא — מצב ומגמה, מסלול הקבוצה
-        שנבחרה הכי עמוק, הקלפים הגדולים, החוזקות והחולשות, וקבוצות שכבר נפלו.
+        שנבחרה הכי עמוק, הקלפים הגדולים, העולות וההצלבות מול ממוצע המהמרים, הפוטנציאל הכולל שמסביר
+        את אחוז הזכייה, אילו בחירות עומק ייחודיות לך מול קונצנזוס (מה באמת מזיז את הסיכוי),
+        מצב נעל הזהב, וקבוצות שהודחו.
         {!isLatest && <> בחרתם נקודת זמן קודמת — אפשר לחזור ל«המשחק האחרון» בבורר למעלה.</>}
       </p>
       </>

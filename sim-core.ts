@@ -39,9 +39,26 @@ const TRACKED_SCORERS = new Set(USERS.map(u => u.topGoalscorer).filter(Boolean))
 
 const BASE = 1.3
 const strength = (team: string) => TEAM_STRENGTH[team] ?? { att: 1.0, def: 1.0 }
+
+// Host-nation edge. The 2026 hosts play on home soil (crowd, no travel,
+// familiarity) in front of partisan crowds throughout, an advantage the Elo
+// priors — built from mostly-neutral and mixed-venue history — don't capture.
+// World Cup home advantage is real but smaller and streakier than club football,
+// so we keep it light: a host scores ~10% more and concedes ~8% fewer. Applied to
+// the host team in every match regardless of nominal home/away; cancels out when
+// both sides are hosts.
+const HOST_TEAMS = new Set(['United States', 'Mexico', 'Canada'])
+const HOST_ATT = 1.10
+const HOST_DEF = 0.92
+
 function lambdas(home: string, away: string): [number, number] {
   const h = strength(home), a = strength(away)
-  return [BASE * h.att * a.def, BASE * a.att * h.def]
+  let lh = BASE * h.att * a.def
+  let la = BASE * a.att * h.def
+  const homeHost = HOST_TEAMS.has(home), awayHost = HOST_TEAMS.has(away)
+  if (homeHost && !awayHost) { lh *= HOST_ATT; la *= HOST_DEF }
+  else if (awayHost && !homeHost) { la *= HOST_ATT; lh *= HOST_DEF }
+  return [lh, la]
 }
 function sampleScore(home: string, away: string): MatchScores {
   const [lh, la] = lambdas(home, away)

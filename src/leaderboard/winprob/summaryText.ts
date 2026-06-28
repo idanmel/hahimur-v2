@@ -3,6 +3,7 @@
 // the view just renders what these return.
 import type { Row, AdvancementSummary, PickStatus, StageReach } from '../../../sim-core'
 import { reachAtRank } from '../../../sim-core'
+import { OLEH_POINTS } from '../points'
 
 // A win% that rounds to 0.0 isn't a proven impossibility — at the card's sim count
 // it just means "below the resolution we can see". Showing "<0.1%" instead of "0%"
@@ -107,9 +108,134 @@ export interface BettorHeadline {
   standing: string
   route?: { teamHe: string; ladder: string } // deepest live pick's simulated path
   bigBets?: string    // the other marquee depth calls (finalist/SF), with odds
-  strength?: string   // top stages where the bettor beats the field, in points
-  weakness?: string   // top stage where the bettor trails the field, in points
-  fallen?: string     // group picks already out of the race
+  advancers?: string  // how many backed teams escaped the group + points banked, vs field
+  crossings?: string  // R32 cross-bracket pairings: locked / possible / broken, vs field
+  potential?: string  // total projected points vs the field + the stage driving the gap
+  fragility?: string  // how result-dependent the bet is (the central-90% points band)
+  goldenBoot?: string // the picked top scorer's standing and projected edge
+  eliminated?: string // every pick already knocked out (group or knockout)
+}
+
+// The crossings picture for one bettor, pre-digested by the view from the live sim
+// so this module stays pure: how many of their R32 cross-bracket pairings are nailed
+// on (the meeting will happen), how many can still come true, how many already broke,
+// and the single likeliest live one to call out by name.
+export interface CrossingsDigest {
+  locked: number
+  liveCount: number
+  broken: number
+  topLive?: { a: string; b: string; pct: number }
+}
+
+// The picked golden-boot scorer's live status, digested by the view: their goals so
+// far, whether their team is still in, and the projected points edge vs the field.
+export interface GoldenBootDigest {
+  scorerHe: string
+  goalsSoFar: number
+  alive: boolean
+  edge: number
+}
+
+// How result-dependent a bet is *relative to the pool* — the only fragility that
+// matters in a winner-takes-the-pot race. The view digests the bettor's live deep
+// picks (QF+) into two buckets:
+//   • rare      — few other bettors backed them this deep, so they're where the bettor
+//                 wins or loses ground vs the field (high leverage, true fragility).
+//   • consensus — most of the field backed them too, so if they fall everyone falls
+//                 together and the bettor's standing barely moves (low leverage).
+// Each carries `others` = how many *other* bettors share that deep pick.
+export interface FragilityDigest {
+  rare: { teamHe: string; others: number }[]
+  consensus: { teamHe: string; others: number }[]
+}
+
+// תלות בתוצאות — answers "if my big teams go out, does it actually cost me, given who
+// else picked them?". Leads with the rare picks (where the bettor's fate diverges from
+// the field) and notes the consensus ones (whose collapse drags everyone down equally,
+// so they barely move the standing). Returns null when there's nothing differentiating.
+export function fragilityClause(d: FragilityDigest): string | null {
+  const parts: string[] = []
+  if (d.rare.length) {
+    const list = d.rare.map(p => p.others === 0 ? `${p.teamHe} (ייחודית לך)` : `${p.teamHe} (עוד ${p.others})`).join(', ')
+    parts.push(`מה שבאמת מזיז את הסיכוי שלך: ${list} — מעטים הימרו עליהן, שם נקבע הפער מול המתחרים`)
+  }
+  if (d.consensus.length) {
+    const list = d.consensus.map(p => `${p.teamHe} (עוד ${p.others})`).join(', ')
+    parts.push(`${list} קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה`)
+  }
+  return parts.length ? parts.join('. ') : null
+}
+
+// The expected points the bettor banks at one stage and how it compares to the field
+// average there — read straight off the row the sim produced, rounded for prose.
+function stageEdge(row: Row | undefined, key: string): { val: number; field: number; edge: number } | null {
+  const s = row?.stages.find(st => st.key === key)
+  if (!s) return null
+  return { val: Math.round(s.val), field: Math.round(s.field), edge: Math.round(s.edge) }
+}
+
+// עולות — how many of the teams the bettor backed to escape their group actually did,
+// and the advancement points that locks in. Group play is over, so reach is 0/1 and a
+// team that reached the R32 banked OLEH_POINTS.group whatever it did next — exactly the
+// pool's advancement credit, the most concrete "points already in the bag" line we have.
+// With a row, it also says how the bettor's group-stage haul stacks up against the field
+// — the comparative read that explains part of the win-% gap.
+export function advancersClause(s: AdvancementSummary, row?: Row): string | null {
+  if (!s.total) return null
+  const advanced = s.picks.filter(p => p.reach >= 0.5).length
+  const base = advanced
+    ? `${advanced} מתוך ${s.total} שבחרת עלו מהבתים — ${advanced * OLEH_POINTS.group} נק׳ עלייה כבר בכיס`
+    : `אף אחת מ-${s.total} הקבוצות שבחרת לא עלתה מהבתים`
+  const g = stageEdge(row, 'group')
+  if (g && Math.abs(g.edge) >= 1) {
+    return `${base} · בשלב הבתים ${g.val} נק׳ מול ${g.field} בממוצע (${g.edge >= 0 ? '+' : '−'}${Math.abs(g.edge)})`
+  }
+  return base
+}
+
+// הצלבות — the value in the bettor's R32 cross-bracket pairings, the rare high-yield
+// calls. "Locked" pairings will physically happen, so the bettor's score bet on them
+// is live; "still possible" ones are upside with the likeliest named; "broken" are gone.
+// With a row, it closes with the R32 points the model projects for this bettor vs the
+// field — the round these crossings actually pay out in, so it explains the gap there.
+export function crossingsClause(d: CrossingsDigest, row?: Row): string | null {
+  const parts: string[] = []
+  if (d.locked) parts.push(`${d.locked} כבר נעולות — המפגש מובטח`)
+  if (d.liveCount) {
+    parts.push(d.topLive
+      ? `${d.liveCount} עוד אפשריות (הקרובה: ${d.topLive.a}–${d.topLive.b} ${d.topLive.pct}%)`
+      : `${d.liveCount} עוד אפשריות`)
+  }
+  if (d.broken) parts.push(`${d.broken} כבר נשברו`)
+  const r = stageEdge(row, 'r32')
+  if (r && Math.abs(r.edge) >= 1) {
+    parts.push(`בשלב ה-32 ${r.val} נק׳ צפויות מול ${r.field} בממוצע (${r.edge >= 0 ? '+' : '−'}${Math.abs(r.edge)})`)
+  }
+  return parts.length ? parts.join(' · ') : null
+}
+
+// פוטנציאל — the line that answers the question every bettor asks looking at their
+// win-%: "why am I at X%?". It sums the per-stage edges into a single total-points gap
+// vs the field (what the sim is really ranking on) and names the stage carrying most of
+// it — so the percentage reads as a consequence of concrete projected points, not magic.
+export function potentialClause(row: Row): string | null {
+  if (!row.stages.length) return null
+  const diff = Math.round(row.stages.reduce((acc, s) => acc + s.edge, 0))
+  const top = [...row.stages].sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))[0]
+  if (!top || Math.abs(Math.round(top.edge)) < 1) return null
+  const lever = `${top.label} ${top.edge >= 0 ? '+' : '−'}${Math.abs(Math.round(top.edge))} נק׳`
+  const side = diff >= 0 ? `כ-${diff} נק׳ מעל ממוצע המהמרים` : `כ-${Math.abs(diff)} נק׳ מתחת לממוצע המהמרים`
+  return `הצפי הכולל שלך ${side} — ${diff >= 0 ? 'עיקר היתרון' : 'עיקר הפיגור'}: ${lever}`
+}
+
+// נעל זהב — the picked scorer's race: goals banked so far, a flag if their team is out
+// (which caps the bet), and the projected points edge against the field when it matters.
+export function goldenBootClause(d: GoldenBootDigest): string | null {
+  if (!d.scorerHe || d.scorerHe === '—') return null
+  let s = d.goalsSoFar > 0 ? `${d.scorerHe} — ${d.goalsSoFar} שערים עד כה` : `${d.scorerHe} — טרם כבש`
+  if (!d.alive) s += ' · הקבוצה הודחה'
+  else if (Math.abs(d.edge) >= EDGE_MIN) s += ` · ${d.edge > 0 ? '+' : '−'}${Math.abs(d.edge).toFixed(0)} נק׳ מול הממוצע`
+  return s
 }
 
 // Who we're writing about — second person ("אתה") for the viewer's own featured
@@ -165,15 +291,13 @@ export function buildBettorHeadline(
   stageReach: Record<string, StageReach>,
   totalPlayers: number,
   subject: HeadlineSubject,
+  crossings: CrossingsDigest | null = null,
+  goldenBoot: GoldenBootDigest | null = null,
+  fragility: FragilityDigest | null = null,
 ): BettorHeadline {
   const standing = standingText(row, totalPlayers, subject)
 
   const out: BettorHeadline = { standing }
-  const sig = row.stages.filter(s => Math.abs(s.edge) >= EDGE_MIN)
-  const strong = sig.filter(s => s.edge > 0).sort((a, b) => b.edge - a.edge).slice(0, 2).map(s => `${s.label} +${s.edge.toFixed(0)}`)
-  const weak = sig.filter(s => s.edge < 0).sort((a, b) => a.edge - b.edge).slice(0, 1).map(s => `${s.label} −${Math.abs(s.edge).toFixed(0)}`)
-  if (strong.length) out.strength = `${strong.join(', ')} (נק׳ מעל ממוצע המהמרים)`
-  if (weak.length) out.weakness = `${weak.join(', ')} (נק׳ מתחת לממוצע)`
 
   if (advancement && advancement.total > 0) {
     const deepLive = advancement.picks.filter(p => p.stage !== 'out' && p.predictedRank >= 4).sort((a, b) => b.predictedRank - a.predictedRank)
@@ -184,8 +308,33 @@ export function buildBettorHeadline(
     }
     const others = advancement.picks.filter(p => p.predictedRank >= 5 && p.team !== lead?.team).sort((a, b) => b.predictedRank - a.predictedRank)
     if (others.length) out.bigBets = others.map(p => betPhrase(p, stageReach)).join(', ')
-    const fallen = advancement.picks.filter(p => p.predictedRank <= 3 && p.stage === 'out').map(p => p.teamHe)
-    if (fallen.length) out.fallen = fallen.join(', ')
+
+    const advancers = advancersClause(advancement, row)
+    if (advancers) out.advancers = advancers
+
+    // General "eliminated" — every pick already knocked out, at any depth, not just
+    // the group busts (the knockouts are under way, so deep picks fall here too).
+    const eliminated = advancement.picks.filter(p => p.stage === 'out').map(p => p.teamHe)
+    if (eliminated.length) out.eliminated = eliminated.join(', ')
   }
+
+  if (crossings) {
+    const c = crossingsClause(crossings, row)
+    if (c) out.crossings = c
+  }
+
+  const potential = potentialClause(row)
+  if (potential) out.potential = potential
+
+  if (fragility) {
+    const f = fragilityClause(fragility)
+    if (f) out.fragility = f
+  }
+
+  if (goldenBoot) {
+    const gb = goldenBootClause(goldenBoot)
+    if (gb) out.goldenBoot = gb
+  }
+
   return out
 }

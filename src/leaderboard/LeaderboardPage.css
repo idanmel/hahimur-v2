@@ -401,6 +401,28 @@
   border-right: 1px solid rgba(200, 184, 122, 0.22);
 }
 
+/* Pin the grand-total column to the table's start (RTL: left) edge so the
+   headline number stays in view while the phase columns scroll. Once the
+   knockout phases pile up the table outgrows its container and "סה"כ" would
+   otherwise slide off-screen. Desktop only — the mobile table is narrow.
+   The cell needs an opaque background and a lift shadow so the scrolling
+   columns don't bleed through underneath the pinned cell. */
+.lb-desktop .lb-th--total,
+.lb-desktop .lb-td--total {
+  position: sticky;
+  left: 0;
+}
+
+.lb-desktop .lb-th--total {
+  z-index: 3;
+}
+
+.lb-desktop tr.lb-row td.lb-td--total {
+  z-index: 2;
+  background: var(--paper);
+  box-shadow: 6px 0 8px -6px rgba(11, 34, 68, 0.25);
+}
+
 /* ── Tap-to-expand rank trajectory ── */
 .lb-name-btn {
   display: inline-flex;
@@ -1915,6 +1937,19 @@
   font-weight: 700;
   color: var(--muted);
 }
+
+/* Inline emphasis on the number tokens inside the dense personal-read lines so the
+   meaningful figures pop out of the prose. Neutral figures (%, points) darken; a
+   signed gap vs the field is tinted green (advantage) or red (deficit). */
+.wp-hl { font-weight: 700; color: var(--navy); }
+.wp-hl--up { color: var(--green); }
+.wp-hl--down { color: var(--red); }
+
+/* eliminated teams read in red — they're the dead weight in the bet */
+.wp-elim { color: var(--red); font-weight: 600; }
+.wp-me-standing .wp-hl { color: inherit; }
+.wp-me-standing .wp-hl--up { color: var(--green); }
+.wp-me-standing .wp-hl--down { color: var(--red); }
 
 @media (max-width: 560px) {
   .wp-me-lines li { flex-direction: column; align-items: flex-start; gap: 1px; }

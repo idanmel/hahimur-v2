@@ -84,6 +84,13 @@ describe('buildRecords', () => {
     expect(cat(cats, 'pgiot').entries[0]).toMatchObject({ label: 'Bob', value: 1 })
   })
 
+  test('combined hits (פגיעות + צליפות) sums exact and result-only across bettors', () => {
+    const c = cat(cats, 'hits')
+    // Alice has 1 צליפה, Bob has 1 פגיעה → each totals 1; both surface, tied.
+    expect(c.entries).toHaveLength(2)
+    expect(c.entries.every(e => e.value === 1)).toBe(true)
+  })
+
   test('advancement (עולות) counts qualifiers both tipped right', () => {
     const c = cat(cats, 'olot')
     expect(c.entries).toHaveLength(2)
@@ -104,6 +111,40 @@ describe('buildRecords', () => {
     const mine = buildRecords([alice, bob], results, 'Bob')
     expect(cat(mine, 'pgiot').entries[0].isMe).toBe(true)
     expect(cat(mine, 'tzelifot').entries.find(e => e.label === 'Bob')).toBeUndefined()
+  })
+})
+
+describe('buildRecords — streaks', () => {
+  // A scored group match with an explicit date so the timeline orders correctly.
+  const gmD = (id: string, home: number | null, away: number | null, day: number): GroupMatch => ({
+    id, homeTeam: '?', awayTeam: '?', scores: { home, away }, matchDate: `${day} ביוני`, kickoffIST: '20:00',
+  })
+
+  // Actual results: A1 1-0, A2 2-0, A3 0-0, A4 3-1, A5 1-1 (chronological by day).
+  const results = mkResults({
+    groupMatches: { A: [gmD('A1', 1, 0, 11), gmD('A2', 2, 0, 12), gmD('A3', 0, 0, 13), gmD('A4', 3, 1, 14), gmD('A5', 1, 1, 15)] },
+  })
+
+  // hit, hit, miss, hit, hit → longest hit run 2, longest dry run 1.
+  const streaky = mkUser('Streaky', {
+    groupMatches: { A: [gmD('A1', 1, 0, 11), gmD('A2', 2, 0, 12), gmD('A3', 0, 1, 13), gmD('A4', 3, 1, 14), gmD('A5', 5, 5, 15)] },
+  })
+  // miss×5 → longest dry run 5, no hit run.
+  const cold = mkUser('Cold', {
+    groupMatches: { A: [gmD('A1', 0, 1, 11), gmD('A2', 0, 1, 12), gmD('A3', 1, 0, 13), gmD('A4', 0, 1, 14), gmD('A5', 0, 1, 15)] },
+  })
+  const cats = buildRecords([streaky, cold], results)
+
+  test('hit-streak record ranks the longest run of פגיעה/צליפה on top', () => {
+    const c = cat(cats, 'hitStreak')
+    expect(c.entries[0]).toMatchObject({ label: 'Streaky', value: 2 })
+    expect(c.entries.map(e => e.label)).not.toContain('Cold') // zero run dropped
+  })
+
+  test('dry-streak record surfaces the longest run with neither hit', () => {
+    const c = cat(cats, 'missStreak')
+    expect(c.entries[0]).toMatchObject({ label: 'Cold', value: 5 })
+    expect(c.entries.find(e => e.label === 'Streaky')).toMatchObject({ value: 1 })
   })
 })
 

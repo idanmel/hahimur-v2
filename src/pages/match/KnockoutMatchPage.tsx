@@ -11,6 +11,7 @@ import MatchHeader from './MatchHeader'
 import KnockoutMatchLeaderboard from './KnockoutMatchLeaderboard'
 import KnockoutSurvivorsList from './KnockoutSurvivorsList'
 import KnockoutVenn from './KnockoutVenn'
+import PredictionSummary from './PredictionSummary'
 import ScoreFrequencyTable from './ScoreFrequencyTable'
 import { knockoutParticipantScore } from './koParticipants'
 import './MatchPredictionsPage.css'
@@ -85,6 +86,23 @@ export default function KnockoutMatchPage({ matchNum, users = [] }: { matchNum: 
                 <h2 className="section-heading__title">טבלת המנחשים</h2>
               </header>
               <KnockoutMatchLeaderboard match={match} users={users} results={results} me={me} />
+            </>
+          )}
+
+          {participants.length > 0 && (
+            <>
+              <header className="section-heading" dir="rtl">
+                <span className="section-heading__eyebrow">ניחושים</span>
+                <h2 className="section-heading__title">סך הכל</h2>
+              </header>
+              <PredictionSummary
+                matchId={String(matchNum)}
+                homeLabel={teamForSlot(match.home).he}
+                awayLabel={teamForSlot(match.away).he}
+                users={participants}
+                actualScore={realScore}
+                scoreFor={u => koScoreFor.get(u)}
+              />
             </>
           )}
 
