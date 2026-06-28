@@ -1,9 +1,12 @@
 import { GROUPS } from './groups'
+import { tournamentResults } from '../tournament-results'
+import { espnIdToMatchNum } from './koEventIds'
 
 // A slimmed ESPN scoreboard event, as returned by /api/live-scores. Kept
 // minimal and source-agnostic so the endpoint stays a dumb proxy and all the
 // mapping logic lives here (where the app's tests already run).
 export interface LiveEvent {
+  id?: string | null // ESPN event id — how knockout fixtures join to our matchNum
   state: string // 'pre' | 'in' | 'post'
   completed: boolean
   home: string | null
@@ -65,6 +68,37 @@ for (const group of Object.values(GROUPS)) {
   }
 }
 
+// matchNum -> canonicalised fixture teams, used only to orient a knockout live
+// score (ESPN may list home/away the other way round from our bracket). Built
+// from the baked knockout stages; later-round placeholders just won't match a
+// real team, so orientation falls back to ESPN's own order.
+const koFixtures = new Map<number, { home: string | null; away: string | null }>()
+for (const round of Object.values(tournamentResults.knockoutStages ?? {})) {
+  for (const m of round) {
+    koFixtures.set(m.matchNum, { home: canonical(m.home), away: canonical(m.away) })
+  }
+}
+
+// Resolve an event to one of our match ids. Group fixtures join by team pairing;
+// knockout fixtures (not in GROUPS) join by ESPN event id, then orient by name.
+function resolveMatch(
+  e: LiveEvent,
+  home: string | null,
+  away: string | null,
+): { id: string; reversed: boolean } | null {
+  if (home && away) {
+    const hit = pairIndex.get(`${home}|${away}`)
+    if (hit) return hit
+  }
+  const matchNum = espnIdToMatchNum(e.id ?? undefined)
+  if (matchNum !== undefined) {
+    const fixture = koFixtures.get(matchNum)
+    const reversed = !!fixture && away != null && away === fixture.home && home !== fixture.home
+    return { id: String(matchNum), reversed }
+  }
+  return null
+}
+
 // Maps slim ESPN events to a {scores, goals} overlay, keyed by our match ids.
 // Includes in-progress ('in') and completed events; skips pre-match and any
 // pairing that isn't a known group fixture (e.g. knockout matches).
@@ -77,8 +111,7 @@ export function mapLiveEvents(events: LiveEvent[]): LiveOverlay {
     if (!e.completed && e.state !== 'in') continue
     const home = canonical(e.home)
     const away = canonical(e.away)
-    if (!home || !away) continue
-    const hit = pairIndex.get(`${home}|${away}`)
+    const hit = resolveMatch(e, home, away)
     if (!hit) continue
 
     const oriented =

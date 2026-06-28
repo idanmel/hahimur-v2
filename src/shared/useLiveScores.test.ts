@@ -27,4 +27,11 @@ describe('isAnyLive', () => {
     const now = new Date('2026-06-18T00:30:00Z') // L2 window (kickoff 2026-06-17T23:00Z)
     expect(isAnyLive([L1, L2], new Set(), now)).toBe(true)
   })
+
+  it('gates on a knockout fixture too (keyed by matchNum)', () => {
+    // matchNum 73 kicks off 28 ביוני 22:00 IST = 2026-06-28T19:00Z.
+    const ko = { id: '73', matchDate: '28 ביוני', kickoffIST: '22:00' }
+    expect(isAnyLive([ko], new Set(), new Date('2026-06-28T19:30:00Z'))).toBe(true)
+    expect(isAnyLive([ko], new Set(['73']), new Date('2026-06-28T19:30:00Z'))).toBe(false)
+  })
 })

@@ -1,4 +1,4 @@
-import type { TournamentResults } from './types'
+import type { TournamentResults, KnockoutStages } from './types'
 import { derivePlayerGoals } from '../tournament-results'
 import type { LiveOverlay } from './espnLive'
 
@@ -16,6 +16,13 @@ export function mergeLiveResults(base: TournamentResults, live: LiveOverlay): To
   for (const matches of Object.values(base.groupMatches)) {
     for (const m of matches) {
       if (m.scores?.home != null && m.scores?.away != null) finalIds.add(m.id)
+    }
+  }
+  // Knockout matches are keyed by their matchNum (as a string), the same id the
+  // live overlay and the home-feed cards use. A baked final KO score is final.
+  for (const round of Object.values(base.knockoutStages)) {
+    for (const m of round) {
+      if (m.scores?.home != null && m.scores?.away != null) finalIds.add(String(m.matchNum))
     }
   }
 
@@ -37,6 +44,19 @@ export function mergeLiveResults(base: TournamentResults, live: LiveOverlay): To
     })
   }
 
+  // Overlay live KO scores onto the bracket the same way as group matches: only
+  // an in-progress, not-yet-final match, keyed by matchNum. Display only — the
+  // advancer (drawWinner) for a level live scoreline isn't known mid-match.
+  const knockoutStages: KnockoutStages = { ...base.knockoutStages }
+  for (const round of Object.keys(knockoutStages) as (keyof KnockoutStages)[]) {
+    knockoutStages[round] = knockoutStages[round].map(m => {
+      const liveScore = live.scores[String(m.matchNum)]
+      return liveScore && !finalIds.has(String(m.matchNum))
+        ? { ...m, scores: { home: liveScore.home, away: liveScore.away } }
+        : m
+    })
+  }
+
   const playerMatchGoals: Record<string, Record<string, number>> = {}
   for (const [player, byMatch] of Object.entries(base.playerMatchGoals ?? {})) {
     playerMatchGoals[player] = { ...byMatch }
@@ -51,6 +71,7 @@ export function mergeLiveResults(base: TournamentResults, live: LiveOverlay): To
   return {
     ...base,
     groupMatches,
+    knockoutStages,
     playerMatchGoals,
     playerGoals: derivePlayerGoals(playerMatchGoals),
     live: liveStatus,

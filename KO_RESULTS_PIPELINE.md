@@ -120,9 +120,11 @@ group stage** — see the caveat below.
 | S2 | `extractEspnKnockoutResult` in `src/shared/espnKnockout.ts` | ✅ done |
 | S3 | Pre-baked `matchNum → {espnId, fdId}` table (R32 above) | data, R32 verified |
 | S4 | Wire the cron (`scripts/fetch-scores.ts`): fetch summary for KO ids, write via S1; football-data as cross-check | parked |
-| S5 | Live overlay (`espnLive.ts` + `liveResults.ts`) onto `knockoutStages` | parked |
+| S5a | Live **display** overlay onto `knockoutStages` — running score + "חי" via the scoreboard feed, joined by `espnId` (`koEventIds.ts`). Lights up the home feed for free. | ✅ done (2026-06-28, vs live match 73) |
+| S5b | Frozen-90' **scoring** overlay — per-event summary `linescores` so points stay correct through ET/pens | next |
 
-S4/S5 are **parked until a real KO match** can answer the two open questions below.
+S4 and S5b remain **parked/next**; S5a shipped against the live R32 opener. The two
+open questions below still need a match that reaches ET to fully close.
 
 ## Open questions (need a real KO match to verify)
 

@@ -4,10 +4,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // a dumb ESPN proxy and can't affect the app's build graph. All score/scorer
 // mapping happens client-side in src/shared/espnLive.ts.
 
-const GROUP_STAGE_DATES = '20260611-20260628'
-const ESPN_URL = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${GROUP_STAGE_DATES}&limit=200`
+// The whole tournament window (group stage through the final), so knockout
+// fixtures are in the feed too — not just the group stage.
+const TOURNAMENT_DATES = '20260611-20260719'
+const ESPN_URL = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${TOURNAMENT_DATES}&limit=200`
 
 interface SlimEvent {
+  id: string | null // ESPN event id — how knockout fixtures join to our matchNum
   state: string
   completed: boolean
   home: string | null
@@ -31,6 +34,7 @@ interface EspnScoringPlay {
 }
 
 interface EspnEvent {
+  id?: string
   status?: { displayClock?: string; type?: { state?: string; completed?: boolean } }
   competitions?: { competitors?: EspnCompetitor[]; details?: EspnScoringPlay[] }[]
 }
@@ -57,6 +61,7 @@ function slimEvent(e: EspnEvent): SlimEvent | null {
   }
 
   return {
+    id: e.id ?? null,
     state: e.status?.type?.state ?? 'pre',
     completed: !!e.status?.type?.completed,
     home: home.team?.displayName ?? null,
@@ -70,10 +75,13 @@ function slimEvent(e: EspnEvent): SlimEvent | null {
 
 // Test/dev hook: ?fake=England:1-0:Croatia&fakeScorer=Harry%20Kane simulates a
 // live match without a real game, so the overlay can be exercised end-to-end.
-function fakeEvent(spec: string, scorer: string | undefined): SlimEvent | null {
+// ?fakeId=760486 attaches an ESPN event id so a knockout fixture (which joins by
+// id, not team pairing) can be simulated too.
+function fakeEvent(spec: string, scorer: string | undefined, id: string | undefined): SlimEvent | null {
   const m = spec.match(/^(.+):(\d+)-(\d+):(.+)$/)
   if (!m) return null
   return {
+    id: id ?? null,
     state: 'in',
     completed: false,
     home: m[1],
@@ -91,7 +99,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const fake = req.query.fake
   if (typeof fake === 'string') {
     const scorer = typeof req.query.fakeScorer === 'string' ? req.query.fakeScorer : undefined
-    const event = fakeEvent(fake, scorer)
+    const id = typeof req.query.fakeId === 'string' ? req.query.fakeId : undefined
+    const event = fakeEvent(fake, scorer, id)
     return res.status(200).json({ events: event ? [event] : [], fetchedAt })
   }
 

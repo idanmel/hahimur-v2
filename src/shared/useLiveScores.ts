@@ -24,13 +24,27 @@ function sameOverlay(a: LiveOverlay, b: LiveOverlay): boolean {
 // where `process` is undefined.
 const IS_TEST = typeof process !== 'undefined' && process.env?.VITEST === 'true'
 
-const ALL_MATCHES = Object.values(GROUPS).flatMap(g => g.matches)
+// Every fixture that can gate live polling: group matches plus knockout fixtures
+// (keyed by matchNum, like the live overlay). A knockout match only carries a
+// kickoff once its bracket slot resolves, so unresolved later rounds simply never
+// satisfy the window check.
+const ALL_MATCHES = [
+  ...Object.values(GROUPS).flatMap(g => g.matches),
+  ...Object.values(tournamentResults.knockoutStages ?? {})
+    .flat()
+    .map(m => ({ id: String(m.matchNum), matchDate: m.matchDate, kickoffIST: m.kickoffIST })),
+]
 
 function finalMatchIds(): Set<string> {
   const ids = new Set<string>()
   for (const matches of Object.values(tournamentResults.groupMatches)) {
     for (const m of matches) {
       if (m.scores?.home != null && m.scores?.away != null) ids.add(m.id)
+    }
+  }
+  for (const round of Object.values(tournamentResults.knockoutStages ?? {})) {
+    for (const m of round) {
+      if (m.scores?.home != null && m.scores?.away != null) ids.add(String(m.matchNum))
     }
   }
   return ids

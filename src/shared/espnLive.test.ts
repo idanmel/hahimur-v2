@@ -3,6 +3,7 @@ import { mapLiveEvents, type LiveEvent } from './espnLive'
 
 function ev(over: Partial<LiveEvent>): LiveEvent {
   return {
+    id: null,
     state: 'in',
     completed: false,
     home: null,
@@ -107,5 +108,37 @@ describe('mapLiveEvents', () => {
       ev({ state: 'post', completed: true, home: 'England', away: 'Croatia', homeScore: 3, awayScore: 1, clock: "90'" }),
     ])
     expect(live).toEqual({})
+  })
+
+  it('maps a knockout match to its matchNum by ESPN event id', () => {
+    // matchNum 73 (ESPN id 760486) is South Africa vs Canada.
+    const { scores, live } = mapLiveEvents([
+      ev({ id: '760486', home: 'South Africa', away: 'Canada', homeScore: 1, awayScore: 0, clock: "35'" }),
+    ])
+    expect(scores).toEqual({ '73': { home: 1, away: 0 } })
+    expect(live).toEqual({ '73': { clock: "35'", home: 1, away: 0 } })
+  })
+
+  it('orients a knockout score when ESPN lists the teams reversed vs our fixture', () => {
+    // Fixture 73 is South Africa (home) vs Canada (away); ESPN reversed here.
+    const { scores, live } = mapLiveEvents([
+      ev({ id: '760486', home: 'Canada', away: 'South Africa', homeScore: 0, awayScore: 2, clock: "70'" }),
+    ])
+    expect(scores).toEqual({ '73': { home: 2, away: 0 } })
+    expect(live).toEqual({ '73': { clock: "70'", home: 2, away: 0 } })
+  })
+
+  it('counts a picked player\'s knockout goal too', () => {
+    const { goals } = mapLiveEvents([
+      ev({ id: '760486', home: 'South Africa', away: 'Canada', homeScore: 1, awayScore: 0, scorers: ['Harry Kane'] }),
+    ])
+    expect(goals).toEqual({ 'הארי קיין': { '73': 1 } })
+  })
+
+  it('still skips a knockout pairing that arrives without a known event id', () => {
+    const { scores } = mapLiveEvents([
+      ev({ id: null, home: 'England', away: 'Spain', homeScore: 1, awayScore: 1 }),
+    ])
+    expect(scores).toEqual({})
   })
 })

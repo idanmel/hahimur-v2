@@ -64,4 +64,37 @@ describe('mergeLiveResults', () => {
     const merged = mergeLiveResults(base(), { scores: {}, goals: {}, live: { L2: { clock: "90'" } } })
     expect(merged.live).toEqual({})
   })
+
+  it('overlays a live score onto a knockout match keyed by matchNum', () => {
+    const b = base()
+    b.knockoutStages.r32 = [{ matchNum: 73, home: 'South Africa', away: 'Canada', resolved: true }]
+    const merged = mergeLiveResults(b, {
+      scores: { '73': { home: 1, away: 0 } },
+      goals: {},
+      live: { '73': { clock: "35'", home: 1, away: 0 } },
+    })
+    expect(merged.knockoutStages.r32[0].scores).toEqual({ home: 1, away: 0 })
+    expect(merged.live).toEqual({ '73': { clock: "35'", home: 1, away: 0 } })
+  })
+
+  it('never overrides a knockout match that already has a baked final score', () => {
+    const b = base()
+    b.knockoutStages.r32 = [
+      { matchNum: 73, home: 'South Africa', away: 'Canada', resolved: true, scores: { home: 2, away: 1 } },
+    ]
+    const merged = mergeLiveResults(b, {
+      scores: { '73': { home: 9, away: 9 } },
+      goals: {},
+      live: { '73': { clock: "35'" } },
+    })
+    expect(merged.knockoutStages.r32[0].scores).toEqual({ home: 2, away: 1 })
+    expect(merged.live).toEqual({})
+  })
+
+  it('does not mutate the base knockout stages', () => {
+    const b = base()
+    b.knockoutStages.r32 = [{ matchNum: 73, home: 'South Africa', away: 'Canada', resolved: true }]
+    mergeLiveResults(b, { scores: { '73': { home: 1, away: 0 } }, goals: {}, live: {} })
+    expect(b.knockoutStages.r32[0].scores).toBeUndefined()
+  })
 })
