@@ -41,7 +41,7 @@ export default function App() {
        matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :
-       pathname === '/bracket'                            ? <BracketPage /> :
+       pathname === '/bracket'                            ? <BracketPage users={USERS_SORTED} /> :
        pathname === '/odds-9k2'                            ? <WinProbPage /> :
        pathname === '/stats'                             ? <StatsPage users={USERS} /> :
        pathname === '/forms'                              ? <FormsPage users={USERS} usersSorted={USERS_SORTED} /> :

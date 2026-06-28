@@ -1,6 +1,6 @@
 import { computeUserPoints, computeGroupBreakdown, computeGroupTeamDetail, isGroupComplete, singleMatchOutcome, singleMatchPoints, POINTS_PER_GOAL, OLEH_POINTS, PLACE_POINT } from './points'
 import type { GroupTeamHit } from './points'
-import { ALL_GROUP_LETTERS } from '../shared/groups'
+import { ALL_GROUP_LETTERS, TEAMS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
 import { isUnpredicted } from '../shared/types'
 import type { GroupMatch, KnockoutMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
@@ -95,6 +95,11 @@ export function playedGroupMatchesChrono(results: TournamentResults): GroupMatch
     .filter(m => m.scores && !isUnpredicted(m.scores))
     .sort((a, b) => matchSortKey(a.matchDate, a.kickoffIST) - matchSortKey(b.matchDate, b.kickoffIST))
 }
+
+// A played match as a "טווח" range-selector label: "בית 2–1 חוץ" in Hebrew.
+// Expects a match that already has scores (e.g. from playedGroupMatchesChrono).
+export const playedMatchLabel = (m: GroupMatch): string =>
+  `${TEAMS[m.homeTeam].he} ${m.scores!.home}–${m.scores!.away} ${TEAMS[m.awayTeam].he}`
 
 // The match that decides a group: its chronologically-last played match, but
 // only once the group's table is complete. Advancement/place points are awarded

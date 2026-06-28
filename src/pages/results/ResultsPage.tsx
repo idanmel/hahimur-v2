@@ -9,7 +9,7 @@ import type { User } from '../../users/index'
 import ScopedLeaderboard from '../../leaderboard/ScopedLeaderboard'
 import { reportUsage } from '../../shared/reportUsage'
 import type { Scope } from '../../leaderboard/leaderboardRows'
-import { playedGroupMatchesChrono } from '../../leaderboard/leaderboardRows'
+import { playedGroupMatchesChrono, playedMatchLabel } from '../../leaderboard/leaderboardRows'
 import LeaderboardScopeBar from '../../leaderboard/LeaderboardScopeBar'
 import { calculateStandings } from '../../shared/standings'
 import { clearUnresolvedKOScores } from '../../formView/knockout/knockout'
@@ -262,8 +262,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
   }
 
   // chronological timeline the "טווח" selectors choose from (grows as you simulate)
-  const playedMatchLabels = playedGroupMatchesChrono(tournamentResults).map(m =>
-    `${TEAMS[m.homeTeam].he} ${m.scores!.home}–${m.scores!.away} ${TEAMS[m.awayTeam].he}`)
+  const playedMatchLabels = playedGroupMatchesChrono(tournamentResults).map(playedMatchLabel)
   const rangeFrom = Math.min(lbRangeFrom, playedMatchLabels.length)
   const rangeTo = Math.min(lbRangeTo, playedMatchLabels.length)
   // keep the stretch valid (from ≤ to) as either end moves
