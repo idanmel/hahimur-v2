@@ -1,5 +1,6 @@
 import { isUnpredicted, type KnockoutMatch, type MatchScores, type TournamentResults } from '../shared/types'
 import type { User } from '../users'
+import { predictedPairing } from '../formView/knockout/koRounds'
 import { matchSortKey } from '../shared/matchOrder'
 import { singleMatchPoints, POINTS_PER_GOAL, OLEH_POINTS } from './points'
 import { playedGroupMatchesChrono, rowsForMatches } from './leaderboardRows'
@@ -10,20 +11,14 @@ function allKO(stages: TournamentResults['knockoutStages']): KnockoutMatch[] {
   return [...stages.r32, ...stages.r16, ...stages.qf, ...stages.sf, ...stages.thirdPlace, ...stages.final]
 }
 
-// The bettor's predicted match for this pairing — teams matching in either order.
-function userMatchFor(user: User, home: string, away: string): KnockoutMatch | undefined {
-  return allKO(user.knockoutStages).find(m =>
-    m.home && m.away &&
-    ((m.home === home && m.away === away) || (m.home === away && m.away === home)))
-}
-
 // Re-express a predicted score in the actual fixture's home/away terms, so a
 // bettor who stored the two teams reversed still reads in the page's orientation
-// (the penalty winner flips sides with the score). Null if they didn't predict it.
-function orientedPrediction(user: User, actualHome: string, actualAway: string): MatchScores | null {
-  const um = userMatchFor(user, actualHome, actualAway)
+// (the penalty winner flips sides with the score). Matched by pairing within the
+// round, not bracket slot. Null if they didn't predict it.
+function orientedPrediction(user: User, actual: KnockoutMatch): MatchScores | null {
+  const um = predictedPairing(user.knockoutStages, actual)
   if (!um?.scores || isUnpredicted(um.scores)) return null
-  if (um.home === actualHome) return um.scores
+  if (um.home === actual.home) return um.scores
   const sc = um.scores
   return {
     home: sc.away, away: sc.home,
@@ -34,7 +29,7 @@ function orientedPrediction(user: User, actualHome: string, actualAway: string):
 // Points a bettor earns from one played knockout match: the oriented score bet
 // plus any goals their picked scorer netted there — mirroring the group rows.
 function koMatchPointsFor(user: User, actual: KnockoutMatch, results: TournamentResults): number {
-  const predicted = orientedPrediction(user, actual.home, actual.away)
+  const predicted = orientedPrediction(user, actual)
   const betPoints = predicted ? singleMatchPoints(String(actual.matchNum), predicted, actual.scores!) : 0
   const goals = (results.playerMatchGoals?.[user.topGoalscorer]?.[String(actual.matchNum)] ?? 0) * POINTS_PER_GOAL
   return betPoints + goals
@@ -132,7 +127,7 @@ export function buildKnockoutMatchLeaderboardRows(
   return users
     .map(user => ({
       label: user.label,
-      prediction: orientedPrediction(user, match.home, match.away),
+      prediction: orientedPrediction(user, match),
       matchPoints: played ? koMatchPointsFor(user, chrono[idx], results) : 0,
       advancementPoints: played ? koAdvancementFor(user, chrono[idx]) : 0,
       total: totalThrough(user, upTo),

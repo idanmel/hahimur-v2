@@ -5,7 +5,7 @@ import type { GroupLetter } from '../shared/groups'
 import { isUnpredicted } from '../shared/types'
 import type { GroupMatch, KnockoutMatch, MatchScores, ThirdPlaceQualification, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import { matchSortKey, latestBySortKey } from '../shared/matchOrder'
-import { isPlayerParticipatingInKOMatch } from '../formView/knockout/knockout'
+import { isPairing } from '../formView/knockout/koRounds'
 import { competitionRanks } from './rank'
 import type { User } from '../users'
 
@@ -204,12 +204,14 @@ export function hitStats(users: User[], results: TournamentResults): Record<stri
 }
 
 // How many actual R32 matches a bettor "participates" in — they predicted both
-// teams that actually reached that matchup (regardless of which side). Fills in
-// as the bracket firms up; unresolved slots don't count.
+// teams that actually reached that matchup (regardless of side or which slot their
+// bracket routed it through). Fills in as the bracket firms up; unresolved slots
+// don't count.
 export function countR32Participation(userR32: KnockoutMatch[], actualR32: KnockoutMatch[]): number {
   return actualR32.reduce((n, actual) => {
-    const um = userR32.find(m => m.matchNum === actual.matchNum)
-    return n + (um && isPlayerParticipatingInKOMatch(actual, um) ? 1 : 0)
+    if (!actual.resolved) return n
+    const um = userR32.find(m => m.resolved && isPairing(m, actual.home, actual.away))
+    return n + (um ? 1 : 0)
   }, 0)
 }
 

@@ -1,6 +1,7 @@
 import type { KnockoutMatch, KnockoutStages } from '../shared/types'
 import { isUnpredicted } from '../shared/types'
 import { TEAMS } from '../shared/groups'
+import { roundKeyForMatch, isPairing } from '../formView/knockout/koRounds'
 
 // The knockout rounds this view walks through, in order. (Third place is its own
 // odd one-off and isn't part of the "same principle per stage" progression.)
@@ -121,23 +122,6 @@ export interface CrossingsBettor {
   knockoutStages?: KnockoutStages
 }
 
-// The matchNum span of each knockout round, so a real-bracket matchNum maps to the
-// round it belongs to (mirrors deriveKnockoutStages). A crossing is a *round*-level
-// pairing: two teams meeting in the round of 32, regardless of which structural slot
-// each bettor's group finishes route them through.
-const ROUND_RANGES: { key: keyof KnockoutStages; lo: number; hi: number }[] = [
-  { key: 'r32', lo: 73, hi: 88 },
-  { key: 'r16', lo: 89, hi: 96 },
-  { key: 'qf', lo: 97, hi: 100 },
-  { key: 'sf', lo: 101, hi: 102 },
-  { key: 'thirdPlace', lo: 103, hi: 103 },
-  { key: 'final', lo: 104, hi: 104 },
-]
-
-function roundKeyForMatch(matchNum: number): keyof KnockoutStages | undefined {
-  return ROUND_RANGES.find(r => matchNum >= r.lo && matchNum <= r.hi)?.key
-}
-
 // Labels of all bettors who predicted the *same* pairing (side-agnostic) in the same
 // round as this match — i.e. who else is "in" this crossing. Matched by the pairing
 // within the round, NOT by the exact slot: a bettor whose group finishes route the
@@ -150,14 +134,13 @@ export function crossingParticipants(
   teamB: string,
   exclude?: string,
 ): string[] {
-  const key = crossingPairKey(teamA, teamB)
   const roundKey = roundKeyForMatch(matchNum)
   if (!roundKey) return []
   const out: string[] = []
   for (const u of bettors) {
     if (u.label === exclude) continue
     const matches = u.knockoutStages?.[roundKey] ?? []
-    if (matches.some(m => isRealTeam(m.home) && isRealTeam(m.away) && crossingPairKey(m.home, m.away) === key)) {
+    if (matches.some(m => isPairing(m, teamA, teamB))) {
       out.push(u.label)
     }
   }

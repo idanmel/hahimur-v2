@@ -158,15 +158,6 @@ export function clearUnresolvedKOScores(
   return next
 }
 
-export function isPlayerParticipatingInKOMatch(
-  actualMatch: KnockoutMatch,
-  userMatch: KnockoutMatch,
-): boolean {
-  if (!actualMatch.resolved || !userMatch.resolved) return false
-  const actual = new Set([actualMatch.home, actualMatch.away])
-  return actual.has(userMatch.home) && actual.has(userMatch.away)
-}
-
 export function resolveKnockout(round32: KnockoutMatch[], predictions: PredictionsState): KnockoutStages {
   const byNum: Record<number, KnockoutMatch> = {}
   for (const m of round32) byNum[m.matchNum] = m

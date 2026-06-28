@@ -1,5 +1,6 @@
 import type { KnockoutMatch, KnockoutStages, MatchScores, PredictionsState } from '../../shared/types'
 import { buildKnockoutBracket } from './knockout'
+import { KO_ROUND_RANGES } from './koRounds'
 
 // Build the real knockout bracket from the entered group results AND the entered
 // knockout results. The group scores resolve the R32 teams; the koScores resolve
@@ -18,15 +19,8 @@ export function deriveKnockoutStages(
     return scores ? { ...m, scores } : m
   })
 
-  const inRange = (lo: number, hi: number) =>
-    withScores.filter(m => m.matchNum >= lo && m.matchNum <= hi)
-
-  return {
-    r32: inRange(73, 88),
-    r16: inRange(89, 96),
-    qf: inRange(97, 100),
-    sf: inRange(101, 102),
-    thirdPlace: inRange(103, 103),
-    final: inRange(104, 104),
-  } satisfies Record<keyof KnockoutStages, KnockoutMatch[]>
+  return Object.fromEntries(
+    KO_ROUND_RANGES.map(({ key, lo, hi }) =>
+      [key, withScores.filter(m => m.matchNum >= lo && m.matchNum <= hi)]),
+  ) as Record<keyof KnockoutStages, KnockoutMatch[]>
 }
