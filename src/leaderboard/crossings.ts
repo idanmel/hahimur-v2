@@ -305,9 +305,19 @@ export function computeUserCrossings(
       continue
     }
 
-    // 2) Not yet meeting anywhere — judge the pairing against the bracket slot the
-    //    bettor predicted it in (which team is in, what the open side must become).
-    const actual = actualR32.find(m => m.matchNum === um.matchNum)
+    // 2) Not yet meeting anywhere. Judge the pairing against the real slot one of its
+    //    teams has actually reached — NOT the slot the bettor routed it through. Reality
+    //    may have routed these two teams to a different R32 slot than the bettor did
+    //    (their group finishes differed), so keying off um.matchNum would judge them
+    //    against strangers and wrongly break a crossing whose teams are still on track to
+    //    meet. Anchoring to where a paired team really landed measures the pairing against
+    //    its own future. Fall back to the bettor's slot only when neither team has reached
+    //    the round yet (both sides open — nothing to contradict).
+    const teamSlot = (team: string) =>
+      actualR32.find(m => (isRealTeam(m.home) && m.home === team) || (isRealTeam(m.away) && m.away === team))
+    const slot0 = teamSlot(userTeams[0])
+    const slot1 = teamSlot(userTeams[1])
+    const actual = slot0 ?? slot1 ?? actualR32.find(m => m.matchNum === um.matchNum)
     if (!actual) continue
 
     const slots = [actual.home, actual.away]
@@ -323,8 +333,11 @@ export function computeUserCrossings(
       mkTeam(userTeams[1], confirmed, openSlots),
     ]
 
-    // A confirmed team the bettor didn't pair means this slot's crossing already broke.
-    if (confirmed.some(t => !userSet.has(t))) {
+    // Broken when a confirmed team in this slot isn't one the bettor paired, or when both
+    // of the bettor's teams have already reached the round but in *different* matches — so
+    // they can never meet, even if this anchored slot still has an open side.
+    const bothReachedApart = !!slot0 && !!slot1 && slot0.matchNum !== slot1.matchNum
+    if (bothReachedApart || confirmed.some(t => !userSet.has(t))) {
       missed.push({ matchNum: actual.matchNum, teams, pendingSlots, predicted, actualTeams: confirmed })
       continue
     }

@@ -78,6 +78,33 @@ describe('computeUserCrossings', () => {
     expect(missed.some(c => c.teams.some(t => t.team === 'Portugal'))).toBe(false)
   })
 
+  it('keeps a slot-swapped crossing potential while its real slot is still open', () => {
+    // Reality routes Portugal × Croatia through slot 83 (already settled) and is heading
+    // toward Colombia × Ghana at slot 87 — but 87's away side is still a third-place
+    // placeholder. The bettor predicted the two pairings at swapped slots (Colombia/Ghana
+    // at 83, Portugal/Croatia at 87). Colombia/Ghana must NOT be judged against slot 83's
+    // settled Portugal × Croatia — Colombia is on track at its real slot 87, Ghana pending.
+    const actual = [km(83, 'Portugal', 'Croatia'), km(87, 'Colombia', 'שלישית ד')]
+    const user = [km(87, 'Portugal', 'Croatia'), km(83, 'Colombia', 'Ghana')]
+    const { locked, potential, missed } = computeUserCrossings(user, actual)
+    expect(locked.some(c => c.teams.some(t => t.team === 'Portugal'))).toBe(true)
+    const cg = potential.find(c => c.teams.some(t => t.team === 'Colombia'))
+    expect(cg).toBeDefined()
+    expect(cg!.matchNum).toBe(87) // anchored to where Colombia really is, not the routed slot
+    expect(missed.some(c => c.teams.some(t => t.team === 'Ghana'))).toBe(false)
+  })
+
+  it('breaks a pairing whose two teams reached the round in different matches', () => {
+    // Both Switzerland and Spain are in R32, but in different slots (each awaiting a
+    // third-place opponent). A bettor who paired them together can never see it happen.
+    const actual = [km(84, 'Spain', 'שלישית א'), km(85, 'Switzerland', 'שלישית ב')]
+    const user = [km(84, 'Spain', 'Switzerland')]
+    const { locked, potential, missed } = computeUserCrossings(user, actual)
+    expect(locked).toHaveLength(0)
+    expect(potential).toHaveLength(0)
+    expect(missed).toHaveLength(1)
+  })
+
   it('marks a crossing broken by a confirmed team the bettor did not pick as missed', () => {
     const actual = [km(76, 'Brazil', 'סגנית ג')] // Brazil confirmed, bettor paired neither
     const user = [km(76, 'Mexico', 'Canada')]
