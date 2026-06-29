@@ -3,7 +3,11 @@ import { describe, expect, test } from 'vitest'
 import type { KnockoutMatch, PredictionsState, Standing, TournamentResults } from './src/shared/types'
 import { makeUser } from './src/leaderboard/testFixtures'
 import { USERS } from './src/users'
-import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg } from './sim-core'
+import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg, podiumByAdvancer } from './sim-core'
+import { tournamentResults } from './src/tournament-results'
+import { realPlayedState } from './src/leaderboard/winprob/realPlayed'
+import { buildKnockoutBracket } from './src/formView/knockout/knockout'
+import { TEAMS } from './src/shared/groups'
 
 const standing = (team: string): Standing =>
   ({ team, played: 3, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 })
@@ -451,5 +455,52 @@ describe('golden boot banks real goals', () => {
       return w
     }
     expect(wins({ 'הארי קיין': 6 })).toBeGreaterThan(wins({}))
+  })
+})
+
+describe('podiumByAdvancer', () => {
+  const viewer = USERS[0]
+  const played = realPlayedState(tournamentResults)
+  const bracket = buildKnockoutBracket(played)
+  // The first not-yet-played knockout fixture whose two participants are real,
+  // resolved teams (an open round-of-32 match in the current data).
+  const openMatch = bracket.find(m => TEAMS[m.home] && TEAMS[m.away] && !played[String(m.matchNum)])!
+  // A deeper fixture whose feeders are still open, so it carries placeholder labels.
+  const placeholderMatch = bracket.find(m => !(TEAMS[m.home] && TEAMS[m.away]))!
+
+  test('the fixture used by the test really has known teams and is unplayed', () => {
+    expect(openMatch).toBeDefined()
+    expect(placeholderMatch).toBeDefined()
+  })
+
+  test('buckets every simulation by the two real advancers', () => {
+    const r = podiumByAdvancer(viewer, played, openMatch.matchNum, 200, 1)!
+    expect(r).not.toBeNull()
+    expect(new Set([r.teamA, r.teamB])).toEqual(new Set([openMatch.home, openMatch.away]))
+    expect(r.nA + r.nB).toBe(200)                 // a known-teams fixture resolves to one of the two every run
+    for (const p of [r.podiumIfA, r.podiumIfB]) {
+      expect(p).toBeGreaterThanOrEqual(0)
+      expect(p).toBeLessThanOrEqual(1)
+    }
+    // the baseline is the advance-weighted average of the two conditionals, so it
+    // must sit between them — neither outcome can leave both above the marginal.
+    expect(r.podiumBaseline).toBeGreaterThanOrEqual(Math.min(r.podiumIfA, r.podiumIfB))
+    expect(r.podiumBaseline).toBeLessThanOrEqual(Math.max(r.podiumIfA, r.podiumIfB))
+    expect(r.podiumBaseline).toBeCloseTo((r.nA * r.podiumIfA + r.nB * r.podiumIfB) / (r.nA + r.nB), 10)
+  })
+
+  test('returns null for a match that has already been played', () => {
+    const decided: PredictionsState = { ...played, [String(openMatch.matchNum)]: { home: 1, away: 0 } }
+    expect(podiumByAdvancer(viewer, decided, openMatch.matchNum, 50, 1)).toBeNull()
+  })
+
+  test('returns null when the participants are not yet known (placeholder teams)', () => {
+    expect(podiumByAdvancer(viewer, played, placeholderMatch.matchNum, 50, 1)).toBeNull()
+  })
+
+  test('is deterministic for a fixed seed', () => {
+    const a = podiumByAdvancer(viewer, played, openMatch.matchNum, 150, 7)
+    const b = podiumByAdvancer(viewer, played, openMatch.matchNum, 150, 7)
+    expect(a).toEqual(b)
   })
 })

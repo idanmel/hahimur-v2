@@ -27,6 +27,7 @@ import KnockoutSurvivorsList from './KnockoutSurvivorsList'
 import KnockoutVenn from './KnockoutVenn'
 import BestResultCard from '../../formView/groupStage/BestResultCard'
 import MatchRecommendation from './MatchRecommendation'
+import PodiumOnAdvance from './PodiumOnAdvance'
 import { bestRemainingResult } from '../../leaderboard/bestResult'
 import { settledState } from '../stats/group/recommendation'
 import { thirdPickFromQualification, protectedThirdsForGroup } from '../stats/group/selfScore'
@@ -314,6 +315,11 @@ function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore,
       </div>
 
       {!match.resolved && <KnockoutSurvivorsList actualMatch={match} users={users} />}
+
+      {/* Upcoming fixture with known teams: which advancer most lifts your podium odds. */}
+      {match.resolved && !realScore && (
+        <PodiumOnAdvance currentUser={users.find(u => u.label === me)} results={results} matchNum={matchNum} />
+      )}
 
       {match.resolved && (
         <div className="match-predictions">

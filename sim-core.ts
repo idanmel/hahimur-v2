@@ -8,7 +8,7 @@ import { GROUP_MATCHES, ALL_GROUP_LETTERS, TEAMS } from './src/shared/groups'
 import { calculateStandings } from './src/shared/standings'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './src/formView/thirdPlace/thirdPlace'
 import { resolveRound32, resolveKnockout, buildKnockoutBracket } from './src/formView/knockout/knockout'
-import { computeUserPoints } from './src/leaderboard/points'
+import { computeUserPoints, advancingTeam } from './src/leaderboard/points'
 import { TEAM_STRENGTH } from './src/pages/results/teamStrength'
 import { SCORERS } from './golden-boot'
 import { isUnpredicted } from './src/shared/types'
@@ -460,6 +460,84 @@ export function viewerScenario(
       r32: d(r32), r16: d(r16), qf: d(qf), sf: d(sf), third: d(third), final: d(final), goldenBoot: d(gb),
     },
     reach: tracked.map(t => ({ team: t.team, rank: t.rank, label: t.label, prob: reachCount.get(t.team)! / n })),
+  }
+}
+
+// ---- podium lift by knockout advancer --------------------------------------
+// For a single, not-yet-played knockout fixture whose two participants are
+// already known, answer the match card's "what most raises your odds of a high
+// finish here": P(viewer finishes in the top PODIUM_DEPTH of the whole pool |
+// teamA advances) vs the same given teamB advances. We condition by simply
+// bucketing each simulated tournament on which side actually went through this
+// fixture — one sim pass yields both conditionals (no second run), exactly like
+// the scratch analyses.
+//
+// Returns null when there's nothing to advise: the match is already played, or
+// its participants aren't yet locked (a deeper-round fixture whose feeders are
+// still open — then "teamA vs teamB" isn't even defined, so we don't guess).
+
+// How many of the final-table places count as a "high finish" for this card.
+// The UI copy reads this off the same constant, so the metric and the words it's
+// described with can never drift apart.
+export const PODIUM_DEPTH = 5
+
+export interface PodiumByAdvancer {
+  matchNum: number
+  teamA: string
+  teamB: string
+  podiumIfA: number       // P(viewer top-PODIUM_DEPTH | teamA advances)
+  podiumIfB: number       // P(viewer top-PODIUM_DEPTH | teamB advances)
+  // P(viewer top-PODIUM_DEPTH) over ALL sims regardless of who advances — the marginal the
+  // two conditionals must average back to. Lets the card show each outcome's
+  // *signed lift* (conditional − baseline) instead of a bare level: by the law of
+  // total probability one advancer sits above this and the other below, so a raw
+  // "both look high" reading is misleading without it.
+  podiumBaseline: number
+  nA: number              // sims in which teamA advanced (bucket size, for noise)
+  nB: number
+}
+
+function koMatchByNum(ks: KnockoutStages, matchNum: number): KnockoutMatch | undefined {
+  return [...ks.r32, ...ks.r16, ...ks.qf, ...ks.sf, ...ks.thirdPlace, ...ks.final]
+    .find(m => m.matchNum === matchNum)
+}
+
+export function podiumByAdvancer(
+  viewer: User,
+  played: PredictionsState,
+  matchNum: number,
+  n: number,
+  seed: number,
+  realGoals: Record<string, number> = {},
+): PodiumByAdvancer | null {
+  const settled = played[String(matchNum)]
+  if (settled && !isUnpredicted(settled)) return null            // already played
+  const bracketMatch = buildKnockoutBracket(played).find(m => m.matchNum === matchNum)
+  // A fixture whose feeders are still open carries placeholder labels ("מנצח 74")
+  // rather than real team codes — then "teamA vs teamB" isn't defined yet, so we
+  // only advise once both participants resolve to actual teams.
+  if (!bracketMatch || !TEAMS[bracketMatch.home] || !TEAMS[bracketMatch.away]) return null
+  const teamA = bracketMatch.home, teamB = bracketMatch.away
+
+  reseed(seed)
+  const realGames = Object.keys(realGoals).length ? realGamesByTeam(played) : new Map<string, number>()
+  let nA = 0, nB = 0, podA = 0, podB = 0
+  for (let i = 0; i < n; i++) {
+    const res = simulateTournament(played, realGoals, realGames)
+    const advancer = advancingTeam(koMatchByNum(res.knockoutStages, matchNum) ?? ({} as KnockoutMatch))
+    const scored = USERS.map(u => ({ label: u.label, pts: computeUserPoints(u, res).total }))
+    scored.sort((a, b) => b.pts - a.pts)
+    const inTop = scored.slice(0, PODIUM_DEPTH).some(s => s.label === viewer.label)
+    if (advancer === teamA) { nA++; if (inTop) podA++ }
+    else if (advancer === teamB) { nB++; if (inTop) podB++ }
+  }
+  const total = nA + nB
+  return {
+    matchNum, teamA, teamB,
+    podiumIfA: nA ? podA / nA : 0,
+    podiumIfB: nB ? podB / nB : 0,
+    podiumBaseline: total ? (podA + podB) / total : 0,
+    nA, nB,
   }
 }
 
