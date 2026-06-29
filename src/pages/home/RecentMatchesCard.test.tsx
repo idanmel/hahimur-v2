@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import RecentMatchesCard from './RecentMatchesCard'
 import { makeUser } from '../../leaderboard/testFixtures'
-import type { GroupMatch } from '../../shared/types'
+import type { GroupMatch, KnockoutMatch } from '../../shared/types'
 
 const NOW = new Date('2026-06-20T12:00:00Z') // both matches played
 
@@ -78,6 +78,16 @@ test('shows no goalscorer line when the picked scorer did not score in this matc
     />,
   )
   expect(screen.queryByTestId('your-scorer')).not.toBeInTheDocument()
+})
+
+test('shows a played knockout fixture with its round label and score', () => {
+  const ko: KnockoutMatch = {
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+    matchDate: '28 ביוני', kickoffIST: '22:00', scores: { home: 0, away: 1 },
+  }
+  render(<RecentMatchesCard users={users} now={new Date('2026-06-28T21:00:00Z')} matches={[]} koMatches={[ko]} />)
+  expect(screen.getByText('שלב ה-32')).toBeInTheDocument() // round label, not a group letter
+  expect(screen.getByTestId('match-result')).toHaveTextContent('1–0')
 })
 
 test('renders nothing before any match has been played', () => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { GroupMatch } from '../../shared/types'
 import type { User } from '../../users/index'
 import type { KnockoutMatch } from '../../shared/types'
-import { recentMatches, upcomingCards, SCORED_MATCHES, KO_FEED_MATCHES } from './nextMatch'
+import { recentCards, upcomingCards, SCORED_MATCHES, KO_FEED_MATCHES } from './nextMatch'
 import RecentMatchesCard from './RecentMatchesCard'
 import NextMatchCard from './NextMatchCard'
 import './HomeFeed.css'
@@ -27,7 +27,7 @@ type Props = {
 // upcoming fixtures — the "what's next" view.
 export default function HomeFeed({ users, currentUser, now = new Date(), matches = SCORED_MATCHES, koMatches = KO_FEED_MATCHES, playerMatchGoals, liveMatches }: Props) {
   const [view, setView] = useState<View>('fixtures')
-  const list = view === 'results' ? recentMatches(matches, now) : upcomingCards(matches, koMatches, now)
+  const list = view === 'results' ? recentCards(matches, koMatches, now) : upcomingCards(matches, koMatches, now)
 
   return (
     <section className="home-feed" dir="rtl">

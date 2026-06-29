@@ -50,16 +50,6 @@ export function nextMatches(matches: GroupMatch[], now: Date): GroupMatch[] {
   return withinWindowOfFirst(upcoming)
 }
 
-// The mirror image of nextMatches: every played match within 24h of the most
-// recent one, newest first, so the home page shows "how it went" without
-// digging into each match page.
-export function recentMatches(matches: GroupMatch[], now: Date): GroupMatch[] {
-  const played = timed(matches)
-    .filter(x => hasFinalScore(x.m) && x.kickoff <= now.getTime())
-    .sort((a, b) => b.kickoff - a.kickoff)
-  return withinWindowOfFirst(played)
-}
-
 // Given matches already sorted in the desired order, keeps just those whose
 // kickoff is within 15h of the first (anchor) match. Empty in, empty out.
 function withinWindowOfFirst(sorted: Timed[]): GroupMatch[] {
@@ -92,24 +82,42 @@ function koAsGroupMatch(m: KnockoutMatch): GroupMatch {
   }
 }
 
-// The upcoming home-feed cards: group fixtures and resolved knockout fixtures
-// merged into one chronological 15h burst, so once the groups are done the feed
-// rolls straight into the knockouts. A knockout match joins only once its teams
-// are decided; placeholders stay out. Mirrors nextMatches' "within 15h of the
-// closest, started-but-unscored still counts" rule across the combined pool.
-export function upcomingCards(group: GroupMatch[], ko: KnockoutMatch[], now: Date): FeedCard[] {
+// Group fixtures and resolved knockout fixtures merged into one card pool, each
+// paired with its kickoff instant (cards without a parseable date dropped). A
+// knockout match joins only once its teams are decided; placeholders stay out.
+function feedCards(group: GroupMatch[], ko: KnockoutMatch[]): { c: FeedCard; kickoff: number }[] {
   const cards: FeedCard[] = [
     ...group.map(m => ({ match: m })),
     ...ko.filter(m => m.resolved).map(m => ({ match: koAsGroupMatch(m), heading: roundLabel(m.matchNum), ko: m })),
   ]
-  const upcoming = cards
+  return cards
     .map(c => ({ c, kickoff: kickoffDate(c.match.matchDate, c.match.kickoffIST)?.getTime() }))
     .filter((x): x is { c: FeedCard; kickoff: number } => x.kickoff !== undefined)
+}
+
+// The upcoming home-feed cards: group + knockout fixtures merged into one
+// chronological 15h burst, so once the groups are done the feed rolls straight
+// into the knockouts. Mirrors nextMatches' "within 15h of the closest,
+// started-but-unscored still counts" rule across the combined pool.
+export function upcomingCards(group: GroupMatch[], ko: KnockoutMatch[], now: Date): FeedCard[] {
+  const upcoming = feedCards(group, ko)
     .filter(x => !hasFinalScore(x.c.match) && now.getTime() < x.kickoff + MATCH_WINDOW_MS)
     .sort((a, b) => a.kickoff - b.kickoff)
   const anchor = upcoming[0]?.kickoff
   if (anchor === undefined) return []
   return upcoming.filter(x => Math.abs(x.kickoff - anchor) < WINDOW_MS).map(x => x.c)
+}
+
+// The results-feed mirror of upcomingCards: played group and knockout fixtures
+// merged into one 15h burst, newest first, so finished knockout matches show up
+// in "תוצאות אחרונות" alongside the group results.
+export function recentCards(group: GroupMatch[], ko: KnockoutMatch[], now: Date): FeedCard[] {
+  const played = feedCards(group, ko)
+    .filter(x => hasFinalScore(x.c.match) && x.kickoff <= now.getTime())
+    .sort((a, b) => b.kickoff - a.kickoff)
+  const anchor = played[0]?.kickoff
+  if (anchor === undefined) return []
+  return played.filter(x => Math.abs(x.kickoff - anchor) < WINDOW_MS).map(x => x.c)
 }
 
 export interface TopPrediction {
