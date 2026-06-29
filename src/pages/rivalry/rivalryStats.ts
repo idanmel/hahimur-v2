@@ -3,7 +3,7 @@ import type { User } from '../../users'
 import { TEAMS } from '../../shared/groups'
 import { matchSortKey } from '../../shared/matchOrder'
 import { singleMatchPoints, POINTS_PER_GOAL } from '../../leaderboard/points'
-import { rankTrajectories, playedGroupMatchesChrono } from '../../leaderboard/leaderboardRows'
+import { rankTrajectories, playedMatchesChrono, predictionFor, type PlayedMatch } from '../../leaderboard/leaderboardRows'
 import {
   buildMatchDiff,
   matchTally,
@@ -177,22 +177,25 @@ function buildRecentForm(diff: MatchDiffRow[], window = 3): RecentForm | null {
   return { window, a, b, tie }
 }
 
-/** Cumulative match + golden-boot points for one bettor after each played group
- *  match, matching the rank-trajectory basis so the two never contradict. */
-function pointSeries(user: User, results: TournamentResults, chrono: ReturnType<typeof playedGroupMatchesChrono>): number[] {
+/** Cumulative match + golden-boot points for one bettor after each played match
+ *  (group AND knockout), matching the rank-trajectory basis so the two never
+ *  contradict. KO predictions are resolved by oriented pairing via predictionFor. */
+function pointSeries(user: User, results: TournamentResults, chrono: PlayedMatch[]): number[] {
   const goalsByMatch = results.playerMatchGoals?.[user.topGoalscorer]
   let cum = 0
   const out: number[] = []
-  for (const m of chrono) {
-    cum += singleMatchPoints(m.id, user.predictions[m.id] ?? { home: null, away: null }, m.scores!)
-    cum += (goalsByMatch?.[m.id] ?? 0) * POINTS_PER_GOAL
+  for (const played of chrono) {
+    const id = played.kind === 'group' ? played.match.id : String(played.match.matchNum)
+    const pred = predictionFor(user, played) ?? { home: null, away: null }
+    cum += singleMatchPoints(id, pred, played.match.scores!)
+    cum += (goalsByMatch?.[id] ?? 0) * POINTS_PER_GOAL
     out.push(cum)
   }
   return out
 }
 
 function buildPeakGap(a: User, b: User, results: TournamentResults): PeakGap | null {
-  const chrono = playedGroupMatchesChrono(results)
+  const chrono = playedMatchesChrono(results)
   if (!chrono.length) return null
   const aS = pointSeries(a, results, chrono)
   const bS = pointSeries(b, results, chrono)

@@ -7,6 +7,7 @@ import type { GroupMatch, KnockoutMatch, KnockoutStages, MatchScores, ThirdPlace
 import { matchSortKey, latestBySortKey } from '../shared/matchOrder'
 import { isPairing, orientPrediction } from '../formView/knockout/koRounds'
 import { competitionRanks } from './rank'
+import { knockoutParticipantScore } from '../pages/match/koParticipants'
 import type { User } from '../users'
 
 export type Scope = 'all' | GroupLetter | 'range' | 'prob' | 'summary' | 'oleh' | 'crossings' | 'timelapse' | 'records'
@@ -124,6 +125,14 @@ export function playedMatchesChrono(results: TournamentResults): PlayedMatch[] {
         .map(match => ({ kind: 'ko', match }))
     : []
   return [...group, ...ko].sort((a, b) => playedSortKey(a) - playedSortKey(b))
+}
+
+// The user's prediction for an actual played match, dispatching the one
+// irreducible difference: group by id, knockout by oriented pairing.
+export function predictionFor(user: User, played: PlayedMatch): MatchScores | null {
+  return played.kind === 'group'
+    ? (user.predictions[played.match.id] ?? null)
+    : knockoutParticipantScore(played.match, user)
 }
 
 // Range-selector label for a unified timeline entry. KO team names are stored as

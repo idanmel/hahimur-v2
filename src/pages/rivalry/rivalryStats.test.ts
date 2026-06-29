@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import { buildRivalry, buildShareText } from './rivalryStats'
 import { EMPTY_RESULTS, makeUser } from '../../leaderboard/testFixtures'
-import type { GroupMatch, MatchScores, TournamentResults } from '../../shared/types'
+import type { GroupMatch, KnockoutMatch, MatchScores, TournamentResults } from '../../shared/types'
 import type { User } from '../../users'
+
+const koResult = (matchNum: number, home: string, away: string, matchDate: string, kickoffIST: string, scores: { home: number; away: number }): KnockoutMatch =>
+  ({ matchNum, home, away, resolved: true, matchDate, kickoffIST, scores })
+const koPick = (matchNum: number, home: string, away: string, scores: { home: number; away: number }): KnockoutMatch =>
+  ({ matchNum, home, away, resolved: true, scores })
 
 // buildMatchDiff reads picks from user.predictions while points/trajectory read
 // user.groupMatches, so a realistic user needs both kept in sync — exactly what
@@ -131,6 +136,44 @@ describe('buildRivalry', () => {
 
     // Nothing is mathematically eliminated yet, so no champion has fallen.
     expect(r.championStatus).toEqual({ aOut: false, bOut: false })
+  })
+
+  test('peak gap spans knockout matches, not just the group stage', () => {
+    // One played group match (11 June) then one played KO match (28 June, later).
+    // On the group match both bettors call it identically → gap 0. On the KO match
+    // a nails the exact score (R32 tzelifa = 7) while b whiffs → gap 7. The widest
+    // cumulative gap therefore lands ON the KO match (the last timeline entry), so
+    // a group-only timeline would miss it entirely (peakGap null).
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupMatches: {
+        A: [{ id: 'A1', homeTeam: 'X', awayTeam: 'Y', scores: { home: 1, away: 0 }, matchDate: '2026-06-11', kickoffIST: '19:00' }],
+      },
+      knockoutStages: {
+        ...EMPTY_RESULTS.knockoutStages,
+        r32: [koResult(73, 'Brazil', 'France', '2026-06-28', '22:00', { home: 2, away: 1 })],
+      },
+    }
+
+    const a = makeUser({
+      label: 'אלרד גומא',
+      groupMatches: { A: [{ id: 'A1', homeTeam: 'X', awayTeam: 'Y', scores: { home: 1, away: 0 } }] },
+      predictions: { A1: { home: 1, away: 0 } },
+      knockoutStages: { ...EMPTY_RESULTS.knockoutStages, r32: [koPick(73, 'Brazil', 'France', { home: 2, away: 1 })] },
+    })
+    const b = makeUser({
+      label: 'אלדד לוי',
+      groupMatches: { A: [{ id: 'A1', homeTeam: 'X', awayTeam: 'Y', scores: { home: 1, away: 0 } }] },
+      predictions: { A1: { home: 1, away: 0 } },
+      knockoutStages: { ...EMPTY_RESULTS.knockoutStages, r32: [koPick(73, 'Brazil', 'France', { home: 0, away: 1 })] },
+    })
+
+    const r = buildRivalry(a, b, [a, b], results)
+
+    // The widest gap is on the KO match: the second (last) chronological entry.
+    expect(r.peakGap).not.toBeNull()
+    expect(r.peakGap?.matchday).toBe(2)
+    expect(r.peakGap?.gap).toBe(7)
   })
 
   test('share text is a short one-liner with both first names and the link', () => {
