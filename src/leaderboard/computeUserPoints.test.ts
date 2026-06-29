@@ -578,4 +578,29 @@ describe('singleMatchOutcome — knockout draw advancer', () => {
       { home: 2, away: 1 },
     )).toBe('miss')
   })
+
+  // Live knockout draw: the running score is level but the advancer isn't decided
+  // yet (no actual drawWinner). Until it is, the fixture scores on the scoreline
+  // alone — exactly like a group draw — so a spot-on 1-1 call shows up mid-match
+  // instead of being zeroed by an advancer that doesn't exist yet.
+  test('live draw, exact score, advancer not decided yet → tzelifa', () => {
+    expect(singleMatchOutcome(
+      { home: 1, away: 1, drawWinner: 'home' },
+      { home: 1, away: 1 },
+    )).toBe('tzelifa')
+  })
+
+  test('live draw, right draw wrong score, advancer not decided yet → pgiya', () => {
+    expect(singleMatchOutcome(
+      { home: 2, away: 2, drawWinner: 'away' },
+      { home: 1, away: 1 },
+    )).toBe('pgiya')
+  })
+
+  test('live draw, predicted a decisive result → miss', () => {
+    expect(singleMatchOutcome(
+      { home: 2, away: 1 },
+      { home: 1, away: 1 },
+    )).toBe('miss')
+  })
 })

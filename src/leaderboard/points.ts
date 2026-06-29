@@ -52,6 +52,17 @@ export const OUTCOME_LABEL: Record<MatchOutcome, string> = {
 
 export function singleMatchOutcome(predicted: MatchScores, actual: MatchScores): MatchOutcome {
   if (isUnpredicted(predicted) || isUnpredicted(actual)) return 'miss'
+  // A knockout draw whose advancer isn't settled yet (a live 1-1 before extra
+  // time / penalties names a winner) carries no actual drawWinner. Score it on
+  // the scoreline alone — exactly like a group draw — until the advancer is
+  // known; otherwise the drawWinner a bettor attached to their predicted draw
+  // could never match the still-empty actual advancer, zeroing even a spot-on
+  // 1-1 call mid-match. The advancer resumes splitting tzelifa/pgiya/miss once
+  // the result carries one.
+  if (isDraw(actual) && actual.drawWinner == null) {
+    if (isExactMatch({ home: predicted.home, away: predicted.away }, actual)) return 'tzelifa'
+    return isDraw(predicted) ? 'pgiya' : 'miss'
+  }
   if (isExactMatch(predicted, actual)) return 'tzelifa'
   if (isDraw(predicted) !== isDraw(actual)) return 'miss'
   if (winner(predicted) === winner(actual)) return 'pgiya'

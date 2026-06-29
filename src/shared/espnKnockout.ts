@@ -41,9 +41,15 @@ export function extractEspnKnockoutResult(
   const decidedBy = periods >= 5 ? 'pens' : periods >= 3 ? 'et' : 'reg'
 
   const scores: MatchScores = { home: regHome, away: regAway }
-  // A match only goes past 90' when regulation is level, so the advancer is the
-  // drawWinner exactly in the ET/penalty cases.
-  if (regHome === regAway) scores.drawWinner = home.winner ? 'home' : 'away'
+  // A match only goes past 90' when regulation is level, so a level score names an
+  // advancer — but ONLY once ESPN has actually flagged the winner. A live 1-1 in
+  // regulation (or a tied, still-running ET) carries no winner flag yet; guessing
+  // one here would credit phantom עלייה points to whoever picked that side before
+  // anyone has truly advanced. Leave drawWinner unset until the decision is real.
+  if (regHome === regAway) {
+    if (home.winner) scores.drawWinner = 'home'
+    else if (away.winner) scores.drawWinner = 'away'
+  }
 
   return { scores, decidedBy }
 }
