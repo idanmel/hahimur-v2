@@ -1,4 +1,4 @@
-import type { TournamentResults, KnockoutStages } from './types'
+import type { TournamentResults, KnockoutStages, MatchScores } from './types'
 import { derivePlayerGoals } from '../tournament-results'
 import { allKO } from '../formView/knockout/koRounds'
 import type { LiveOverlay } from './espnLive'
@@ -34,32 +34,41 @@ export function mergeLiveResults(base: TournamentResults, live: LiveOverlay): To
     if (!finalIds.has(matchId)) liveStatus[matchId] = status
   }
 
+  // Decide which scores to overlay onto one match, keyed by `id`. Returns the
+  // scores to use, or null to leave the baked match untouched. Shared by the
+  // group and knockout loops, which differ only in their container, id
+  // derivation, and (KO only) the `koReg` 90'-freeze preference below.
+  // A match already in finalIds keeps its baked final score, always.
+  const resolveLiveScore = (id: string, reg?: MatchScores): MatchScores | null => {
+    if (finalIds.has(id)) return null
+    // KO only: prefer the frozen regulation (90') score when we have it — that
+    // keeps a predicted draw scored correctly once a match goes to extra time /
+    // penalties (the running scoreboard score would by then include ET goals).
+    // Until the summary yields a regulation score we fall back to the running
+    // score, which equals the regulation score during the first 90' anyway.
+    // The running score stays in `live` for the display badge.
+    if (reg) return { ...reg }
+    const liveScore = live.scores[id]
+    return liveScore ? { home: liveScore.home, away: liveScore.away } : null
+  }
+
   const groupMatches: TournamentResults['groupMatches'] = {}
   for (const [letter, matches] of Object.entries(base.groupMatches)) {
     groupMatches[letter] = matches.map(m => {
-      const liveScore = live.scores[m.id]
-      return liveScore && !finalIds.has(m.id)
-        ? { ...m, scores: { home: liveScore.home, away: liveScore.away } }
-        : m
+      const scores = resolveLiveScore(m.id)
+      return scores ? { ...m, scores } : m
     })
   }
 
   // Overlay live KO scores onto the bracket, keyed by matchNum, for an in-progress
   // not-yet-final match. Scoring reads m.scores, so prefer the frozen regulation
-  // (90') score when we have it — that keeps a predicted draw scored correctly
-  // once a match goes to extra time / penalties (the running scoreboard score
-  // would by then include ET goals). Until the summary yields a regulation score
-  // we fall back to the running score, which equals the regulation score during
-  // the first 90' anyway. The running score stays in `live` for the display badge.
+  // (90') score (see resolveLiveScore) over the running scoreboard.
   const knockoutStages: KnockoutStages = { ...base.knockoutStages }
   for (const round of Object.keys(knockoutStages) as (keyof KnockoutStages)[]) {
     knockoutStages[round] = knockoutStages[round].map(m => {
       const id = String(m.matchNum)
-      if (finalIds.has(id)) return m
-      const reg = live.koReg?.[id]
-      if (reg) return { ...m, scores: { ...reg } }
-      const liveScore = live.scores[id]
-      return liveScore ? { ...m, scores: { home: liveScore.home, away: liveScore.away } } : m
+      const scores = resolveLiveScore(id, live.koReg?.[id])
+      return scores ? { ...m, scores } : m
     })
   }
 
