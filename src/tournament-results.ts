@@ -1,8 +1,8 @@
-import { GROUPS } from './shared/groups'
+import { GROUPS } from './shared/groups.ts'
 import type { TournamentResults, MatchScores, PredictionsState } from './shared/types'
-import { deriveGroupStatus } from './shared/groupStatus'
-import { getThirdPlaceTeams, qualifyBestThirdPlace } from './formView/thirdPlace/thirdPlace'
-import { deriveKnockoutStages } from './formView/knockout/deriveKnockoutStages'
+import { deriveGroupStatus } from './shared/groupStatus.ts'
+import { getThirdPlaceTeams, qualifyBestThirdPlace } from './formView/thirdPlace/thirdPlace.ts'
+import { deriveKnockoutStages } from './formView/knockout/deriveKnockoutStages.ts'
 
 // Fill in real scores here as matches are played, keyed by match ID
 const groupScores: Record<string, MatchScores> = {
@@ -84,7 +84,8 @@ const groupScores: Record<string, MatchScores> = {
 // names the advancer when regulation ended level (ET/penalties decide who went
 // through). Fill in as KO matches are played; knockoutStages is derived from this.
 const koScores: Record<string, MatchScores> = {
-  73: { home: 0, away: 1 }, // South Africa 0-1 Canada
+  73: { home: 0, away: 1 },
+  76: { home: 2, away: 1 },
 }
 
 // Real goals by picked players: player → match ID → goals in that match.

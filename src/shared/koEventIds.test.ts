@@ -9,15 +9,18 @@ describe('KO ESPN event id table', () => {
   it('round-trips an event id back to its matchNum', () => {
     expect(espnIdToMatchNum('760486')).toBe(73)
     expect(espnIdToMatchNum('760499')).toBe(88)
+    expect(espnIdToMatchNum('760517')).toBe(104) // the final
   })
 
   it('returns undefined for an unknown event id (e.g. a group match)', () => {
     expect(espnIdToMatchNum('999999')).toBeUndefined()
   })
 
-  it('covers all 16 round-of-32 fixtures with distinct ids', () => {
+  it('covers every knockout fixture (R32 through the final) with distinct ids', () => {
     const nums = Object.keys(KO_ESPN_IDS).map(Number)
-    expect(nums).toEqual(expect.arrayContaining(Array.from({ length: 16 }, (_, i) => 73 + i)))
-    expect(new Set(Object.values(KO_ESPN_IDS)).size).toBe(16)
+    // matchNums 73–104: R32 (16) + R16 (8) + QF (4) + SF (2) + 3rd + final = 32
+    expect(nums).toEqual(expect.arrayContaining(Array.from({ length: 32 }, (_, i) => 73 + i)))
+    expect(nums).toHaveLength(32)
+    expect(new Set(Object.values(KO_ESPN_IDS)).size).toBe(32)
   })
 })

@@ -1,6 +1,6 @@
 import type { KnockoutMatch, KnockoutStages, MatchScores, PredictionsState } from '../../shared/types'
-import { buildKnockoutBracket } from './knockout'
-import { KO_ROUND_RANGES } from './koRounds'
+import { buildKnockoutBracket } from './knockout.ts'
+import { KO_ROUND_RANGES } from './koRounds.ts'
 
 // Build the real knockout bracket from the entered group results AND the entered
 // knockout results. The group scores resolve the R32 teams; the koScores resolve

@@ -2,7 +2,21 @@ import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { join, dirname } from 'node:path'
 import { GROUPS } from '../src/shared/groups.ts'
-import { readGroupScores, writeGroupScores, readRealGoals, writeRealGoals } from './results-file.ts'
+import type { MatchScores } from '../src/shared/types.ts'
+import { espnIdToMatchNum } from '../src/shared/koEventIds.ts'
+import { isKoReversed, orientKoScore } from '../src/shared/koOrient.ts'
+import {
+  extractEspnKnockoutResult,
+  type EspnKnockoutCompetitor,
+} from '../src/shared/espnKnockout.ts'
+import {
+  readGroupScores,
+  writeGroupScores,
+  readRealGoals,
+  writeRealGoals,
+  readKoScores,
+  writeKoScores,
+} from './results-file.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -88,11 +102,75 @@ export interface EspnScoringPlay {
 }
 
 export interface EspnEvent {
+  id?: string // ESPN event id — how a knockout fixture joins to our matchNum
   status?: { type?: { state: string; completed: boolean } }
   competitions: {
     competitors: { homeAway: string; score?: string; team: { displayName: string } }[]
     details?: EspnScoringPlay[]
   }[]
+}
+
+// The per-event summary (…/summary?event=<id>) — the only place the 90' regulation
+// score is recoverable for a knockout match (the scoreboard list returns the
+// after-ET score with null linescores). competitors live under header.competitions[0].
+export interface EspnSummary {
+  header?: {
+    competitions?: {
+      competitors?: {
+        homeAway: 'home' | 'away'
+        winner?: boolean
+        team?: { displayName?: string }
+        linescores?: { displayValue: string }[]
+      }[]
+    }[]
+  }
+}
+
+// From the (widened) scoreboard, pick out completed knockout events — those whose
+// id maps to one of our baked matchNums — fetch each one's summary, recover the
+// regulation score + advancer, and orient it into our bracket. Network is injected
+// (like gatherScores) so this is unit-testable against captured summary fixtures.
+// We only ever read COMPLETED events: drawWinner is only trustworthy once a winner
+// is decided, so an in-progress/ET match must not be written. A summary fetch or
+// parse failing for one match is warned and skipped — the cron retries in 5 min.
+export async function extractEspnKnockoutScores(
+  events: EspnEvent[],
+  fetchSummary: (espnId: string) => Promise<EspnSummary>,
+): Promise<{ scores: Record<string, MatchScores>; warnings: string[] }> {
+  const scores: Record<string, MatchScores> = {}
+  const warnings: string[] = []
+
+  for (const e of events) {
+    if (!e.status?.type?.completed || !e.id) continue
+    const matchNum = espnIdToMatchNum(e.id)
+    if (matchNum === undefined) continue
+
+    let summary: EspnSummary
+    try {
+      summary = await fetchSummary(e.id)
+    } catch (err) {
+      warnings.push(`KO ${matchNum} (event ${e.id}): summary fetch failed: ${err}`)
+      continue
+    }
+
+    const raw = summary.header?.competitions?.[0]?.competitors ?? []
+    const competitors: EspnKnockoutCompetitor[] = raw.map(c => ({
+      homeAway: c.homeAway,
+      winner: !!c.winner,
+      linescores: c.linescores ?? [],
+    }))
+    const result = extractEspnKnockoutResult(competitors)
+    if (!result) {
+      warnings.push(`KO ${matchNum} (event ${e.id}): no regulation score in summary yet`)
+      continue
+    }
+
+    const espnHome = raw.find(c => c.homeAway === 'home')?.team?.displayName ?? null
+    const espnAway = raw.find(c => c.homeAway === 'away')?.team?.displayName ?? null
+    scores[String(matchNum)] = orientKoScore(result.scores, isKoReversed(matchNum, espnHome, espnAway))
+  }
+
+  return { scores, warnings }
 }
 
 // Resolve a finished ESPN event to its home/away sides plus the group pairing
@@ -201,17 +279,26 @@ function loadToken(): string | undefined {
   return undefined
 }
 
-// The knockout stage starts on the last group matchday (June 28), so this
-// window admits one round-of-32 match; extractEspnGroupScores skips it.
-const GROUP_STAGE_DATES = '20260611-20260628'
+// The full tournament window (group stage opener → final). One scoreboard call
+// serves both paths: extractEspnGroupScores skips knockout events (two known teams
+// that aren't a group pairing), and extractEspnKnockoutScores picks them up by id.
+const TOURNAMENT_DATES = '20260611-20260719'
 
 async function fetchEspnRaw(): Promise<EspnEvent[]> {
   const res = await fetch(
-    `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${GROUP_STAGE_DATES}&limit=200`,
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${TOURNAMENT_DATES}&limit=300`,
   )
   if (!res.ok) throw new Error(`ESPN returned ${res.status}: ${await res.text()}`)
   const { events } = await res.json() as { events: EspnEvent[] }
   return events
+}
+
+async function fetchEspnSummary(espnId: string): Promise<EspnSummary> {
+  const res = await fetch(
+    `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=${espnId}`,
+  )
+  if (!res.ok) throw new Error(`ESPN summary ${espnId} returned ${res.status}`)
+  return await res.json() as EspnSummary
 }
 
 async function fetchFootballDataRaw(): Promise<ApiMatch[]> {
@@ -318,7 +405,37 @@ async function main(): Promise<void> {
     }
   }
 
-  if (changed.length === 0) {
+  // Knockout: completed KO events carry a regulation score + advancer in their
+  // per-event summary. Mirror the group diff-and-write, but compare drawWinner too.
+  let koChanged: string[] = []
+  if (espnEvents) {
+    const { scores: koFetched, warnings } = await extractEspnKnockoutScores(espnEvents, fetchEspnSummary)
+    for (const w of warnings) console.warn(w)
+
+    const koMerged = readKoScores()
+    for (const [num, score] of Object.entries(koFetched)) {
+      const existing = koMerged[num]
+      if (
+        !existing ||
+        existing.home !== score.home ||
+        existing.away !== score.away ||
+        existing.drawWinner !== score.drawWinner
+      ) {
+        const adv = score.drawWinner ? ` (${score.drawWinner} advances)` : ''
+        const was = existing ? `${existing.home}-${existing.away} → ` : ''
+        koChanged.push(`KO ${num}: ${was}${score.home}-${score.away}${adv}`)
+      }
+      koMerged[num] = score
+    }
+
+    if (koChanged.length > 0) {
+      writeKoScores(koMerged)
+      console.log(`Updated ${koChanged.length} knockout scores:`)
+      for (const c of koChanged) console.log(`  ${c}`)
+    }
+  }
+
+  if (changed.length === 0 && koChanged.length === 0) {
     console.log('No score changes.')
   }
 }

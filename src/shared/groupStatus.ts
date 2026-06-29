@@ -1,6 +1,6 @@
 import type { PredictionsState, Standing } from './types'
-import { GROUP_MATCHES, ALL_GROUP_LETTERS } from './groups'
-import { calculateStandings } from './standings'
+import { GROUP_MATCHES, ALL_GROUP_LETTERS } from './groups.ts'
+import { calculateStandings } from './standings.ts'
 
 export type GroupStatus = {
   group: string

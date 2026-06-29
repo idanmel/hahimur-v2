@@ -4,6 +4,7 @@ import {
   extractGroupScores,
   extractEspnGroupScores,
   extractEspnGroupScorers,
+  extractEspnKnockoutScores,
   mergeScores,
   gatherScores,
   parseFakeFinished,
@@ -11,6 +12,7 @@ import {
   type ApiMatch,
   type EspnEvent,
   type EspnScoringPlay,
+  type EspnSummary,
 } from './fetch-scores'
 
 function apiMatch(over: Partial<ApiMatch> & { home: string; away: string }): ApiMatch {
@@ -304,5 +306,103 @@ describe('gatherScores', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     expect(await gatherScores(boom, boom)).toBeNull()
     warn.mockRestore()
+  })
+})
+
+// matchNum 73 is South Africa (home) vs Canada (away) in our bracket; ESPN event
+// id 760486. A KO scoreboard event carries an id but no usable score — the 90'
+// regulation figure lives in the per-event summary's period linescores.
+function koEvent(over: { id: string; completed?: boolean }): EspnEvent {
+  return {
+    id: over.id,
+    status: { type: { state: over.completed === false ? 'in' : 'post', completed: over.completed ?? true } },
+    competitions: [{ competitors: [] }],
+  }
+}
+
+const ls = (vals: string[]) => vals.map(v => ({ displayValue: v }))
+
+function koSummary(
+  home: { team: string; ls: string[]; winner?: boolean },
+  away: { team: string; ls: string[]; winner?: boolean },
+): EspnSummary {
+  return {
+    header: {
+      competitions: [{
+        competitors: [
+          { homeAway: 'home', winner: home.winner ?? false, team: { displayName: home.team }, linescores: ls(home.ls) },
+          { homeAway: 'away', winner: away.winner ?? false, team: { displayName: away.team }, linescores: ls(away.ls) },
+        ],
+      }],
+    },
+  }
+}
+
+describe('extractEspnKnockoutScores', () => {
+  it('writes a decisive regulation score for a completed KO match', async () => {
+    const { scores } = await extractEspnKnockoutScores(
+      [koEvent({ id: '760486' })],
+      async () => koSummary({ team: 'South Africa', ls: ['0', '0'] }, { team: 'Canada', ls: ['0', '1'], winner: true }),
+    )
+    expect(scores).toEqual({ '73': { home: 0, away: 1 } })
+  })
+
+  it('carries the advancer on a regulation draw decided by penalties', async () => {
+    const { scores } = await extractEspnKnockoutScores(
+      [koEvent({ id: '760486' })],
+      async () => koSummary(
+        { team: 'South Africa', ls: ['1', '1', '0', '0', '4'], winner: true },
+        { team: 'Canada', ls: ['1', '1', '0', '0', '2'] },
+      ),
+    )
+    expect(scores).toEqual({ '73': { home: 2, away: 2, drawWinner: 'home' } })
+  })
+
+  it('flips home/away (and the advancer) when ESPN lists the teams reversed', async () => {
+    const { scores } = await extractEspnKnockoutScores(
+      [koEvent({ id: '760486' })],
+      async () => koSummary(
+        { team: 'Canada', ls: ['1', '1', '0', '0', '4'], winner: true },
+        { team: 'South Africa', ls: ['1', '1', '0', '0', '2'] },
+      ),
+    )
+    // Our bracket is SA (home) vs Canada (away); Canada won on pens → drawWinner away.
+    expect(scores).toEqual({ '73': { home: 2, away: 2, drawWinner: 'away' } })
+  })
+
+  it('skips an in-progress KO match (not completed)', async () => {
+    const fetchSummary = vi.fn(async () => koSummary({ team: 'South Africa', ls: ['1'] }, { team: 'Canada', ls: ['0'] }))
+    const { scores } = await extractEspnKnockoutScores([koEvent({ id: '760486', completed: false })], fetchSummary)
+    expect(scores).toEqual({})
+    expect(fetchSummary).not.toHaveBeenCalled()
+  })
+
+  it('skips a completed event whose id is not a known KO fixture (e.g. a group match)', async () => {
+    const fetchSummary = vi.fn(async () => koSummary({ team: 'A', ls: ['1', '0'] }, { team: 'B', ls: ['0', '0'] }))
+    const { scores } = await extractEspnKnockoutScores([koEvent({ id: '999999' })], fetchSummary)
+    expect(scores).toEqual({})
+    expect(fetchSummary).not.toHaveBeenCalled()
+  })
+
+  it('warns and skips when a summary fetch fails, leaving other matches intact', async () => {
+    const { scores, warnings } = await extractEspnKnockoutScores(
+      [koEvent({ id: '760486' }), koEvent({ id: '760487' })],
+      async (id) => {
+        if (id === '760486') throw new Error('boom')
+        return koSummary({ team: 'Brazil', ls: ['0', '2'], winner: true }, { team: 'Japan', ls: ['1', '0'] })
+      },
+    )
+    expect(scores['73']).toBeUndefined()
+    expect(scores['76']).toEqual({ home: 2, away: 1 })
+    expect(warnings.some(w => w.includes('760486') && w.includes('boom'))).toBe(true)
+  })
+
+  it('warns and skips when the summary has no regulation score yet', async () => {
+    const { scores, warnings } = await extractEspnKnockoutScores(
+      [koEvent({ id: '760486' })],
+      async () => koSummary({ team: 'South Africa', ls: [] }, { team: 'Canada', ls: [] }),
+    )
+    expect(scores).toEqual({})
+    expect(warnings.some(w => w.includes('no regulation score'))).toBe(true)
   })
 })

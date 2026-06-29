@@ -83,6 +83,15 @@ export function renderKoScores(content: string, scores: Record<string, MatchScor
   )
 }
 
+export function readKoScores(): Record<string, MatchScores> {
+  return parseKoScores(readFileSync(RESULTS_PATH, 'utf-8'))
+}
+
+export function writeKoScores(scores: Record<string, MatchScores>): void {
+  const content = readFileSync(RESULTS_PATH, 'utf-8')
+  writeFileSync(RESULTS_PATH, renderKoScores(content, scores), 'utf-8')
+}
+
 export function writeGroupScores(scores: Record<string, { home: number; away: number }>): void {
   const lines = Object.entries(scores)
     .map(([id, s]) => `  ${id}: { home: ${s.home}, away: ${s.away} },`)
