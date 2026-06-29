@@ -1,6 +1,6 @@
 import type { GroupMatch, KnockoutMatch } from '../../shared/types'
 import type { User } from '../../users/index'
-import { upcomingCards, koTopPrediction, SCORED_MATCHES, KO_FEED_MATCHES } from './nextMatch'
+import { upcomingCards, topPrediction, SCORED_MATCHES, KO_FEED_MATCHES } from './nextMatch'
 import { knockoutParticipantScore } from '../match/koParticipants'
 import MatchCard from './MatchCard'
 
@@ -29,7 +29,7 @@ export default function NextMatchCard({ users, now = new Date(), matches = SCORE
           heading={heading}
           // Knockout predictions are matched by team, not id, so feed the card
           // the team-matched consensus and the user's own called score.
-          consensus={ko ? koTopPrediction(users, ko) : undefined}
+          consensus={ko ? topPrediction(users, { kind: 'ko', match: ko }) : undefined}
           mine={ko ? (currentUser ? knockoutParticipantScore(ko, currentUser) : null) : undefined}
           isNext={!!next && match.matchDate === next.matchDate && match.kickoffIST === next.kickoffIST}
           currentUser={currentUser}

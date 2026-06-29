@@ -1,4 +1,4 @@
-import { nextMatches, recentCards, topPrediction, upcomingCards, koTopPrediction } from './nextMatch'
+import { nextMatches, recentCards, topPrediction, upcomingCards } from './nextMatch'
 import { makeUser } from '../../leaderboard/testFixtures'
 import type { GroupMatch, KnockoutMatch } from '../../shared/types'
 
@@ -142,11 +142,11 @@ test('topPrediction returns the most common predicted score and its count', () =
     makeUser({ predictions: { A2: { home: 0, away: 0 } } }),
     makeUser({ predictions: {} }),
   ]
-  expect(topPrediction(users, 'A2')).toEqual({ home: 2, away: 1, count: 2, total: 3 })
+  expect(topPrediction(users, { kind: 'group', match: MATCHES[1] })).toEqual({ home: 2, away: 1, count: 2, total: 3 })
 })
 
 test('topPrediction returns null when nobody predicted the match', () => {
-  expect(topPrediction([makeUser()], 'A2')).toBeNull()
+  expect(topPrediction([makeUser()], { kind: 'group', match: MATCHES[1] })).toBeNull()
 })
 
 // Knockout fixtures join the upcoming feed once the groups are done.
@@ -204,7 +204,7 @@ test('recentCards merges played group and knockout fixtures newest first', () =>
   expect(cards.map(c => c.match.id)).toEqual(['73', 'L6'])
 })
 
-test('koTopPrediction tallies the popular score by the teams that actually met', () => {
+test('topPrediction tallies a KO fixture by the teams that actually met', () => {
   const r32 = (scores: { home: number; away: number }) => ({
     r32: [{ matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true, scores }],
     r16: [], qf: [], sf: [], thirdPlace: [], final: [],
@@ -215,7 +215,9 @@ test('koTopPrediction tallies the popular score by the teams that actually met',
     makeUser({ knockoutStages: r32({ home: 0, away: 0 }) }),
     makeUser(), // predicted a different bracket → not in this match
   ]
-  expect(koTopPrediction(users, KO_OPENER)).toEqual({ home: 2, away: 1, count: 2, total: 3 })
+  // The unified topPrediction routes a KO PlayedMatch through predictionFor, so
+  // bettors are matched by the teams that reached the fixture, not by match id.
+  expect(topPrediction(users, { kind: 'ko', match: KO_OPENER })).toEqual({ home: 2, away: 1, count: 2, total: 3 })
 })
 
 

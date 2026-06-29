@@ -2,10 +2,9 @@ import type { GroupMatch, KnockoutMatch } from '../../shared/types'
 import type { User } from '../../users/index'
 import { tournamentResults } from '../../tournament-results'
 import { kickoffDate, MATCH_WINDOW_MS } from '../../shared/matchOrder'
-import { scoreFrequencies } from '../match/matchUtils'
 import { allKO } from '../../formView/knockout/koRounds'
 import { roundLabel } from '../match/koMatch'
-import { knockoutParticipantScore } from '../match/koParticipants'
+import { predictionFor, type PlayedMatch } from '../../leaderboard/leaderboardRows'
 
 // Group-stage matches only for now: knockout fixtures have a different shape
 // (matchNum, unresolved team slots) and their own resolution logic.
@@ -127,17 +126,14 @@ export interface TopPrediction {
   total: number
 }
 
-export function topPrediction(users: User[], matchId: string): TopPrediction | null {
-  return mostCommon(scoreFrequencies(users, matchId))
-}
-
-// The knockout twin of topPrediction: bettors playing a knockout fixture are
-// matched by the teams that actually reached it (not by match id), each counted
-// at their score oriented to the real fixture's home/away.
-export function koTopPrediction(users: User[], match: KnockoutMatch): TopPrediction | null {
+// The most-commonly-predicted scoreline for a played match, group or knockout.
+// Each bettor's prediction is read via predictionFor — group by id, knockout by
+// the teams that actually reached the fixture (oriented to its home/away) — so
+// one tally serves both feeds. Unpredicted matches are skipped.
+export function topPrediction(users: User[], played: PlayedMatch): TopPrediction | null {
   const counts = new Map<string, number>()
   for (const u of users) {
-    const s = knockoutParticipantScore(match, u)
+    const s = predictionFor(u, played)
     if (!s || s.home == null || s.away == null) continue
     const key = `${s.home}-${s.away}`
     counts.set(key, (counts.get(key) ?? 0) + 1)

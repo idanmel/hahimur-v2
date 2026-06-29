@@ -40,7 +40,7 @@ type Props = {
 export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date(), liveMatches, heading, consensus: consensusOverride, mine: mineOverride }: Props) {
   const home = TEAMS[match.homeTeam]
   const away = TEAMS[match.awayTeam]
-  const consensus = consensusOverride !== undefined ? consensusOverride : topPrediction(users, match.id)
+  const consensus = consensusOverride !== undefined ? consensusOverride : topPrediction(users, { kind: 'group', match })
   // A KO card supplies `mine` explicitly (a score, or null when the user didn't
   // call this pairing) — never fall back to predictions[id], whose numeric KO key
   // holds the user's *slot* pick for different teams. Only an unsupplied (group)
