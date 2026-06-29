@@ -3,7 +3,6 @@ import UpdatesPage from './pages/updates/UpdatesPage'
 import FormsPage from './pages/forms/FormsPage'
 import HomePage from './pages/home/HomePage'
 import MatchPredictionsPage from './pages/match/MatchPredictionsPage'
-import KnockoutMatchPage from './pages/match/KnockoutMatchPage'
 import ResultsPage from './pages/results/ResultsPage'
 import BracketPage from './pages/bracket/BracketPage'
 import WinProbPage from './pages/winprob/WinProbPage'
@@ -37,7 +36,7 @@ export default function App() {
   return (
     <>
       <UpdateBanner updateAvailable={updateAvailable} />
-      {koMatchNum !== null                                ? <KnockoutMatchPage matchNum={koMatchNum} users={USERS_SORTED} /> :
+      {koMatchNum !== null                                ? <MatchPredictionsPage koMatchNum={koMatchNum} users={USERS_SORTED} /> :
        matchId                                            ? <MatchPredictionsPage {...resolveMatch(matchId)} users={USERS} /> :
        groupStatsLetter && ALL_GROUP_LETTERS.includes(groupStatsLetter) ? <GroupStatsPage groupLetter={groupStatsLetter} /> :
        pathname === '/results'                            ? <ResultsPage users={USERS_SORTED} /> :

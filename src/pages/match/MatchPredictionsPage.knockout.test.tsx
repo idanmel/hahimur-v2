@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { vi } from 'vitest'
-import KnockoutMatchPage from './KnockoutMatchPage'
+import MatchPredictionsPage from './MatchPredictionsPage'
 import { findKnockoutMatch } from './koMatch'
 import { useLiveResults } from '../../shared/useLiveResults'
 import { tournamentResults } from '../../tournament-results'
@@ -47,7 +47,7 @@ test('shows a descriptor for the pending slot and the resolved team', () => {
   })
   // Pin "now" before kickoff so the header shows the kickoff meta row, not the
   // live indicator (this test is about the slot descriptors, not liveness).
-  render(<KnockoutMatchPage matchNum={73} now={new Date('2026-06-27T12:00:00Z')} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={[]} now={new Date('2026-06-27T12:00:00Z')} />)
   const teamNames = Array.from(document.querySelectorAll('.match-team__name')).map(n => n.textContent)
   expect(teamNames).toEqual(expect.arrayContaining(['סגנית א', 'קנדה']))
   expect(screen.getByText(/שלב ה-32/)).toBeInTheDocument()
@@ -61,7 +61,7 @@ test('shows a descriptor for the pending slot and the resolved team', () => {
 // resolves we can't name the single source group, but the matrix narrows it to a
 // fixed set of 5, so we list them instead of a bare placeholder.
 test('lists the possible source groups for an unresolved third-place slot', () => {
-  render(<KnockoutMatchPage matchNum={74} />)
+  render(<MatchPredictionsPage koMatchNum={74} users={[]} />)
   expect(screen.getByText('מנצח ה')).toBeInTheDocument()
   expect(screen.getByText('שלישית א/ב/ג/ד/ו')).toBeInTheDocument()
 })
@@ -72,7 +72,7 @@ test('shows Hebrew team names and flags for a resolved match', () => {
     matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
     scores: { home: 1, away: 0 }, matchDate: '28 ביוני', kickoffIST: '22:00',
   })
-  render(<KnockoutMatchPage matchNum={73} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={[]} />)
   expect(screen.getByText('דרום קוריאה')).toBeInTheDocument()
   expect(screen.getByText('קנדה')).toBeInTheDocument()
   expect(document.querySelector('.fi-kr')).toBeInTheDocument()
@@ -86,7 +86,7 @@ test('shows the real score in the header for a finished match', () => {
     matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
     scores: { home: 1, away: 0 }, matchDate: '28 ביוני', kickoffIST: '22:00',
   })
-  render(<KnockoutMatchPage matchNum={73} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={[]} />)
   const score = screen.getByTestId('real-score')
   // Away (Canada) digit first, then home (South Korea) — same orientation as the
   // rest of the page.
@@ -112,7 +112,7 @@ test('shows the live score with a חי badge while a knockout match is in progre
     },
     live: { '73': { clock: "67'" } },
   })
-  render(<KnockoutMatchPage matchNum={73} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={[]} />)
   const score = screen.getByTestId('real-score')
   expect(score.textContent).toContain('1')
   expect(score.textContent).toContain('0')
@@ -126,7 +126,7 @@ test('shows the live score with a חי badge while a knockout match is in progre
 // bracket numbers run by round, so 74 (Jun 29 23:30) sits between 76 (Jun 29 20:00)
 // and 75 (Jun 30 04:00) on the clock.
 test('links prev/next to the chronologically neighbouring knockout matches', () => {
-  render(<KnockoutMatchPage matchNum={74} />)
+  render(<MatchPredictionsPage koMatchNum={74} users={[]} />)
   expect(screen.getByLabelText('המשחק הקודם')).toHaveAttribute('href', '/matches/76')
   expect(screen.getByLabelText('המשחק הבא')).toHaveAttribute('href', '/matches/75')
 })
@@ -134,7 +134,7 @@ test('links prev/next to the chronologically neighbouring knockout matches', () 
 // The knockout opener (73) is the seam with the group stage: its "previous" steps
 // back into the last group match played (J6), and its "next" stays in the bracket.
 test('the knockout opener links back to the last group match', () => {
-  render(<KnockoutMatchPage matchNum={73} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={[]} />)
   expect(screen.getByLabelText('המשחק הקודם')).toHaveAttribute('href', '/matches/j6')
   expect(screen.getByLabelText('המשחק הבא')).toHaveAttribute('href', '/matches/76')
 })
@@ -157,7 +157,7 @@ test('shows a points table for the bettors on a resolved knockout match', () => 
     koUser('Alice', [{ matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true, scores: { home: 1, away: 0 }, matchDate: '28 ביוני', kickoffIST: '22:00' }]),
     koUser('Bob', []),
   ]
-  render(<KnockoutMatchPage matchNum={73} users={users} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={users} />)
   const lb = screen.getByTestId('match-leaderboard')
   const aliceRow = within(lb).getAllByTestId('match-lb-row').find(r => within(r).queryByText('Alice'))!
   // Exact R32 score → tzelifa, 7 points; away score shown first (0–1).
@@ -182,7 +182,7 @@ test('shows the predictions summary tally for the bettors on a resolved knockout
     // didn't predict this fixture → not counted
     koUser('Carol', []),
   ]
-  render(<KnockoutMatchPage matchNum={73} users={users} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={users} />)
   expect(screen.getByText('סך הכל')).toBeInTheDocument()
   // [away, draw, home] columns; both bettors are on the home (South Korea) side.
   const counts = screen.getAllByTestId('pred-count').map(el => Number(el.textContent))
@@ -206,7 +206,7 @@ test('shows the score-distribution summary for the bettors on a resolved knockou
     // didn't predict this fixture → not a participant, not shown
     koUser('Carol', []),
   ]
-  render(<KnockoutMatchPage matchNum={73} users={users} />)
+  render(<MatchPredictionsPage koMatchNum={73} users={users} />)
   expect(screen.getByText('התפלגות תוצאות')).toBeInTheDocument()
   const table = screen.getByTestId('score-freq-table')
   // Both bettors land in one 0–1 (away–home) bucket; Carol is absent.

@@ -70,7 +70,9 @@ export interface FeedCard {
 // A resolved knockout fixture as the GroupMatch the card renders from: its match
 // number doubles as the id (its /matches route and live/scorer key), and its
 // resolved slots are real team codes, so flags and Hebrew names look up the same.
-function koAsGroupMatch(m: KnockoutMatch): GroupMatch {
+// Exported so the unified match page can render a KO fixture through the same
+// group-shaped header/consensus scaffolding.
+export function koAsGroupMatch(m: KnockoutMatch): GroupMatch {
   return {
     id: String(m.matchNum),
     homeTeam: m.home,

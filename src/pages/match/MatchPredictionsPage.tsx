@@ -5,28 +5,45 @@ import type { User } from '../../users/index'
 import { isLive } from '../../shared/matchOrder'
 import { useLiveResults } from '../../shared/useLiveResults'
 import { useCurrentUser } from '../../shared/useCurrentUser'
-import { GROUP_HEBREW, GROUP_MATCHES } from '../../shared/groups'
+import { GROUP_HEBREW, GROUP_MATCHES, TEAMS } from '../../shared/groups'
 import { adjacentMatches, LAST_GROUP_MATCH } from './matchUtils'
-import { FIRST_KO_MATCH_NUM } from './koMatch'
+import {
+  FIRST_KO_MATCH_NUM,
+  findKnockoutMatch,
+  findInStages,
+  roundLabel,
+  vennStage,
+  knockoutChronoNav,
+} from './koMatch'
 import { calculateStandings, liveGroupScores } from '../../shared/standings'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
 import MatchHeader from './MatchHeader'
 import PredictionSummary from './PredictionSummary'
 import ScoreFrequencyTable from './ScoreFrequencyTable'
 import MatchLeaderboard from './MatchLeaderboard'
+import KnockoutMatchLeaderboard from './KnockoutMatchLeaderboard'
+import KnockoutSurvivorsList from './KnockoutSurvivorsList'
+import KnockoutVenn from './KnockoutVenn'
 import BestResultCard from '../../formView/groupStage/BestResultCard'
 import MatchRecommendation from './MatchRecommendation'
 import { bestRemainingResult } from '../../leaderboard/bestResult'
 import { settledState } from '../stats/group/recommendation'
 import { thirdPickFromQualification, protectedThirdsForGroup } from '../stats/group/selfScore'
+import { koAsGroupMatch } from '../home/nextMatch'
+import { knockoutParticipantScore } from './koParticipants'
 import './MatchPredictionsPage.css'
 
-type Team = { iso: string; he: string }
+type Team = { iso?: string; he: string }
 
 type Props = {
-  match: Match | null
-  home: Team | null
-  away: Team | null
+  // Group mode: the resolved match + its two teams (from resolveMatch).
+  match?: Match | null
+  home?: Team | null
+  away?: Team | null
+  // Knockout mode: route a numbered match here. The page resolves the KO fixture
+  // itself and renders the shared scaffolding via koAsGroupMatch, gating the
+  // knockout-only sections behind the match kind.
+  koMatchNum?: number
   users: User[]
   now?: Date
 }
@@ -36,13 +53,45 @@ function realScoreFor(results: TournamentResults, matchId: string): MatchScores 
   return s && s.home !== null && s.away !== null ? s : null
 }
 
-export default function MatchPredictionsPage({ match, home, away, users, now = new Date() }: Props) {
+// A resolved slot is a real team → flag + Hebrew name; an unresolved slot is a
+// descriptor string ("סגנית א", "שלישית א/ב/ג/ד/ו"), shown as-is with no flag.
+function teamForSlot(slot: string): Team {
+  const team = TEAMS[slot]
+  return team ? { iso: team.iso, he: team.he } : { he: slot }
+}
+
+// A scoreline only counts as the "real" result once both sides are filled in.
+function completeScore(s: MatchScores | null | undefined): MatchScores | null {
+  return s && s.home !== null && s.away !== null ? s : null
+}
+
+export default function MatchPredictionsPage({ match: groupMatch, home: groupHome, away: groupAway, koMatchNum, users, now = new Date() }: Props) {
   const [homeScore, setHomeScore] = useState<Score>(null)
   const [awayScore, setAwayScore] = useState<Score>(null)
   // Live-overlaid results: a live score/scorers appear here in real time while
   // the match is in progress, then settle to the baked final when it ends.
   const results = useLiveResults()
   const { me, currentUser } = useCurrentUser()
+
+  if (koMatchNum != null) {
+    return (
+      <KnockoutBody
+        matchNum={koMatchNum}
+        users={users}
+        now={now}
+        results={results}
+        me={me}
+        homeScore={homeScore}
+        awayScore={awayScore}
+        setHomeScore={setHomeScore}
+        setAwayScore={setAwayScore}
+      />
+    )
+  }
+
+  const match = groupMatch ?? null
+  const home = groupHome ?? null
+  const away = groupAway ?? null
 
   if (!match || !home || !away) {
     return (
@@ -177,6 +226,151 @@ export default function MatchPredictionsPage({ match, home, away, users, now = n
           : <ScoreFrequencyTable matchId={match.id} users={users} actualScore={actualScore} />}
 
       </div>
+    </PageLayout>
+  )
+}
+
+// The knockout branch of the unified page: shares the header/consensus
+// scaffolding (rendered through koAsGroupMatch's group-shaped fixture), gating
+// the knockout-only widgets — survivors list, KO leaderboard, the qualifier Venn
+// and the round-label badge — behind the match being a resolved KO fixture.
+type KnockoutBodyProps = {
+  matchNum: number
+  users: User[]
+  now: Date
+  results: TournamentResults
+  me: string
+  homeScore: Score
+  awayScore: Score
+  setHomeScore: (v: Score) => void
+  setAwayScore: (v: Score) => void
+}
+
+function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore, setHomeScore, setAwayScore }: KnockoutBodyProps) {
+  const match = findKnockoutMatch(matchNum)
+
+  if (!match) {
+    return (
+      <PageLayout title="ההימור 2026">
+        <p style={{ textAlign: 'center', marginTop: '2rem' }}>משחק לא נמצא</p>
+      </PageLayout>
+    )
+  }
+
+  const matchId = String(matchNum)
+  // Present only while the match is actually being played (from the live feed),
+  // which is how the header tells "in progress" from "finished".
+  const liveScore = results.live?.[matchId] ?? null
+  // The score to show: while in progress it's the running live score from the
+  // feed (the home/away the badge carries) — NOT the bracket's m.scores, which
+  // for a knockout match is frozen at the 90' regulation result for scoring and
+  // would stop moving once the game reaches extra time. Falls back to the merged
+  // score until the feed reports a running score, then the baked final once over.
+  // Mirrors the group match page so a knockout fixture lights up live too.
+  const realScore = liveScore
+    ? liveScore.home != null && liveScore.away != null
+      ? { home: liveScore.home, away: liveScore.away }
+      : completeScore(findInStages(results.knockoutStages, matchNum)?.scores)
+    : match.resolved ? completeScore(match.scores) : null
+  const live = isLive({ matchDate: match.matchDate, kickoffIST: match.kickoffIST }, now)
+
+  // The KO fixture flattened into the group-shaped match the shared header reads.
+  const headerMatch = koAsGroupMatch(match)
+  const home = teamForSlot(match.home)
+  const away = teamForSlot(match.away)
+
+  // Which "who predicted each team this far" Venn this match feeds, if any.
+  const venn = vennStage(matchNum)
+
+  // Step the prev/next arrows through the bracket in kickoff order, not by number.
+  // The opener's "previous" steps back into the group stage's final match.
+  const { prevNum, nextNum } = knockoutChronoNav(matchNum)
+  const prevId = prevNum !== null ? String(prevNum) : LAST_GROUP_MATCH.id
+  const nextId = nextNum !== null ? String(nextNum) : null
+
+  // The bettors playing this knockout fixture — those who predicted both teams
+  // that actually reached it — each mapped to their called score, oriented to the
+  // real home/away. Feeds the score-distribution summary below.
+  const koScoreFor = new Map(
+    users
+      .map(u => [u, knockoutParticipantScore(match, u)] as const)
+      .filter(([, score]) => score !== null),
+  )
+  const participants = users.filter(u => koScoreFor.has(u))
+
+  return (
+    <PageLayout title="ההימור 2026">
+      <div data-testid="knockout-match-page">
+        <MatchHeader
+          match={headerMatch}
+          home={home} away={away}
+          homeScore={homeScore} awayScore={awayScore} onHomeScore={setHomeScore} onAwayScore={setAwayScore}
+          realScore={realScore} live={live} liveScore={liveScore}
+          badge={{ label: `${roundLabel(matchNum)} · משחק ${matchNum}` }}
+          prevId={prevId}
+          nextId={nextId}
+        />
+      </div>
+
+      {!match.resolved && <KnockoutSurvivorsList actualMatch={match} users={users} />}
+
+      {match.resolved && (
+        <div className="match-predictions">
+          {users.length > 0 && (
+            <>
+              <header className="section-heading" dir="rtl">
+                <span className="section-heading__eyebrow">דירוג</span>
+                <h2 className="section-heading__title">טבלת המנחשים</h2>
+              </header>
+              <KnockoutMatchLeaderboard match={match} users={users} results={results} me={me} />
+            </>
+          )}
+
+          {participants.length > 0 && (
+            <>
+              <header className="section-heading" dir="rtl">
+                <span className="section-heading__eyebrow">ניחושים</span>
+                <h2 className="section-heading__title">סך הכל</h2>
+              </header>
+              <PredictionSummary
+                matchId={matchId}
+                homeLabel={home.he}
+                awayLabel={away.he}
+                users={participants}
+                actualScore={realScore}
+                scoreFor={u => koScoreFor.get(u)}
+              />
+            </>
+          )}
+
+          <header className="section-heading" dir="rtl">
+            <span className="section-heading__eyebrow">סטטיסטיקה</span>
+            <h2 className="section-heading__title">התפלגות תוצאות</h2>
+          </header>
+          {participants.length === 0
+            ? <p className="match-predictions__empty" dir="rtl">אין משתתפים שניחשו את המשחק הזה</p>
+            : <ScoreFrequencyTable
+                matchId={matchId}
+                users={participants}
+                actualScore={realScore}
+                scoreFor={u => koScoreFor.get(u)}
+                homeLabel={home.he}
+                awayLabel={away.he}
+              />}
+
+          {users.length > 0 && venn && (
+            <>
+              <header className="section-heading" dir="rtl">
+                <span className="section-heading__eyebrow">{venn.label}</span>
+                <h2 className="section-heading__title">
+                  מי העלה את {away.he} ואת {home.he}
+                </h2>
+              </header>
+              <KnockoutVenn teamA={match.home} teamB={match.away} stage={venn.stage} users={users} />
+            </>
+          )}
+        </div>
+      )}
     </PageLayout>
   )
 }
