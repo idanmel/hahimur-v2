@@ -4,7 +4,8 @@ import type { PodiumByAdvancer } from '../../../sim-core'
 
 const make = (o: Partial<PodiumByAdvancer>): PodiumByAdvancer => ({
   matchNum: 74, teamA: 'Germany', teamB: 'Paraguay',
-  podiumIfA: 0.05, podiumIfB: 0.05, podiumBaseline: 0.05, nA: 2000, nB: 2000, ...o,
+  podiumIfA: 0.05, podiumIfB: 0.05, podiumBaseline: 0.05,
+  winIfA: 0.01, winIfB: 0.01, winBaseline: 0.01, nA: 2000, nB: 2000, ...o,
 })
 
 describe('podiumAdvice', () => {
@@ -45,5 +46,20 @@ describe('podiumAdvice', () => {
     const a = podiumAdvice(make({ podiumIfA: 0.07, podiumIfB: 0.07 }))
     expect(a.better.team).toBe('Germany')
     expect(a.noPreference).toBe(true)
+  })
+
+  test("the 'win' metric reads the win* fields, not the podium ones", () => {
+    const a = podiumAdvice(
+      make({
+        podiumIfA: 0.9, podiumIfB: 0.1, podiumBaseline: 0.5, // podium would favour Germany
+        winIfA: 0.02, winIfB: 0.08, winBaseline: 0.05,        // win favours Paraguay
+      }),
+      'win',
+    )
+    expect(a.baseline).toBe(0.05)
+    expect(a.better.team).toBe('Paraguay')
+    expect(a.better.podium).toBe(0.08)
+    expect(a.better.delta).toBeCloseTo(0.03, 6)
+    expect(a.worse.delta).toBeCloseTo(-0.03, 6)
   })
 })

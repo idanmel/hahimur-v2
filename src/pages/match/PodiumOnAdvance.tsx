@@ -1,10 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { TournamentResults } from '../../shared/types'
 import type { User } from '../../users'
 import { TEAMS } from '../../shared/groups'
 import { realPlayedState } from '../../leaderboard/winprob/realPlayed'
 import { usePodiumByAdvancer } from './usePodiumByAdvancer'
-import { podiumAdvice, type PodiumSide } from './podiumAdvice'
+import { podiumAdvice, type PodiumSide, type PodiumMetric } from './podiumAdvice'
+
+// The two finishes the card can advise on. Both come out of the same sim run, so
+// the toggle is a pure re-read — no recompute when you switch tabs.
+const METRICS: { key: PodiumMetric; tab: string; title: string; baselineLabel: string; rungs: number }[] = [
+  { key: 'podium', tab: 'בפודיום', title: 'איך המשחק משפיע על הסיכוי שלך לסיים בפודיום', baselineLabel: 'הסיכוי שלך למקום 1–5 כרגע', rungs: 5 },
+  { key: 'win', tab: 'לזכות', title: 'איך המשחק משפיע על הסיכוי שלך לזכות', baselineLabel: 'הסיכוי שלך לזכות כרגע', rungs: 1 },
+]
 
 interface Props {
   currentUser?: User
@@ -24,21 +31,42 @@ const Flag = ({ team }: { team: string }) => {
   return iso ? <span className={`fi fi-${iso} podium-advice__flag`} /> : null
 }
 
-const Heading = (
+const Heading = ({ title }: { title: string }) => (
   <header className="section-heading" dir="rtl">
     <span className="section-heading__eyebrow">מה עדיף לך</span>
-    <h2 className="section-heading__title">איך המשחק משפיע על הסיכוי שלך לסיים בפודיום</h2>
+    <h2 className="section-heading__title">{title}</h2>
   </header>
 )
 
 // Rendered above the .match-predictions column, so it carries that column's own
 // max-width + side padding to stay aligned with the cards below it on wide screens.
-const Shell = ({ children }: { children: React.ReactNode }) => (
+const Shell = ({ title = 'איך המשחק משפיע על הסיכוי שלך לסיים בפודיום', children }: { title?: string; children: React.ReactNode }) => (
   <div className="podium-advice__wrap">
-    {Heading}
+    <Heading title={title} />
     <section className="podium-advice" dir="rtl">{children}</section>
   </div>
 )
+
+// Segmented control: podium (top-5) vs win (finish first). Both are already in
+// `result`, so picking a tab just re-reads it.
+function MetricTabs({ metric, onPick }: { metric: PodiumMetric; onPick: (m: PodiumMetric) => void }) {
+  return (
+    <div className="podium-advice__tabs" role="tablist" aria-label="איזה סיום" dir="rtl">
+      {METRICS.map(m => (
+        <button
+          key={m.key}
+          type="button"
+          role="tab"
+          aria-selected={metric === m.key}
+          className={`podium-advice__tab${metric === m.key ? ' is-active' : ''}`}
+          onClick={() => onPick(m.key)}
+        >
+          {m.tab}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // One side of the fork: which advancer this is, the conditional podium %, and a
 // swing meter whose fill grows up-gold / down-red from the centre, sized to this
@@ -75,15 +103,30 @@ function Branch({ side, best, fill }: { side: PodiumSide; best: boolean; fill: n
 // side advances), with the better side highlighted. The heavy Monte-Carlo runs in a
 // worker (usePodiumByAdvancer); this component only renders the verdict.
 export default function PodiumOnAdvance({ currentUser, results, matchNum, live }: Props) {
+  const matchKey = String(matchNum)
   const played = useMemo(() => {
     const state = realPlayedState(results)
     // While the match is live its running score is in the bracket; drop it so the
     // sim keeps forking on the (still-undecided) advancer rather than bailing out.
-    if (live) delete state[String(matchNum)]
+    if (live) delete state[matchKey]
     return state
-  }, [results, live, matchNum])
-  const playerGoals = results.playerGoals ?? {}
+  }, [results, live, matchKey])
+  // Banked golden-boot goals. While the match is live its running goals are folded
+  // into `results.playerGoals`; strip this fixture's goals too so the scorer model
+  // stays consistent with treating the still-undecided match as unplayed.
+  const playerGoals = useMemo(() => {
+    if (!live) return results.playerGoals ?? {}
+    const out: Record<string, number> = {}
+    for (const [player, byMatch] of Object.entries(results.playerMatchGoals ?? {})) {
+      let sum = 0
+      for (const [mid, goals] of Object.entries(byMatch)) if (mid !== matchKey) sum += goals
+      if (sum > 0) out[player] = sum
+    }
+    return out
+  }, [results, live, matchKey])
   const { status, result } = usePodiumByAdvancer(currentUser?.label ?? '', played, playerGoals, matchNum)
+  const [metric, setMetric] = useState<PodiumMetric>('podium')
+  const view = METRICS.find(m => m.key === metric)!
 
   if (!currentUser) {
     return (
@@ -105,20 +148,23 @@ export default function PodiumOnAdvance({ currentUser, results, matchNum, live }
   // not yet resolved): nothing to show.
   if (!result) return null
 
-  const advice = podiumAdvice(result)
+  const advice = podiumAdvice(result, metric)
   // Normalise both swing meters to the larger move on the card, so the bigger
   // shift fills its track and the smaller is read relative to it.
   const maxAbs = Math.max(Math.abs(advice.better.delta), Math.abs(advice.worse.delta), 1e-9)
   const fillFor = (s: PodiumSide) => Math.min(1, Math.abs(s.delta) / maxAbs)
 
   return (
-    <Shell>
-      {/* Baseline hero: your odds of a top-5 finish right now, over a 5-rung
-          standings ladder (place 1 the brightest gold, each rung below dimmer) */}
+    <Shell title={view.title}>
+      <MetricTabs metric={metric} onPick={setMetric} />
+
+      {/* Baseline hero: your odds for the selected finish right now, over a
+          standings ladder (place 1 the brightest gold, each rung below dimmer) —
+          five rungs for the podium, a single rung for "finish first". */}
       <div className="podium-advice__baseline">
-        <span className="podium-advice__baseline-label">הסיכוי שלך למקום 1–5 כרגע</span>
+        <span className="podium-advice__baseline-label">{view.baselineLabel}</span>
         <div className="podium-advice__stand" aria-hidden="true">
-          {Array.from({ length: 5 }, (_, i) => (
+          {Array.from({ length: view.rungs }, (_, i) => (
             <i key={i} className="podium-advice__rung" />
           ))}
         </div>

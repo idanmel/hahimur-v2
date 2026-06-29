@@ -1827,6 +1827,41 @@
 
 .podium-advice > * { position: relative; z-index: 1; }
 
+/* ── Metric tabs: בפודיום / לזכות ───────────────────────────────────────────── */
+.podium-advice__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin: 0 auto 1.25rem;
+  width: fit-content;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(212, 160, 22, 0.18);
+  border-radius: 999px;
+}
+
+.podium-advice__tab {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.32rem 1.05rem;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(239, 228, 184, 0.6);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.podium-advice__tab:hover { color: rgba(239, 228, 184, 0.9); }
+
+.podium-advice__tab.is-active {
+  background: linear-gradient(180deg, var(--gold) 0%, #b8860b 100%);
+  color: var(--navy);
+  box-shadow: 0 0 12px rgba(212, 160, 22, 0.4);
+}
+
 .podium-advice__empty,
 .podium-advice__loading {
   margin: 0;

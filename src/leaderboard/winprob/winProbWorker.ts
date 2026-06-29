@@ -1,4 +1,4 @@
-import { runSims, buildRows, mergeSimAgg, type Row, type StageReach } from '../../../sim-core'
+import { runSims, buildRows, mergeSimAgg, simChunks, type Row, type SimAgg, type StageReach } from '../../../sim-core'
 import type { PredictionsState } from '../../shared/types'
 
 export interface WinProbRequest {
@@ -33,28 +33,24 @@ export interface WinProbResponse {
 // single-arg postMessage + onmessage we need without a separate webworker lib.
 const worker = self as unknown as Worker
 
-// n sims is a solid stretch of CPU; running it as one blocking loop pins a core
-// for that whole time, which starves the rest of the machine (the IDE, its
-// browser/CDP, the element picker) and feels like a freeze. Slicing it into
-// CHUNK-sized batches with a macrotask yield between them keeps the maths
-// identical (each batch gets its own seed via seed + i, then merged) while
-// letting the event loop — and the host — breathe between batches.
-const CHUNK = 250
-
 worker.onmessage = async (e: MessageEvent<WinProbRequest>) => {
   const { played, playerGoals, n, seed } = e.data
 
   // Single pass — no counterfactual "before this match" run. The win% itself is
   // what the card reports; a per-match win% delta was a difference of two noisy
   // estimates (so doubly noisy) and doubled the runtime, so it's gone.
-  const part0 = runSims(played, Math.min(CHUNK, n), seed, true, playerGoals)
-  let real = part0
-  for (let done = Math.min(CHUNK, n), i = 1; done < n; i++) {
-    const batch = Math.min(CHUNK, n - done)
+  //
+  // n sims is a solid stretch of CPU; running it as one blocking loop pins a core
+  // for that whole time, which starves the rest of the machine and feels like a
+  // freeze. We slice it into the shared chunk plan (sim-core's simChunks: a fixed
+  // batch size, each batch re-seeded with seed + chunkIndex) and yield a macrotask
+  // between batches so the event loop — and the host — can breathe. The match card
+  // walks the very same chunk plan, so both views sample identical tournaments.
+  const chunks = simChunks(n, seed)
+  let real: SimAgg = runSims(played, chunks[0].count, chunks[0].seed, true, playerGoals)
+  for (let i = 1; i < chunks.length; i++) {
     await new Promise<void>(resolve => setTimeout(resolve))
-    const part = runSims(played, batch, seed + i, true, playerGoals)
-    real = mergeSimAgg(real, part)
-    done += batch
+    real = mergeSimAgg(real, runSims(played, chunks[i].count, chunks[i].seed, true, playerGoals))
   }
   const rows = buildRows(real, n, played, playerGoals)
 

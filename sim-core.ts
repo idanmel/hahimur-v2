@@ -493,6 +493,12 @@ export interface PodiumByAdvancer {
   // total probability one advancer sits above this and the other below, so a raw
   // "both look high" reading is misleading without it.
   podiumBaseline: number
+  // The same conditionals/baseline but for finishing *first* (rank 1) rather than
+  // top-PODIUM_DEPTH — ties for the top score share the win (1/winners), matching
+  // the leaderboard's win% convention. The card's "לזכות" tab reads these.
+  winIfA: number          // P(viewer finishes 1st | teamA advances)
+  winIfB: number          // P(viewer finishes 1st | teamB advances)
+  winBaseline: number
   nA: number              // sims in which teamA advanced (bucket size, for noise)
   nB: number
 }
@@ -519,17 +525,28 @@ export function podiumByAdvancer(
   if (!bracketMatch || !TEAMS[bracketMatch.home] || !TEAMS[bracketMatch.away]) return null
   const teamA = bracketMatch.home, teamB = bracketMatch.away
 
-  reseed(seed)
+  // Walk the SAME chunk plan as the win-prob worker (chunk size + per-chunk
+  // reseed), so the conditional/baseline odds reported here are drawn from the
+  // identical tournaments the "סיכויי זכיה" board aggregates — same sample, same
+  // numbers, no Monte-Carlo drift between the two views.
   const realGames = Object.keys(realGoals).length ? realGamesByTeam(played) : new Map<string, number>()
-  let nA = 0, nB = 0, podA = 0, podB = 0
-  for (let i = 0; i < n; i++) {
-    const res = simulateTournament(played, realGoals, realGames)
-    const advancer = advancingTeam(koMatchByNum(res.knockoutStages, matchNum) ?? ({} as KnockoutMatch))
-    const scored = USERS.map(u => ({ label: u.label, pts: computeUserPoints(u, res).total }))
-    scored.sort((a, b) => b.pts - a.pts)
-    const inTop = scored.slice(0, PODIUM_DEPTH).some(s => s.label === viewer.label)
-    if (advancer === teamA) { nA++; if (inTop) podA++ }
-    else if (advancer === teamB) { nB++; if (inTop) podB++ }
+  let nA = 0, nB = 0, podA = 0, podB = 0, winA = 0, winB = 0
+  for (const chunk of simChunks(n, seed)) {
+    reseed(chunk.seed)
+    for (let i = 0; i < chunk.count; i++) {
+      const res = simulateTournament(played, realGoals, realGames)
+      const advancer = advancingTeam(koMatchByNum(res.knockoutStages, matchNum) ?? ({} as KnockoutMatch))
+      const scored = USERS.map(u => ({ label: u.label, pts: computeUserPoints(u, res).total }))
+      scored.sort((a, b) => b.pts - a.pts)
+      const inTop = scored.slice(0, PODIUM_DEPTH).some(s => s.label === viewer.label)
+      // Finishing first, with ties for the top score sharing the win (1/winners) —
+      // the same convention the season-long win% uses.
+      const top = scored[0].pts
+      const winners = scored.filter(s => s.pts === top)
+      const winShare = winners.some(w => w.label === viewer.label) ? 1 / winners.length : 0
+      if (advancer === teamA) { nA++; if (inTop) podA++; winA += winShare }
+      else if (advancer === teamB) { nB++; if (inTop) podB++; winB += winShare }
+    }
   }
   const total = nA + nB
   return {
@@ -537,6 +554,9 @@ export function podiumByAdvancer(
     podiumIfA: nA ? podA / nA : 0,
     podiumIfB: nB ? podB / nB : 0,
     podiumBaseline: total ? (podA + podB) / total : 0,
+    winIfA: nA ? winA / nA : 0,
+    winIfB: nB ? winB / nB : 0,
+    winBaseline: total ? (winA + winB) / total : 0,
     nA, nB,
   }
 }
@@ -604,6 +624,24 @@ export function realGamesByTeam(played: PredictionsState): Map<string, number> {
     if (ko.resolved && s && s.home !== null && s.away !== null) { bump(ko.home); bump(ko.away) }
   }
   return games
+}
+
+// The Monte-Carlo sampler runs in fixed-size chunks, each re-seeded with
+// `seed + chunkIndex` (a fresh, reproducible sub-stream). The win-prob worker
+// chunks so it can yield to the event loop between batches and not freeze the
+// page; anything else that must report the SAME probabilities (the match card's
+// per-advancer podium/win buckets) walks the identical chunk plan via this
+// helper. Centralising the chunk size + seed scheme here is what keeps the two
+// from drifting apart if the mechanism is ever changed.
+export const SIM_CHUNK = 250
+export function simChunks(n: number, seed: number): { seed: number; count: number }[] {
+  const chunks: { seed: number; count: number }[] = []
+  for (let done = 0, i = 0; done < n; i++) {
+    const count = Math.min(SIM_CHUNK, n - done)
+    chunks.push({ seed: seed + i, count })
+    done += count
+  }
+  return chunks
 }
 
 export function runSims(played: PredictionsState, n: number, seed: number, collect = false, realGoals: Record<string, number> = {}): SimAgg {
