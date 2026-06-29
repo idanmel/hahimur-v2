@@ -294,20 +294,20 @@ export function rangePlaceMovement(users: User[], results: TournamentResults, fr
   return Object.fromEntries(users.map(u => [u.label, before[u.label] - after[u.label]]))
 }
 
-// Each bettor's rank after every played group match, chronologically:
-// trajectory[label][i] = their cumulative rank as of played match i+1. Stays
-// group-only — the timelapse chart is a group-stage view.
+// Each bettor's rank after every played match, chronologically:
+// trajectory[label][i] = their cumulative rank as of played match i+1. Spans the
+// whole tournament — group stage then knockouts — via the unified timeline.
 export function rankTrajectories(users: User[], results: TournamentResults): Record<string, number[]> {
-  const chrono: PlayedMatch[] = playedGroupMatchesChrono(results).map(match => ({ kind: 'group', match }))
+  const chrono = playedMatchesChrono(results)
   const snapshots = Array.from({ length: chrono.length }, (_, i) => ranksAsOf(users, results, chrono, i + 1))
   return Object.fromEntries(users.map(u => [u.label, snapshots.map(s => s[u.label])]))
 }
 
-// Each bettor's hit tally across all played group matches — pgiya (correct
-// direction) and tzelifa (exact score) — matching the trajectory's scope, so
-// the chart caption can summarise accuracy alongside the rank line.
+// Each bettor's hit tally across all played matches — pgiya (correct direction)
+// and tzelifa (exact score) — matching the trajectory's scope (group AND
+// knockout), so the chart caption can summarise accuracy alongside the rank line.
 export function hitStats(users: User[], results: TournamentResults): Record<string, { pgiya: number; tzelifa: number }> {
-  const rows = rowsForMatches(users, results, playedGroupMatchesChrono(results), false)
+  const rows = rowsForPlayedMatches(users, results, playedMatchesChrono(results), false)
   return Object.fromEntries(rows.map(r => [r.label, { pgiya: r.pgiyaCount, tzelifa: r.tzelifaCount }]))
 }
 

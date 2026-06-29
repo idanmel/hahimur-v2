@@ -368,6 +368,37 @@ test('rankTrajectories tracks each bettor cumulative rank after every played mat
   })
 })
 
+test('rankTrajectories spans into the knockout stage, not just the group matches', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    groupMatches: {
+      A: [datedMatch('a1', '11 ביוני', '22:00', { home: 1, away: 0 })],
+    },
+    knockoutStages: {
+      ...EMPTY_RESULTS.knockoutStages,
+      r32: [koResult(73, 'Brazil', 'France', '28 ביוני', '22:00', { home: 2, away: 1 })],
+    },
+  }
+  // Dana nails the group match (tzelifa, 4) then misses the KO → cumulative 4, 4
+  const dana = makeUser({
+    label: 'Dana',
+    groupMatches: { A: [grpMatch('a1', 1, 0)] },
+    knockoutStages: { ...EMPTY_RESULTS.knockoutStages, r32: [koPick(73, 'Brazil', 'France', { home: 0, away: 2 })] },
+  })
+  // Yossi misses the group match (0) then nails the KO (tzelifa r32, 7) → cumulative 0, 7 — overtakes
+  const yossi = makeUser({
+    label: 'Yossi',
+    groupMatches: { A: [grpMatch('a1', 0, 1)] },
+    knockoutStages: { ...EMPTY_RESULTS.knockoutStages, r32: [koPick(73, 'Brazil', 'France', { home: 2, away: 1 })] },
+  })
+
+  // After a1: Dana 1st, Yossi 2nd. After the KO match: Yossi 1st, Dana 2nd.
+  expect(rankTrajectories([dana, yossi], results)).toEqual({
+    Dana: [1, 2],
+    Yossi: [2, 1],
+  })
+})
+
 test('points sorters break ties by combined hits', () => {
   const rows = [
     mkRow('Gadi', { matchPoints: 4, total: 4, pgiyaCount: 2 }),
