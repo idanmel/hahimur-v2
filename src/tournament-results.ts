@@ -85,6 +85,7 @@ const groupScores: Record<string, MatchScores> = {
 // through). Fill in as KO matches are played; knockoutStages is derived from this.
 const koScores: Record<string, MatchScores> = {
   73: { home: 0, away: 1 },
+  74: { home: 1, away: 1, drawWinner: 'away' },
   76: { home: 2, away: 1 },
 }
 
