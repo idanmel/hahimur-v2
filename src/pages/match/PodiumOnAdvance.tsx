@@ -10,6 +10,10 @@ interface Props {
   currentUser?: User
   results: TournamentResults
   matchNum: number
+  // True while this fixture is actually being played. Its live score is folded
+  // into the bracket, which would make the sim treat it as settled and stop
+  // advising — so we keep showing the pre-match fork until the match is decided.
+  live?: boolean
 }
 
 const he = (team: string) => TEAMS[team]?.he ?? team
@@ -70,8 +74,14 @@ function Branch({ side, best, fill }: { side: PodiumSide; best: boolean; fill: n
 // knockout fixture with known teams, P(you finish top-5 of the whole pool | each
 // side advances), with the better side highlighted. The heavy Monte-Carlo runs in a
 // worker (usePodiumByAdvancer); this component only renders the verdict.
-export default function PodiumOnAdvance({ currentUser, results, matchNum }: Props) {
-  const played = useMemo(() => realPlayedState(results), [results])
+export default function PodiumOnAdvance({ currentUser, results, matchNum, live }: Props) {
+  const played = useMemo(() => {
+    const state = realPlayedState(results)
+    // While the match is live its running score is in the bracket; drop it so the
+    // sim keeps forking on the (still-undecided) advancer rather than bailing out.
+    if (live) delete state[String(matchNum)]
+    return state
+  }, [results, live, matchNum])
   const playerGoals = results.playerGoals ?? {}
   const { status, result } = usePodiumByAdvancer(currentUser?.label ?? '', played, playerGoals, matchNum)
 

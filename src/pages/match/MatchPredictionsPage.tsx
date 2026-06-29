@@ -281,6 +281,9 @@ function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore,
     ? { home: liveScore.home, away: liveScore.away }
     : mergedScore ?? (match.resolved ? completeScore(match.scores) : null)
   const live = isLive({ matchDate: match.matchDate, kickoffIST: match.kickoffIST }, now)
+  // "Decided" = a settled final result that's no longer live. Mirrors the group
+  // page: while the match is in progress (liveScore present) it isn't decided yet.
+  const decided = !!realScore && !liveScore
 
   // The KO fixture flattened into the group-shaped match the shared header reads.
   const headerMatch = koAsGroupMatch(match)
@@ -322,9 +325,10 @@ function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore,
 
       {!match.resolved && <KnockoutSurvivorsList actualMatch={match} users={users} />}
 
-      {/* Upcoming fixture with known teams: which advancer most lifts your podium odds. */}
-      {match.resolved && !realScore && (
-        <PodiumOnAdvance currentUser={users.find(u => u.label === me)} results={results} matchNum={matchNum} />
+      {/* Fixture with known teams: which advancer most lifts your podium odds.
+          Stays up through the live match — disappears only once it's decided. */}
+      {match.resolved && !decided && (
+        <PodiumOnAdvance currentUser={users.find(u => u.label === me)} results={results} matchNum={matchNum} live={!!liveScore} />
       )}
 
       {match.resolved && (
