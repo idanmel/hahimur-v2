@@ -88,6 +88,7 @@ const koScores: Record<string, MatchScores> = {
   74: { home: 1, away: 1, drawWinner: 'away' },
   75: { home: 1, away: 1, drawWinner: 'away' },
   76: { home: 2, away: 1 },
+  78: { home: 1, away: 2 },
 }
 
 // Real goals by picked players: player → match ID → goals in that match.
