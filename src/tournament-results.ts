@@ -94,7 +94,7 @@ const koScores: Record<string, MatchScores> = {
 // Names must match users' topGoalscorer strings exactly.
 const realGoals: Record<string, Record<string, number>> = {
   'ויניסיוס ג׳וניור': { C1: 1, C4: 1, C5: 2 },
-  'קאי האברץ': { E1: 2, '74': 1 },
+  'קאי האברץ': { 74: 1, E1: 2 },
   'קיליאן אמבפה': { I1: 2, I3: 2 },
   'הארי קיין': { L1: 2, L5: 1 },
   'לאמין ימאל': { H3: 1 },
