@@ -546,10 +546,10 @@ describe('singleMatchOutcome', () => {
 })
 
 // Knockout matches are predicted at end of regulation (90'), and a predicted draw
-// also names the advancer (drawWinner). The advancer settles the outcome only when
-// both predicted and actual are regulation draws: it splits tzelifa/pgiya/miss the
-// same way a winner does in a decisive match. Picking the right advancing *team*
-// earns its own עלייה points elsewhere (computeRoundBreakdown), not here.
+// also names the advancer (drawWinner). The advancer NEVER affects the scoreline
+// outcome — a draw is scored on its goals alone, exactly like a group draw. Picking
+// the right advancing *team* earns its own עלייה points elsewhere
+// (computeRoundBreakdown / koAdvancementFor), not here.
 describe('singleMatchOutcome — knockout draw advancer', () => {
   test('same draw score and same advancer → tzelifa', () => {
     expect(singleMatchOutcome(
@@ -558,18 +558,18 @@ describe('singleMatchOutcome — knockout draw advancer', () => {
     )).toBe('tzelifa')
   })
 
-  test('right advancer, wrong draw score → pgiya', () => {
+  test('both regulation draws, wrong score → pgiya', () => {
     expect(singleMatchOutcome(
       { home: 1, away: 1, drawWinner: 'away' },
       { home: 2, away: 2, drawWinner: 'away' },
     )).toBe('pgiya')
   })
 
-  test('right draw score, wrong advancer → miss', () => {
+  test('right draw score, wrong advancer → tzelifa (advancer is scored separately)', () => {
     expect(singleMatchOutcome(
       { home: 1, away: 1, drawWinner: 'home' },
       { home: 1, away: 1, drawWinner: 'away' },
-    )).toBe('miss')
+    )).toBe('tzelifa')
   })
 
   test('predicted draw, but match was decided in regulation → miss', () => {

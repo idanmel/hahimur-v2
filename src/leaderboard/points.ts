@@ -30,14 +30,6 @@ function winner(scores: MatchScores): 'home' | 'away' | 'draw' {
   return scores.drawWinner ?? 'draw'
 }
 
-function isExactMatch(predicted: MatchScores, actual: MatchScores): boolean {
-  return (
-    predicted.home === actual.home &&
-    predicted.away === actual.away &&
-    (predicted.drawWinner ?? null) === (actual.drawWinner ?? null)
-  )
-}
-
 function isDraw(scores: MatchScores): boolean {
   return scores.home === scores.away
 }
@@ -52,21 +44,15 @@ export const OUTCOME_LABEL: Record<MatchOutcome, string> = {
 
 export function singleMatchOutcome(predicted: MatchScores, actual: MatchScores): MatchOutcome {
   if (isUnpredicted(predicted) || isUnpredicted(actual)) return 'miss'
-  // A knockout draw whose advancer isn't settled yet (a live 1-1 before extra
-  // time / penalties names a winner) carries no actual drawWinner. Score it on
-  // the scoreline alone — exactly like a group draw — until the advancer is
-  // known; otherwise the drawWinner a bettor attached to their predicted draw
-  // could never match the still-empty actual advancer, zeroing even a spot-on
-  // 1-1 call mid-match. The advancer resumes splitting tzelifa/pgiya/miss once
-  // the result carries one.
-  if (isDraw(actual) && actual.drawWinner == null) {
-    if (isExactMatch({ home: predicted.home, away: predicted.away }, actual)) return 'tzelifa'
-    return isDraw(predicted) ? 'pgiya' : 'miss'
-  }
-  if (isExactMatch(predicted, actual)) return 'tzelifa'
+  // The scoreline (צליפה/פגיעה/פספוס) is judged on the goals alone — a knockout
+  // match scores exactly like a group one. The advancer (drawWinner) never affects
+  // it: a spot-on 1-1 is a צליפה even when the bettor picked the other side to go
+  // through on penalties. Missing the advancer costs only the separate עלייה points
+  // (koAdvancementFor), not the scoreline.
+  if (predicted.home === actual.home && predicted.away === actual.away) return 'tzelifa'
   if (isDraw(predicted) !== isDraw(actual)) return 'miss'
-  if (winner(predicted) === winner(actual)) return 'pgiya'
-  return 'miss'
+  if (isDraw(actual)) return 'pgiya'
+  return winner(predicted) === winner(actual) ? 'pgiya' : 'miss'
 }
 
 export function singleMatchPoints(matchId: string, predicted: MatchScores, actual: MatchScores): number {
