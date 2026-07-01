@@ -1,4 +1,5 @@
 import type { KnockoutMatch, KnockoutStages, MatchScores } from './types'
+import { TEAMS } from './groups'
 import TeamSlot from '../formView/knockout/TeamSlot'
 import ScoreInput from '../formView/ScoreInput'
 import { orderedRounds, type OrderedRounds } from './bracketLayout'
@@ -37,6 +38,14 @@ interface CardCtx {
   // oriented to the actual fixture's home/away. Shown under the marker so they
   // can see how their bet's scoreline compares to the real result.
   participatingPredictions?: Record<string, MatchScores>
+  // match numbers (as strings) that are still *unresolved* but where a pairing the
+  // user predicted could yet happen — both teams alive, converging on this slot.
+  // Drives the "עדיין אפשרי" (still possible) marker, the future-facing twin of
+  // the participating one.
+  possibleMatchIds?: Set<string>
+  // the two teams the user predicted to meet in each still-possible match, shown
+  // in the frame so they can see which of their bets is riding on this fixture.
+  possiblePredictions?: Record<string, { home: string; away: string }>
   // match numbers (as strings) currently in progress, from the live feed → the
   // card's score is a running live one, flagged with a "חי" badge and the minute.
   liveMatches?: Record<string, LiveClock>
@@ -51,6 +60,23 @@ function MineMark() {
     <span className="bk-mine" title="ניחשת את שתי הנבחרות במשחק הזה">
       <span className="bk-mine-dot" aria-hidden="true" />
       משתתף
+    </span>
+  )
+}
+
+// Future-facing twin of MineMark. This slot isn't decided yet, but a pairing the
+// bettor predicted could still land here — both teams are alive and their real
+// paths converge on this match. So instead of "משתתף" (locked in) we flag it
+// "עדיין אפשרי" (still possible), and name the matchup they're rooting for.
+function PossibleMark({ pred }: { pred?: { home: string; away: string } }) {
+  const he = (name: string) => TEAMS[name]?.he ?? name
+  const title = pred
+    ? `ניחשת ${he(pred.home)} נגד ${he(pred.away)} כאן — עדיין אפשרי`
+    : 'ניחוש שלך עדיין אפשרי במשחק הזה'
+  return (
+    <span className="bk-possible" title={title}>
+      <span className="bk-possible-dot" aria-hidden="true" />
+      עדיין אפשרי
     </span>
   )
 }
@@ -109,7 +135,7 @@ function MatchMeta({ m, live }: { m: KnockoutMatch; live?: LiveClock | null }) {
   )
 }
 
-function ReadOnlyCard({ m, mine, minePred, live, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; live?: LiveClock | null; className?: string }) {
+function ReadOnlyCard({ m, mine, minePred, possible, possiblePred, live, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; possible?: boolean; possiblePred?: { home: string; away: string }; live?: LiveClock | null; className?: string }) {
   const pd = predDigits(minePred)
   const teamLine = (name: string, value: number, advancing: boolean) =>
     pd
@@ -123,6 +149,7 @@ function ReadOnlyCard({ m, mine, minePred, live, className = '' }: { m: Knockout
   return (
     <a href={`/matches/${m.matchNum}`} className={`bk-match ${className}`}>
       {mine && <MineMark />}
+      {possible && <PossibleMark pred={possiblePred} />}
       <MatchMeta m={m} live={live} />
       {teamLine(m.home, pd?.home ?? 0, pd?.advHome ?? false)}
       {teamLine(m.away, pd?.away ?? 0, pd?.advAway ?? false)}
@@ -131,8 +158,8 @@ function ReadOnlyCard({ m, mine, minePred, live, className = '' }: { m: Knockout
 }
 
 function EditableCard({
-  m, ctx, mine, minePred, live, className = '',
-}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; live?: LiveClock | null; className?: string }) {
+  m, ctx, mine, minePred, possible, possiblePred, live, className = '',
+}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; possible?: boolean; possiblePred?: { home: string; away: string }; live?: LiveClock | null; className?: string }) {
   const { predictions, onChange, lockedMatchIds } = ctx
   const id = String(m.matchNum)
   const locked = lockedMatchIds?.has(id) ?? false
@@ -178,6 +205,7 @@ function EditableCard({
   return (
     <div className={`bk-match bk-match--editable ${className}${m.resolved ? ' bk-match--resolved' : ''}${needsDrawWinner ? ' bk-match--draw-pending' : ''}${live ? ' bk-match--live' : ''}`}>
       {mine && <MineMark />}
+      {possible && <PossibleMark pred={possiblePred} />}
       <MatchMeta m={m} live={live} />
       {slot('home', m.home, pred.home)}
       <div className="bk-row-divider" />
@@ -191,12 +219,18 @@ function EditableCard({
 }
 
 function MatchCard({ m, ctx, className = '' }: { m: KnockoutMatch; ctx: CardCtx; className?: string }) {
-  const mine = ctx.participatingMatchIds?.has(String(m.matchNum)) ?? false
-  const minePred = mine ? ctx.participatingPredictions?.[String(m.matchNum)] : undefined
-  const live = ctx.liveMatches?.[String(m.matchNum)] ?? null
-  const cls = `${className}${mine ? ' bk-match--mine' : ''}`
-  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} live={live} className={cls} />
-  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} live={live} className={cls} />
+  const id = String(m.matchNum)
+  const mine = ctx.participatingMatchIds?.has(id) ?? false
+  const minePred = mine ? ctx.participatingPredictions?.[id] : undefined
+  // "Still possible" only applies to slots not already locked in as "משתתף" — the
+  // two are mutually exclusive (resolved vs open), but guard so a slot never wears
+  // both badges if the inputs ever overlap.
+  const possible = !mine && (ctx.possibleMatchIds?.has(id) ?? false)
+  const possiblePred = possible ? ctx.possiblePredictions?.[id] : undefined
+  const live = ctx.liveMatches?.[id] ?? null
+  const cls = `${className}${mine ? ' bk-match--mine' : ''}${possible ? ' bk-match--possible' : ''}`
+  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} possible={possible} possiblePred={possiblePred} live={live} className={cls} />
+  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} possible={possible} possiblePred={possiblePred} live={live} className={cls} />
 }
 
 function Column({ rkey, matches, ctx }: { rkey: keyof OrderedRounds; matches: KnockoutMatch[]; ctx: CardCtx }) {
@@ -214,8 +248,8 @@ interface BracketProps extends CardCtx {
   stages: KnockoutStages
 }
 
-export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, liveMatches }: BracketProps) {
-  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, liveMatches }
+export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }: BracketProps) {
+  const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }
   const rounds = orderedRounds(stages)
   const final = stages.final[0]
   const thirdPlace = stages.thirdPlace[0]
