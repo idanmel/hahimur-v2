@@ -91,6 +91,7 @@ const koScores: Record<string, MatchScores> = {
   77: { home: 3, away: 0 },
   78: { home: 1, away: 2 },
   79: { home: 2, away: 0 },
+  80: { home: 2, away: 1 },
 }
 
 // Real goals by picked players: player → match ID → goals in that match.
@@ -99,7 +100,7 @@ const realGoals: Record<string, Record<string, number>> = {
   'ויניסיוס ג׳וניור': { C1: 1, C4: 1, C5: 2 },
   'קאי האברץ': { 74: 1, E1: 2 },
   'קיליאן אמבפה': { 77: 2, I1: 2, I3: 2 },
-  'הארי קיין': { L1: 2, L5: 1 },
+  'הארי קיין': { 80: 2, L1: 2, L5: 1 },
   'לאמין ימאל': { H3: 1 },
 }
 
