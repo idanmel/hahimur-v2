@@ -229,6 +229,41 @@ a.bk-match:hover {
   background: var(--navy);
 }
 
+/* ── "Still possible" marker ──────────────────────────────────────
+   The future-facing twin of "משתתף": this slot isn't decided yet, but a pairing
+   the bettor predicted could still land here. A dashed steel-blue edge (open, not
+   yet locked) sets it apart from the solid gold of a match they're already in,
+   and a labelled chip spells out the meaning. */
+.bk-match--possible {
+  border-color: var(--possible, #3f6fb0);
+  box-shadow: inset 3px 0 0 var(--possible, #3f6fb0), 0 1px 4px rgba(11, 34, 68, 0.06);
+}
+.bk-possible {
+  position: absolute;
+  top: -8px;
+  inset-inline-start: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 2px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  background: var(--possible, #3f6fb0);
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(11, 34, 68, 0.22);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.bk-possible-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
 /* The participant's predicted scoreline, one gold "ghost" digit per team row.
    Read top-to-bottom it gives the bet on the same vertical axis as the match,
    sitting beside the real score for a direct compare. Gold means "yours" — the

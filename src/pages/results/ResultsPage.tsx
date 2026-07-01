@@ -28,6 +28,7 @@ import type { PredictionsState, MatchScores, TournamentResults } from '../../sha
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../../shared/matchesByDate'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
 import { getLockedMatchIds, allTzelifotResults } from './resultsUtils'
+import { possibleParticipation } from './possibleParticipation'
 import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
 import '../../pages/form/FormPage.css'
@@ -317,6 +318,13 @@ export default function ResultsPage({ users }: { users: User[] }) {
     }
   }
 
+  // The future-facing twin of the above: unresolved bracket slots where a pairing
+  // I predicted could still happen — both teams alive and converging here. Flagged
+  // "עדיין אפשרי" rather than "משתתף", since it isn't locked in yet.
+  const { ids: possibleMatchIds, predictions: possiblePredictions } = myUser
+    ? possibleParticipation(myUser, tournamentResults)
+    : { ids: new Set<string>(), predictions: {} as Record<string, { home: string; away: string }> }
+
   // chronological timeline the "טווח" selectors choose from (grows as you simulate)
   const playedMatchLabels = playedMatchesChrono(tournamentResults).map(playedMatchChronoLabel)
   const rangeFrom = Math.min(lbRangeFrom, playedMatchLabels.length)
@@ -468,6 +476,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
               lockedMatchIds={LOCKED_MATCH_IDS}
               participatingMatchIds={myBracketMatchIds}
               participatingPredictions={myBracketPredictions}
+              possibleMatchIds={possibleMatchIds}
+              possiblePredictions={possiblePredictions}
               liveMatches={liveBracketMatches}
             />
           </CollapsibleSection>

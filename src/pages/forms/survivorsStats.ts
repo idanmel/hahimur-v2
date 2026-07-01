@@ -177,7 +177,7 @@ const PARENT_MATCH: Record<number, number> = {
 
 // Round index of a knockout match number (r32=0 … final=4). The third-place match
 // (103) sits in the final tier since its entrants are settled by the semis.
-function roundOfMatch(n: number): number {
+export function roundOfMatch(n: number): number {
   if (n <= 88) return 0
   if (n <= 96) return 1
   if (n <= 100) return 2
@@ -186,7 +186,7 @@ function roundOfMatch(n: number): number {
 }
 
 // Walk a team's R32 match up the bracket to its ancestor match at `round`.
-function ancestorAt(r32Match: number, round: number): number {
+export function ancestorAt(r32Match: number, round: number): number {
   let cur = r32Match
   while (roundOfMatch(cur) < round && PARENT_MATCH[cur] != null) cur = PARENT_MATCH[cur]
   return cur
@@ -194,7 +194,7 @@ function ancestorAt(r32Match: number, round: number): number {
 
 // The round where a set of teams' paths first converge (their lowest common
 // ancestor) — the round in which they'd actually meet. Used to phrase the warning.
-function convergeRound(r32Matches: number[]): number {
+export function convergeRound(r32Matches: number[]): number {
   for (let r = 0; r <= 4; r++) {
     const anc = r32Matches.map(m => ancestorAt(m, r))
     if (anc.every(a => a === anc[0])) return r
@@ -214,7 +214,7 @@ const STAGE_BARRIER: Partial<Record<LiveStageKey, number>> = {
 
 // team name → the R32 match it sits in within the *real* bracket. Built from the
 // resolved round-of-32 fixtures (a team keeps its R32 leaf even after advancing).
-function teamR32Map(bracket: KnockoutMatch[]): Map<string, number> {
+export function teamR32Map(bracket: KnockoutMatch[]): Map<string, number> {
   const m = new Map<string, number>()
   for (const match of bracket) {
     if (match.matchNum < 73 || match.matchNum > 88) continue
