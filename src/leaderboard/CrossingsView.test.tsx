@@ -376,6 +376,53 @@ test('the "who predicted what" board shows a 100%-certain matchup as a closed ma
   expect(within(cards[0]).getByText(/ודאי/)).toBeInTheDocument()
 })
 
+test('shows a played crossing as a finished result card: real score, advancer, outcome + points', () => {
+  const actual = [km(73, 'Mexico', 'Canada')]
+  const user = userWith([km(73, 'Mexico', 'Canada', { home: 3, away: 1 })]) // called Mexico 3-1
+  const actualScoreByNum = { 73: { home: 2, away: 1 } }                      // real Mexico 2-1
+  render(
+    <CrossingsList
+      user={user} users={[user]} actualMatches={actual}
+      actualScoreByNum={actualScoreByNum} probByMatch={{}} probStatus="ready"
+    />,
+  )
+
+  // finished matches load collapsed — the header shows the count, cards are hidden
+  const header = screen.getByRole('button', { name: /🏁 הסתיימו \(1\)/ })
+  expect(header).toBeInTheDocument()
+  expect(screen.queryByTestId('finished-card')).not.toBeInTheDocument()
+
+  // tapping the header reveals the full result card
+  fireEvent.click(header)
+  const card = within(screen.getByTestId('finished-card'))
+  expect(card.getByText('1–2')).toBeInTheDocument()        // real result, away–home
+  expect(card.getByText('1–3')).toBeInTheDocument()        // the bettor's bet, away–home
+  expect(card.getByText('פגיעה · +5')).toBeInTheDocument() // right winner, wrong score
+  expect(card.getByText(/עלתה/)).toBeInTheDocument()       // Mexico advanced
+  // a finished match isn't duplicated as a plain locked card
+  expect(screen.queryByText('✓ נעולות')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('crossing-card')).not.toBeInTheDocument()
+})
+
+test('the "who predicted what" board shows a single advanced team as a partial slot', () => {
+  const actual = [
+    km(73, 'Mexico', 'Canada'),    // fully determined pairing
+    km(75, 'Brazil', 'סגנית ו'),   // one team advanced, opponent still open -> partial
+  ]
+  const me = userWith([km(73, 'Mexico', 'Canada'), km(75, 'Brazil', 'Netherlands')], 'אני')
+  render(<CrossingsList user={me} users={[me]} actualMatches={actual} probByMatch={{}} probStatus="ready" />)
+  fireEvent.click(screen.getByRole('tab', { name: /מי ניחש/ }))
+
+  // the determined pairing stays a determined card...
+  expect(screen.getAllByTestId('determined-card')).toHaveLength(1)
+  // ...and the half-open slot shows the team that already advanced, in its own group
+  expect(screen.getByText('➡️ קבוצה אחת כבר עלתה')).toBeInTheDocument()
+  const partial = within(screen.getByTestId('partial-card'))
+  expect(partial.getByText('טרם נקבע')).toBeInTheDocument()
+  expect(partial.getByText('עלתה ✓')).toBeInTheDocument()  // Brazil advanced
+  expect(partial.getByText('ברזיל')).toBeInTheDocument()
+})
+
 test('reads the bettor predictions for the selected round', () => {
   // a locked round-of-16 matchup, scored with the R16 payouts in the note
   const actual = [km(89, 'Brazil', 'France')]

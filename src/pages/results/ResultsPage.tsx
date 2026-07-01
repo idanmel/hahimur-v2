@@ -17,7 +17,12 @@ import { allKO, predictedPairing, orientPrediction } from '../../formView/knocko
 import { useTournament } from '../../shared/useTournament'
 import { useCurrentUser } from '../../shared/useCurrentUser'
 import { useLiveScores } from '../../shared/useLiveScores'
+import { useScorerTotals } from '../../shared/useScorerTotals'
+import { SCORER_ALIASES } from '../../shared/espnLive'
 import { mergeLiveResults } from '../../shared/liveResults'
+import { buildGoldenBootBoard } from './goldenBootBoard'
+import { GOLDEN_BOOT_NAMES, TEAM_BY_PLAYER } from './goldenBootNames'
+import { eliminatedTeams } from '../forms/compareStats'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../../shared/matchesByDate'
@@ -34,6 +39,10 @@ Object.values(GROUPS).forEach(group =>
 )
 
 const LOCKED_MATCH_IDS = getLockedMatchIds(realTournamentResults)
+// Teams really out of the tournament (never a false positive — see eliminatedTeams).
+// Drives the Golden Boot "out of the race" mark; based on committed reality, not
+// the user's what-if edits.
+const ELIMINATED_TEAMS = eliminatedTeams(realTournamentResults)
 const INITIAL_PLAYED_COUNT = playedMatchesChrono(realTournamentResults).length
 // Frozen at load from the committed real scores — the by-date view scrolls here
 const NEXT_MATCH_ID = nextUnplayedMatchId(realTournamentResults)
@@ -80,6 +89,11 @@ function CollapsibleSection({ label, children, defaultOpen = false }: Collapsibl
   )
 }
 
+// ESPN names that belong to picked players — their goals are rendered from the
+// picked tally (playerGoals), so they must be excluded from the unpicked
+// accumulation to avoid a duplicate row on the race board.
+const PICKED_ESPN_NAMES = new Set(Object.keys(SCORER_ALIASES))
+
 const predictedPlayers = (users: User[]) =>
   [...new Set(users.map(u => u.topGoalscorer).filter(Boolean))]
 
@@ -122,6 +136,30 @@ export default function ResultsPage({ users }: { users: User[] }) {
 
   const players = predictedPlayers(users)
   const myUser = useMemo(() => users.find(u => u.label === me), [users, me])
+
+  // Live tournament-wide scorer totals (raw ESPN names) → merge the picked
+  // roster with the real leaders/chasers into one Golden Boot race board.
+  const espnTotals = useScorerTotals()
+  const raceBoard = useMemo(
+    () => buildGoldenBootBoard({
+      pickedPlayers: players,
+      pickedGoals: realTournamentResults.playerGoals ?? {},
+      espnTotals,
+      pickedEspnNames: PICKED_ESPN_NAMES,
+      nameMap: GOLDEN_BOOT_NAMES,
+    }),
+    [players, espnTotals],
+  )
+  const pickedPlayerSet = useMemo(() => new Set(players), [players])
+  // Race-board players whose national team is already eliminated. GoalScorerSection
+  // combines this with the live lead to flag the ones that can no longer catch up.
+  const eliminatedPlayers = useMemo(
+    () => raceBoard.players.filter(p => {
+      const team = TEAM_BY_PLAYER[p]
+      return team != null && ELIMINATED_TEAMS.has(team)
+    }),
+    [raceBoard.players],
+  )
 
   const nextMatchRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -435,12 +473,21 @@ export default function ResultsPage({ users }: { users: User[] }) {
           </CollapsibleSection>
           <CollapsibleSection label="מלך השערים">
             <GoalScorerSection
-              key={goalScorerResetKey}
-              players={players}
-              realGoals={realTournamentResults.playerGoals ?? {}}
+              key={`${goalScorerResetKey}-${JSON.stringify(raceBoard.realGoals)}`}
+              players={raceBoard.players}
+              realGoals={raceBoard.realGoals}
               defaultWinner={goalScorerState.goldenBootWinner}
               pickersByPlayer={pickersByPlayer(users)}
-              onChange={(goals, winners) => setGoalScorerState({ playerGoals: goals, goldenBootWinner: winners })}
+              eliminatedPlayers={eliminatedPlayers}
+              onChange={(goals, winners) => setGoalScorerState({
+                // Keep playerGoals picked-only: unpicked race-board rows must
+                // never leak into points / the win-prob sim / Records, which all
+                // read tournamentResults.playerGoals.
+                playerGoals: Object.fromEntries(
+                  Object.entries(goals).filter(([p]) => pickedPlayerSet.has(p))
+                ),
+                goldenBootWinner: winners,
+              })}
             />
           </CollapsibleSection>
         </div>

@@ -461,10 +461,68 @@
   background: rgba(200, 184, 122, 0.08);
 }
 
+/* The current top scorer(s) — a display-only cue derived from live goals. It is
+   intentionally decoupled from the winner checkbox: leading the race mid-
+   tournament does not award the +10 bonus. */
+.pg-scorer-row--leader {
+  border-color: color-mix(in srgb, var(--gold) 60%, transparent);
+}
+
 .pg-scorer-name {
   font-family: 'Heebo', sans-serif;
   font-size: 14px;
   color: var(--navy);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pg-scorer-leader-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+  padding: 0.2em 0.5em;
+  color: var(--navy);
+  background: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 70%, var(--ink));
+}
+
+.pg-scorer-leader-star {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Out of the Golden Boot race: team eliminated and already behind the lead, so
+   the total can never be caught. Dim the row and strike the name to read as
+   "no longer in contention" at a glance. */
+.pg-scorer-row--out {
+  opacity: 0.55;
+  border-color: rgba(11, 34, 68, 0.15);
+}
+
+.pg-scorer-row--out .pg-scorer-name {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--navy) 45%, transparent);
+  color: color-mix(in srgb, var(--navy) 65%, transparent);
+}
+
+.pg-scorer-out-badge {
+  font-family: 'Heebo', sans-serif;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 2px;
+  padding: 0.15em 0.4em;
+  text-decoration: none;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--navy) 60%, transparent);
+  background: color-mix(in srgb, var(--navy) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--navy) 18%, transparent);
 }
 
 .pg-scorer-checkbox {

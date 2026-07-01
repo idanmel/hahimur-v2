@@ -1,7 +1,9 @@
-import type { KnockoutMatch, KnockoutStages } from '../shared/types'
+import type { KnockoutMatch, KnockoutStages, MatchScores } from '../shared/types'
 import { isUnpredicted } from '../shared/types'
 import { TEAMS } from '../shared/groups'
 import { roundKeyForMatch, isPairing } from '../formView/knockout/koRounds'
+import { advancingTeam, singleMatchOutcome, singleMatchPoints } from './points'
+import type { MatchOutcome } from './points'
 
 // The knockout rounds this view walks through, in order. (Third place is its own
 // odd one-off and isn't part of the "same principle per stage" progression.)
@@ -37,6 +39,28 @@ export interface Crossing {
   // (100%) even though the bracket slot isn't formally filled yet — the card flags it
   // with a badge so it reads apart from a pairing whose teams have physically arrived.
   certain?: boolean
+  // Set on a locked crossing whose match has *actually been played*, so the card can
+  // read as a final result rather than a pending fixture: the real scoreline, who
+  // advanced, and how the bettor's own predicted score scored against it. Attached
+  // only when a real score for this slot is supplied (see actualScoreByNum).
+  result?: CrossingResult
+}
+
+// The played outcome of a crossing's match, everything oriented to the *real*
+// fixture's home/away so a card can be rendered straight from it. `predHome`/
+// `predAway` re-express the bettor's predicted scoreline in that same orientation
+// (null when they left it blank); `outcome`/`points` score that prediction against
+// the real result exactly like the rest of the app (singleMatchOutcome/Points).
+export interface CrossingResult {
+  home: string
+  away: string
+  homeScore: number
+  awayScore: number
+  advancer: string | null
+  predHome: number | null
+  predAway: number | null
+  outcome: MatchOutcome
+  points: number
 }
 
 export interface UserCrossings {
@@ -60,6 +84,61 @@ const isRealTeam = (name: string | null | undefined): name is string =>
   !!name && !!TEAMS[name]
 
 const confirmedCount = (c: Crossing) => c.teams.filter(t => t.confirmed).length
+
+// Is there a real, played scoreline for this match? (An unpredicted placeholder
+// score doesn't count — the slot's teams may be set before the match is played.)
+const playedScore = (
+  matchNum: number,
+  actualScoreByNum: Record<number, MatchScores>,
+): MatchScores | null => {
+  const s = actualScoreByNum[matchNum]
+  return s && !isUnpredicted(s) ? s : null
+}
+
+// Build the played-outcome record for a *locked* crossing: the real score + who
+// advanced (from the real fixture), with the bettor's predicted score re-oriented
+// to that fixture and scored against it. `rm` is the real match (both sides real).
+function buildCrossingResult(c: Crossing, rm: KnockoutMatch, score: MatchScores): CrossingResult {
+  const home = rm.home as string
+  const away = rm.away as string
+  // c.predicted is oriented to c.teams[0]/[1]; re-express it in rm's home/away.
+  let predHome: number | null = null
+  let predAway: number | null = null
+  if (c.predicted) {
+    const sameOrder = c.teams[0].team === home
+    predHome = sameOrder ? c.predicted.home : c.predicted.away
+    predAway = sameOrder ? c.predicted.away : c.predicted.home
+  }
+  const predScores: MatchScores | null =
+    predHome === null || predAway === null ? null : { home: predHome, away: predAway }
+  return {
+    home,
+    away,
+    homeScore: score.home as number,
+    awayScore: score.away as number,
+    advancer: advancingTeam({ ...rm, scores: score }),
+    predHome,
+    predAway,
+    outcome: predScores ? singleMatchOutcome(predScores, score) : 'miss',
+    points: predScores ? singleMatchPoints(String(c.matchNum), predScores, score) : 0,
+  }
+}
+
+// The played result for a *determined* board pairing (both teams real): real score
+// and advancer only — the shared board has no single bettor, so no prediction/points.
+function realOnlyResult(matchNum: number, home: string, away: string, score: MatchScores): CrossingResult {
+  return {
+    home,
+    away,
+    homeScore: score.home as number,
+    awayScore: score.away as number,
+    advancer: advancingTeam({ matchNum, home, away, resolved: true, scores: score }),
+    predHome: null,
+    predAway: null,
+    outcome: 'miss',
+    points: 0,
+  }
+}
 
 // Side-agnostic key for a knockout pairing — must match the engine's koPairKey so
 // a bettor's pair (in either order) lines up with the simulated matchup counts.
@@ -153,11 +232,20 @@ export function crossingParticipants(
 // of all the settled matches.
 export interface DeterminedCrossing {
   matchNum: number
-  teams: [string, string]
+  // Both real teams for a settled pairing; a single real team for a `partial` slot
+  // (one side has advanced, the opponent's feeder isn't decided yet).
+  teams: string[]
   predictors: string[]
   // True when the pairing isn't *formally* in the bracket yet but the simulation
   // makes it inevitable (100%) — a "closed match" the card flags with a badge.
   certain?: boolean
+  // True when only ONE side of this slot has a real team so far — the other is still
+  // an open placeholder. Emitted so the shared board can still show the team that has
+  // already advanced to the next stage, rather than hiding the slot entirely.
+  partial?: boolean
+  // Real result when this determined pairing has actually been played (real score +
+  // advancer). Undefined for partials and for pairings not yet played.
+  result?: CrossingResult
 }
 
 // The pairing the simulation fixes at 100% for a match, if any — the two teams that
@@ -183,6 +271,7 @@ export function computeDeterminedCrossings(
   bettors: CrossingsBettor[],
   actualMatches: KnockoutMatch[],
   crossingProbByMatch: Record<number, Record<string, number>> = {},
+  actualScoreByNum: Record<number, MatchScores> = {},
 ): DeterminedCrossing[] {
   const out: DeterminedCrossing[] = []
   for (const m of actualMatches) {
@@ -190,7 +279,13 @@ export function computeDeterminedCrossings(
     if (isRealTeam(m.home) && isRealTeam(m.away)) {
       const predictors = crossingParticipants(bettors, m.matchNum, m.home, m.away)
         .sort((a, b) => a.localeCompare(b, 'he'))
-      out.push({ matchNum: m.matchNum, teams: [m.home, m.away], predictors })
+      const score = playedScore(m.matchNum, actualScoreByNum)
+      out.push({
+        matchNum: m.matchNum,
+        teams: [m.home, m.away],
+        predictors,
+        ...(score ? { result: realOnlyResult(m.matchNum, m.home, m.away, score) } : {}),
+      })
       continue
     }
     // Not formally settled, but the simulation makes one pairing inevitable (100%) —
@@ -200,6 +295,14 @@ export function computeDeterminedCrossings(
       const predictors = crossingParticipants(bettors, m.matchNum, certain[0], certain[1])
         .sort((a, b) => a.localeCompare(b, 'he'))
       out.push({ matchNum: m.matchNum, teams: certain, predictors, certain: true })
+      continue
+    }
+    // One side already a real team, the other still open — the team that has already
+    // advanced to this stage. Surface it as a partial slot so the board shows it
+    // instead of hiding the whole match until both sides are known.
+    const solo = isRealTeam(m.home) ? m.home : isRealTeam(m.away) ? m.away : null
+    if (solo) {
+      out.push({ matchNum: m.matchNum, teams: [solo], predictors: [], partial: true })
     }
   }
   // Consensus first — the pairings the most people called lead the board — then by
@@ -267,6 +370,11 @@ export function computeUserCrossings(
   // so "a closed match is closed" everywhere — your pairings, the shared board, and
   // the standing — without each surface re-deciding it. Empty = no promotion.
   crossingProbByMatch: Record<number, Record<string, number>> = {},
+  // Real, played scorelines keyed by match number. When a locked crossing's match
+  // has a score here, the crossing gets a `result` (real score + advancer + how the
+  // bettor's prediction scored) so the view can render it as a finished match rather
+  // than a still-pending fixture. Empty = treat every locked pair as not-yet-played.
+  actualScoreByNum: Record<number, MatchScores> = {},
 ): UserCrossings {
   const locked: Crossing[] = []
   const potential: Crossing[] = []
@@ -366,6 +474,16 @@ export function computeUserCrossings(
   // still wide open. Stable by matchNum within the same confirmed count.
   potential.sort((a, b) => confirmedCount(b) - confirmedCount(a) || a.matchNum - b.matchNum)
   missed.sort((a, b) => a.matchNum - b.matchNum)
+
+  // Attach a played result to any locked crossing whose real slot has been played.
+  // Only real-vs-real slots can be scored (a sim-`certain` pairing whose bracket
+  // slot isn't filled has no real fixture yet), so guard on the slot's teams.
+  for (const c of locked) {
+    const rm = slotByMatchNum.get(c.matchNum)
+    if (!rm || !isRealTeam(rm.home) || !isRealTeam(rm.away)) continue
+    const score = playedScore(c.matchNum, actualScoreByNum)
+    if (score) c.result = buildCrossingResult(c, rm, score)
+  }
 
   return { locked, potential, missed }
 }

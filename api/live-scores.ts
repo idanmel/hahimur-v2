@@ -30,10 +30,15 @@ interface EspnCompetitor {
 interface EspnScoringPlay {
   scoringPlay?: boolean
   ownGoal?: boolean
+  // ESPN lists penalty-shootout kicks as scoringPlay:true with the same
+  // type as an in-match penalty — only this boolean tells them apart. Shootout
+  // goals don't count toward a player's tournament tally (standard FIFA
+  // counting), so they must be skipped or the scorer totals over-count.
+  shootout?: boolean
   athletesInvolved?: { displayName?: string }[]
 }
 
-interface EspnEvent {
+export interface EspnEvent {
   id?: string
   status?: { displayClock?: string; type?: { state?: string; completed?: boolean } }
   competitions?: { competitors?: EspnCompetitor[]; details?: EspnScoringPlay[] }[]
@@ -44,7 +49,7 @@ function toScore(raw: string | undefined): number | null {
   return Number.isNaN(n) ? null : n
 }
 
-function slimEvent(e: EspnEvent): SlimEvent | null {
+export function slimEvent(e: EspnEvent): SlimEvent | null {
   const comp = e.competitions?.[0]
   if (!comp) return null
   const competitors = comp.competitors ?? []
@@ -54,7 +59,7 @@ function slimEvent(e: EspnEvent): SlimEvent | null {
 
   const scorers: string[] = []
   for (const play of comp.details ?? []) {
-    if (!play.scoringPlay || play.ownGoal) continue
+    if (!play.scoringPlay || play.ownGoal || play.shootout) continue
     for (const ath of play.athletesInvolved ?? []) {
       if (ath?.displayName) scorers.push(ath.displayName)
     }

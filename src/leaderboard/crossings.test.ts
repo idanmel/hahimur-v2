@@ -207,20 +207,80 @@ describe('computeUserCrossings', () => {
   })
 })
 
+describe('computeUserCrossings finished results', () => {
+  it('leaves result undefined on a locked crossing with no real score supplied', () => {
+    const actual = [km(73, 'Mexico', 'Canada')]
+    const user = [km(73, 'Mexico', 'Canada')]
+    const { locked } = computeUserCrossings(user, actual)
+    expect(locked[0].result).toBeUndefined()
+  })
+
+  it('attaches a scored result (real score, advancer, points) once the match is played', () => {
+    const actual = [km(73, 'Mexico', 'Canada')]
+    const user: KnockoutMatch[] = [
+      { matchNum: 73, home: 'Mexico', away: 'Canada', resolved: false, scores: { home: 2, away: 1 } },
+    ]
+    const scores = { 73: { home: 2, away: 1 } } // Mexico 2-1 — exactly what the bettor called
+    const { locked } = computeUserCrossings(user, actual, {}, scores)
+    const r = locked[0].result!
+    expect(r).toMatchObject({
+      home: 'Mexico', away: 'Canada', homeScore: 2, awayScore: 1,
+      advancer: 'Mexico', predHome: 2, predAway: 1, outcome: 'tzelifa', points: 7,
+    })
+  })
+
+  it('re-orients a reversed prediction to the real fixture before scoring it', () => {
+    // Reality's fixture is Mexico (home) × Canada (away); the bettor listed the pair
+    // reversed — Canada (home) 1 × Mexico (away) 2, i.e. still "Mexico beats Canada 2-1".
+    const actual = [km(73, 'Mexico', 'Canada')]
+    const user: KnockoutMatch[] = [
+      { matchNum: 73, home: 'Canada', away: 'Mexico', resolved: false, scores: { home: 1, away: 2 } },
+    ]
+    const scores = { 73: { home: 2, away: 1 } } // real: Mexico 2-1 Canada
+    const { locked } = computeUserCrossings(user, actual, {}, scores)
+    const r = locked[0].result!
+    // predicted re-expressed in Mexico/Canada terms: 2-1 → exact hit, full points
+    expect(r.predHome).toBe(2)
+    expect(r.predAway).toBe(1)
+    expect(r.advancer).toBe('Mexico')
+    expect(r.outcome).toBe('tzelifa')
+    expect(r.points).toBe(7)
+  })
+
+  it('scores a wrong winner as a miss worth zero, still showing the real result', () => {
+    const actual = [km(73, 'Mexico', 'Canada')]
+    const user: KnockoutMatch[] = [
+      { matchNum: 73, home: 'Mexico', away: 'Canada', resolved: false, scores: { home: 3, away: 0 } },
+    ]
+    const scores = { 73: { home: 0, away: 2 } } // real: Canada win 0-2
+    const { locked } = computeUserCrossings(user, actual, {}, scores)
+    const r = locked[0].result!
+    expect(r.homeScore).toBe(0)
+    expect(r.awayScore).toBe(2)
+    expect(r.advancer).toBe('Canada')
+    expect(r.outcome).toBe('miss')
+    expect(r.points).toBe(0)
+  })
+})
+
 describe('computeDeterminedCrossings', () => {
   const bettor = (label: string, r32: KnockoutMatch[]): CrossingsBettor => ({
     label,
     knockoutStages: { r32, r16: [], qf: [], sf: [], thirdPlace: [], final: [] } as never,
   })
 
-  it('lists only pairings where both sides are real teams', () => {
+  it('lists a fully-determined pairing and a partial (one-team) slot side by side', () => {
     const actual = [
-      km(73, 'Mexico', 'Canada'),    // determined
-      km(75, 'Brazil', 'סגנית ו'),   // still open -> excluded
+      km(73, 'Mexico', 'Canada'),    // both real -> determined pairing
+      km(75, 'Brazil', 'סגנית ו'),   // one real -> partial (Brazil already advanced)
     ]
     const out = computeDeterminedCrossings([bettor('דני', actual)], actual)
-    expect(out.map(d => d.matchNum)).toEqual([73])
-    expect(out[0].teams).toEqual(['Mexico', 'Canada'])
+    const det = out.find(d => d.matchNum === 73)!
+    expect(det.partial).toBeFalsy()
+    expect(det.teams).toEqual(['Mexico', 'Canada'])
+    const part = out.find(d => d.matchNum === 75)!
+    expect(part.partial).toBe(true)
+    expect(part.teams).toEqual(['Brazil'])
   })
 
   it('collects everyone who predicted the exact pairing, side-agnostic', () => {
@@ -285,10 +345,32 @@ describe('computeDeterminedCrossings', () => {
     expect(out[0].predictors).toEqual(['דני'])
   })
 
-  it('leaves an open matchup off the board when the sim is merely near-certain (99.9%)', () => {
+  it('shows a near-certain (99.9%) open slot as a partial, not a locked pairing', () => {
     const actual = [km(75, 'Brazil', 'סגנית ו')]
     const probByMatch = { 75: { 'Brazil|Netherlands': 0.999 } } // all but sealed, not 100%
     const out = computeDeterminedCrossings([bettor('דני', [km(75, 'Brazil', 'Netherlands')])], actual, probByMatch)
-    expect(out).toHaveLength(0)
+    expect(out).toHaveLength(1)
+    expect(out[0].partial).toBe(true)
+    expect(out[0].certain).toBeFalsy()
+    expect(out[0].teams).toEqual(['Brazil'])
+  })
+
+  it('emits a partial slot (predictors empty) when only one side is a real team', () => {
+    const actual = [km(75, 'Brazil', 'סגנית ו')]
+    const out = computeDeterminedCrossings([bettor('דני', [km(75, 'Brazil', 'Netherlands')])], actual)
+    expect(out).toHaveLength(1)
+    expect(out[0].partial).toBe(true)
+    expect(out[0].teams).toEqual(['Brazil'])
+    expect(out[0].predictors).toEqual([])
+  })
+
+  it('attaches the real result (score + advancer) to a determined pairing that was played', () => {
+    const actual = [km(73, 'Mexico', 'Canada')]
+    const scores = { 73: { home: 0, away: 3 } } // Canada wins 3-0
+    const out = computeDeterminedCrossings([bettor('דני', actual)], actual, {}, scores)
+    expect(out[0].result).toBeDefined()
+    expect(out[0].result!.homeScore).toBe(0)
+    expect(out[0].result!.awayScore).toBe(3)
+    expect(out[0].result!.advancer).toBe('Canada')
   })
 })

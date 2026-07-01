@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { clampGoals } from './resultsUtils'
 
 interface Props {
@@ -6,6 +6,10 @@ interface Props {
   realGoals: Record<string, number>
   defaultWinner: string[]
   pickersByPlayer?: Record<string, string[]>
+  // Players whose national team is already out of the tournament. Combined with
+  // the live lead below, a trailing one is flagged "out of the race" — they can't
+  // add goals, so they can never (co-)win the Golden Boot.
+  eliminatedPlayers?: string[]
   onChange: (goals: Record<string, number>, winners: string[]) => void
 }
 
@@ -36,11 +40,20 @@ function PlayerGoalInput({ player, min, value, onCommit }: {
   )
 }
 
-export default function GoalScorerSection({ players, realGoals, defaultWinner, pickersByPlayer, onChange }: Props) {
+export default function GoalScorerSection({ players, realGoals, defaultWinner, pickersByPlayer, eliminatedPlayers, onChange }: Props) {
   const [playerGoals, setPlayerGoals] = useState<Record<string, number>>(realGoals)
   const [goldenBootWinners, setGoldenBootWinners] = useState<string[]>(defaultWinner)
 
   const maxGoals = Math.max(0, ...players.map(p => playerGoals[p] ?? 0))
+  const eliminated = useMemo(() => new Set(eliminatedPlayers ?? []), [eliminatedPlayers])
+
+  // Row order is fixed at mount by the real/live totals (realGoals), NOT by the
+  // live-edited playerGoals — otherwise a row would jump as you type into it.
+  // JS sort is stable, so equal totals keep the incoming order (picked first).
+  const orderedPlayers = useMemo(
+    () => [...players].sort((a, b) => (realGoals[b] ?? 0) - (realGoals[a] ?? 0)),
+    [players, realGoals],
+  )
 
   const commitGoals = (player: string, val: number) => {
     const nextGoals = { ...playerGoals, [player]: val }
@@ -67,18 +80,28 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
 
   return (
     <div className="pg-scorer-list">
-      {players.map(player => (
-        <div key={player} className={`pg-scorer-row${goldenBootWinners.includes(player) ? ' pg-scorer-row--winner' : ''}`}>
+      {orderedPlayers.map(player => {
+        const isLeader = maxGoals > 0 && (playerGoals[player] ?? 0) === maxGoals
+        const isWinner = goldenBootWinners.includes(player)
+        // Out of the race: team already eliminated AND already behind the lead,
+        // so their goal count is frozen below a total they can never reach.
+        const isOut = eliminated.has(player) && maxGoals > 0 && (playerGoals[player] ?? 0) < maxGoals
+        return (
+        <div key={player} className={`pg-scorer-row${isWinner ? ' pg-scorer-row--winner' : ''}${isLeader ? ' pg-scorer-row--leader' : ''}${isOut ? ' pg-scorer-row--out' : ''}`}>
           <input
             type="checkbox"
             aria-label={player}
             className="pg-scorer-checkbox"
-            checked={goldenBootWinners.includes(player)}
+            checked={isWinner}
             disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
             onChange={toggleWinners}
           />
           <div className="pg-scorer-player">
-            <span className="pg-scorer-name">{player}</span>
+            <span className="pg-scorer-name">
+              {player}
+              {isLeader ? <span className="pg-scorer-leader-badge"><span className="pg-scorer-leader-star" aria-hidden="true">★</span>מוביל</span> : null}
+              {isOut ? <span className="pg-scorer-out-badge">מחוץ למירוץ</span> : null}
+            </span>
             {pickersByPlayer?.[player]?.length ? (
               <div className="pg-scorer-pickers">
                 {pickersByPlayer[player].map(label => (
@@ -95,7 +118,8 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
             onCommit={val => commitGoals(player, val)}
           />
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

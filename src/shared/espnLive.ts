@@ -57,7 +57,7 @@ const NAME_ALIASES: Record<string, string> = {
 
 // Allowlist of picked players: ESPN athlete displayName -> Hebrew topGoalscorer
 // string (must match users/*.ts exactly). Only players users picked appear here.
-const SCORER_ALIASES: Record<string, string> = {
+export const SCORER_ALIASES: Record<string, string> = {
   'Kylian Mbappé': 'קיליאן אמבפה',
   'Harry Kane': 'הארי קיין',
   'Kai Havertz': 'קאי האברץ',

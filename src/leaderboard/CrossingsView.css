@@ -854,6 +854,100 @@
 .cx-live-clash-vs { color: #b45309; font-weight: 700; }
 .cx-live-clash-note { font-size: 0.72rem; color: #b45309; }
 
+/* collapsible section header (finished matches load closed) — a full-width button
+   that keeps the same stacked title+subtitle layout as a plain .cx-sec-head */
+.cx-sec-head--toggle {
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+.cx-sec-head--toggle:hover .cx-sec-title { text-decoration: underline; }
+
+.cx-sec-chevron {
+  margin-inline-start: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7385);
+}
+
+/* --- finished crossings (a played match, in the viewer's own list) --- */
+.cx-summary-stat--finished {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+.cx-sec-title--finished { color: #1d4ed8; }
+
+.cx-card--finished {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+/* the real, played scoreline sits between the two chips */
+.cx-fin-score {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #1a1d27);
+}
+
+/* the side that didn't advance reads dimmer, so the advancer pops */
+.cx-fin-team--out { opacity: 0.55; }
+
+.cx-card-foot--finished {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+/* the outcome badge: hit / near / miss, colored like the rest of the scoring */
+.cx-outcome {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cx-outcome--tzelifa { background: rgba(34, 197, 94, 0.18); color: #15803d; }
+.cx-outcome--pgiya   { background: rgba(245, 158, 11, 0.18); color: #b45309; }
+.cx-outcome--miss    { background: var(--surface-2, #f1f3f7); color: #8a90a0; }
+
+/* --- determined board: a finished pairing and a single-team (partial) slot --- */
+.cx-det-card--finished {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.cx-det-card--partial {
+  border-style: dashed;
+  border-color: rgba(245, 158, 11, 0.45);
+  align-items: center;
+}
+
+/* the "opponent not decided yet" placeholder on a partial slot */
+.cx-det-tbd {
+  color: var(--text-muted, #8a90a0);
+  font-style: italic;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.cx-det-foot--partial {
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.cx-sec--partial { margin-top: 1rem; }
+
 /* --- mobile --- */
 @media (max-width: 639px) {
   /* one card per row reads cleaner than squeezing two narrow ones */

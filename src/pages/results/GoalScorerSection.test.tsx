@@ -3,13 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import GoalScorerSection from './GoalScorerSection'
 
-function setup(players = ['Messi', 'Ronaldo'], realGoals: Record<string, number> = {}, defaultWinner: string[] = []) {
+function setup(
+  players = ['Messi', 'Ronaldo'],
+  realGoals: Record<string, number> = {},
+  defaultWinner: string[] = [],
+  eliminatedPlayers: string[] = [],
+) {
   const onChange = vi.fn()
   render(
     <GoalScorerSection
       players={players}
       realGoals={realGoals}
       defaultWinner={defaultWinner}
+      eliminatedPlayers={eliminatedPlayers}
       onChange={onChange}
     />
   )
@@ -101,5 +107,46 @@ describe('GoalScorerSection', () => {
     fireEvent.blur(goalInput('Messi'))
     const lastCall = onChange.mock.calls.at(-1)!
     expect(lastCall[0]['Messi']).toBe(3)
+  })
+
+  test('rows are sorted by goals descending', () => {
+    setup(['Kane', 'Messi', 'Haaland'], { Kane: 2, Messi: 6, Haaland: 5 })
+    const rendered = screen.getAllByRole('spinbutton').map(el => el.getAttribute('aria-label'))
+    expect(rendered).toEqual(['Messi', 'Haaland', 'Kane'])
+  })
+
+  test('the current leader is badged "מוביל", chasers are not', () => {
+    setup(['Messi', 'Haaland'], { Messi: 6, Haaland: 5 })
+    const badges = screen.getAllByText('מוביל')
+    expect(badges).toHaveLength(1)
+    // The badge sits inside Messi's name row, not Haaland's.
+    expect(badges[0].closest('.pg-scorer-row')).toContainElement(checkbox('Messi'))
+  })
+
+  test('the leader badge is shown even when no winner is checked (no premature bonus)', () => {
+    const { onChange } = setup(['Messi'], { Messi: 6 })
+    expect(screen.getByText('מוביל')).toBeInTheDocument()
+    // No winner committed unless the checkbox is used.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(checkbox('Messi')).not.toBeChecked()
+  })
+
+  test('a trailing player whose team is out is marked "מחוץ למירוץ"', () => {
+    setup(['Messi', 'Kane'], { Messi: 6, Kane: 3 }, [], ['Kane'])
+    const badge = screen.getByText('מחוץ למירוץ')
+    expect(badge.closest('.pg-scorer-row')).toContainElement(checkbox('Kane'))
+    // The leader is untouched.
+    expect(checkbox('Messi').closest('.pg-scorer-row')).not.toHaveClass('pg-scorer-row--out')
+  })
+
+  test('an eliminated player who is still (co-)leading is NOT out of the race', () => {
+    // Kane's team is out but he is level with the lead — he can still co-win.
+    setup(['Messi', 'Kane'], { Messi: 6, Kane: 6 }, [], ['Kane'])
+    expect(screen.queryByText('מחוץ למירוץ')).not.toBeInTheDocument()
+  })
+
+  test('nobody is marked out before any goals are scored', () => {
+    setup(['Messi', 'Kane'], {}, [], ['Kane'])
+    expect(screen.queryByText('מחוץ למירוץ')).not.toBeInTheDocument()
   })
 })

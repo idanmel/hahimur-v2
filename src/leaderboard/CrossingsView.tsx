@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import type { KnockoutMatch, TournamentResults } from '../shared/types'
+import type { KnockoutMatch, MatchScores, TournamentResults } from '../shared/types'
+import { isUnpredicted } from '../shared/types'
 import type { User } from '../users'
 import { buildKnockoutBracket } from '../formView/knockout/knockout'
 import { realPlayedState } from './winprob/realPlayed'
@@ -7,6 +8,7 @@ import { useWinProbabilities } from './winprob/useWinProbabilities'
 import type { WinProbStatus } from './winprob/useWinProbabilities'
 import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings } from './crossings'
 import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing } from './crossings'
+import { OUTCOME_LABEL } from './points'
 import { buildLiveStages } from '../pages/forms/survivorsStats'
 import type { LiveTeamsStanding, LiveStage, LiveStageKey, Collision } from '../pages/forms/survivorsStats'
 import { TeamChip } from './LeaderboardTable'
@@ -209,6 +211,43 @@ function CrossingCard({ crossing, locked, certain = false, ruledOut = false, mis
   )
 }
 
+// A finished crossing in the viewer's own list: the real scoreline, who advanced,
+// the bettor's own predicted score, and how it scored (צליפה/פגיעה/החטאה + points).
+// Everything reads from crossing.result, which is already oriented to the real
+// fixture, so the card can't contradict the actual home/away order.
+function FinishedCard({ crossing, mates, expanded, onToggle }: {
+  crossing: Crossing
+  mates: string[]
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const r = crossing.result!
+  const tagFor = (team: string) => (r.advancer === team ? 'עלתה ✓' : '')
+  const chipCls = (team: string) => (r.advancer && r.advancer !== team ? ' cx-fin-team--out' : '')
+  const hasPred = r.predHome !== null && r.predAway !== null
+  return (
+    <article className="cx-card cx-card--finished" data-testid="finished-card">
+      <div className="cx-card-teams">
+        <span className={`cx-fin-team${chipCls(r.home)}`}><TeamChip team={r.home} tag={tagFor(r.home)} /></span>
+        {/* LTR score so it aligns with the RTL chips: away–home mirrors [home]×[away]. */}
+        <b className="cx-fin-score" dir="ltr">{r.awayScore}–{r.homeScore}</b>
+        <span className={`cx-fin-team${chipCls(r.away)}`}><TeamChip team={r.away} tag={tagFor(r.away)} /></span>
+      </div>
+      <div className="cx-card-foot cx-card-foot--finished">
+        <span className={`cx-outcome cx-outcome--${r.outcome}`}>
+          {OUTCOME_LABEL[r.outcome]}{r.points > 0 ? ` · +${r.points}` : ''}
+        </span>
+        {hasPred ? (
+          <span className="cx-bet">הניחוש שלך: <b dir="ltr">{r.predAway}–{r.predHome}</b></span>
+        ) : (
+          <span className="cx-bet cx-bet--empty">לא ניחשת תוצאה למשחק הזה</span>
+        )}
+      </div>
+      <Participants names={mates} expanded={expanded} onToggle={onToggle} />
+    </article>
+  )
+}
+
 // One determined pairing on the shared board: the two real teams, how many of the
 // group called it, and (on tap) exactly who. The viewer is highlighted in the list.
 function DeterminedCard({ item, me, expanded, onToggle }: {
@@ -217,18 +256,38 @@ function DeterminedCard({ item, me, expanded, onToggle }: {
   expanded: boolean
   onToggle: () => void
 }) {
+  // A partial slot: only one team has advanced so far, the opponent is still open.
+  if (item.partial) {
+    const solo = item.teams[0]
+    return (
+      <article className="cx-det-card cx-det-card--partial" data-testid="partial-card">
+        <div className="cx-card-teams">
+          <TeamChip team={solo} tag="עלתה ✓" />
+          <span className="cx-vs" aria-hidden="true">×</span>
+          <span className="cx-det-tbd">טרם נקבע</span>
+        </div>
+        <div className="cx-det-foot cx-det-foot--partial">עלתה לשלב הבא — היריבה עוד תיקבע</div>
+      </article>
+    )
+  }
   const [a, b] = item.teams
+  const r = item.result
+  const advTag = (team: string) => (r?.advancer === team ? 'עלתה ✓' : '')
   const n = item.predictors.length
   // Viewer first, then the rest as computed (Hebrew-alphabetical).
   const names = me && item.predictors.includes(me)
     ? [me, ...item.predictors.filter(p => p !== me)]
     : item.predictors
   return (
-    <article className={`cx-det-card${n === 0 ? ' cx-det-card--none' : ''}${item.certain ? ' cx-det-card--certain' : ''}`} data-testid="determined-card">
+    <article className={`cx-det-card${n === 0 ? ' cx-det-card--none' : ''}${item.certain ? ' cx-det-card--certain' : ''}${r ? ' cx-det-card--finished' : ''}`} data-testid="determined-card">
       <div className="cx-card-teams">
-        <TeamChip team={a} tag="" />
-        <span className="cx-vs" aria-hidden="true">×</span>
-        <TeamChip team={b} tag="" />
+        <TeamChip team={a} tag={advTag(a)} />
+        {r ? (
+          <b className="cx-fin-score" dir="ltr">{r.awayScore}–{r.homeScore}</b>
+        ) : (
+          <span className="cx-vs" aria-hidden="true">×</span>
+        )}
+        <TeamChip team={b} tag={advTag(b)} />
       </div>
       {item.certain && (
         <span className="cx-certain-badge" title="הזוג כבר ודאי — שתי הקבוצות מובטחות למשבצת גם אם הבית עוד לא נסגר רשמית">
@@ -276,7 +335,10 @@ function DeterminedBoard({ items, round, me }: {
       return next
     })
 
-  if (items.length === 0) {
+  const determined = items.filter(it => !it.partial)
+  const partials = items.filter(it => it.partial)
+
+  if (determined.length === 0 && partials.length === 0) {
     return (
       <div className="cx-view--empty">
         <div className="cx-empty-icon">⏳</div>
@@ -292,16 +354,37 @@ function DeterminedBoard({ items, round, me }: {
         כל ה{round.noun} ש<b>כבר נקבעו</b> ב{round.label} — וכמה מכם ניחשו כל אחת. לחיצה על המספר חושפת מי.
       </p>
       <div className="cx-summary">
-        <span className="cx-summary-stat cx-summary-stat--locked"><b>{items.length}</b> מתוך {total} נקבעו</span>
+        <span className="cx-summary-stat cx-summary-stat--locked"><b>{determined.length}</b> מתוך {total} נקבעו</span>
+        {partials.length > 0 && (
+          <span className="cx-summary-stat cx-summary-stat--potential"><b>{partials.length}</b> קבוצה בודדת עלתה</span>
+        )}
       </div>
-      <div className="cx-det-grid">
-        {items.map(it => (
-          <DeterminedCard
-            key={it.matchNum} item={it} me={me}
-            expanded={open.has(it.matchNum)} onToggle={() => toggle(it.matchNum)}
-          />
-        ))}
-      </div>
+      {determined.length > 0 && (
+        <div className="cx-det-grid">
+          {determined.map(it => (
+            <DeterminedCard
+              key={it.matchNum} item={it} me={me}
+              expanded={open.has(it.matchNum)} onToggle={() => toggle(it.matchNum)}
+            />
+          ))}
+        </div>
+      )}
+      {partials.length > 0 && (
+        <section className="cx-sec cx-sec--partial">
+          <div className="cx-sec-head">
+            <span className="cx-sec-title cx-sec-title--potential">➡️ קבוצה אחת כבר עלתה</span>
+            <span className="cx-sec-sub">עלו לשלב הבא — היריבה תיקבע כשהמשחק השני יוכרע</span>
+          </div>
+          <div className="cx-det-grid">
+            {partials.map(it => (
+              <DeterminedCard
+                key={it.matchNum} item={it} me={me}
+                expanded={open.has(it.matchNum)} onToggle={() => toggle(it.matchNum)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   )
 }
@@ -638,12 +721,15 @@ function RoundTabs({ round, onRoundChange }: { round: RoundCfg; onRoundChange: (
 // pairings for the selected round, and the field-wide standing. Exported so tests
 // can drive it without the Monte-Carlo worker (pass an empty probByMatch /
 // 'unsupported' status). `round` defaults to the round of 32.
-export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, actualMatches, probByMatch, probStatus, liveStages = [] }: {
+export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, actualMatches, actualScoreByNum = {}, probByMatch, probStatus, liveStages = [] }: {
   user?: User
   users: User[]
   round?: RoundCfg
   onRoundChange?: (key: string) => void
   actualMatches: KnockoutMatch[]
+  // Real, played scorelines keyed by match number — used to render finished
+  // crossings as final results. Empty in tests that don't exercise finished cards.
+  actualScoreByNum?: Record<number, MatchScores>
   probByMatch: Record<number, Record<string, number>>
   probStatus: WinProbStatus
   liveStages?: LiveStage[]
@@ -651,6 +737,9 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   // 'mine' = the viewer's own crossings (default); 'all' = the shared board of every
   // determined pairing and who called it.
   const [view, setView] = useState<'mine' | 'all'>('mine')
+  // Finished matches are settled history, so they load collapsed — the live/open
+  // crossings stay front and center. Tap the header to reveal the result cards.
+  const [finishedOpen, setFinishedOpen] = useState(false)
   const [openMates, setOpenMates] = useState<Set<number>>(new Set())
   const toggleMates = (matchNum: number) =>
     setOpenMates(prev => {
@@ -665,8 +754,8 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   // half-baked counts. One rule, applied at the source (computeUserCrossings).
   const liveProb = useMemo(() => (probStatus === 'ready' ? probByMatch : {}), [probStatus, probByMatch])
   const crossings = useMemo(
-    () => (user ? computeUserCrossings(user.knockoutStages?.[round.key] ?? [], actualMatches, liveProb) : null),
-    [user, round.key, actualMatches, liveProb],
+    () => (user ? computeUserCrossings(user.knockoutStages?.[round.key] ?? [], actualMatches, liveProb, actualScoreByNum) : null),
+    [user, round.key, actualMatches, liveProb, actualScoreByNum],
   )
   const standings = useMemo(
     () => computeCrossingsLeaderboard(users, round.key, actualMatches, liveProb),
@@ -690,8 +779,8 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   // Same rule for the shared board: a 100%-certain matchup is a closed match even
   // before its bracket slot is formally filled.
   const determined = useMemo(
-    () => computeDeterminedCrossings(users, actualMatches, liveProb),
-    [users, actualMatches, liveProb],
+    () => computeDeterminedCrossings(users, actualMatches, liveProb, actualScoreByNum),
+    [users, actualMatches, liveProb, actualScoreByNum],
   )
 
   const tabs = onRoundChange && <RoundTabs round={round} onRoundChange={onRoundChange} />
@@ -737,6 +826,10 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   }
 
   const { locked, potential, missed } = crossings
+  // A locked crossing whose match has actually been played reads as a finished
+  // result (its own section); the rest stay in "נעולות" as sealed-but-unplayed.
+  const finished = locked.filter(c => c.result)
+  const stillLocked = locked.filter(c => !c.result)
   const matesFor = (c: Crossing) =>
     crossingParticipants(users, c.matchNum, c.teams[0].team, c.teams[1].team, user?.label)
 
@@ -775,21 +868,53 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
           </p>
 
           <div className="cx-summary">
-            <span className="cx-summary-stat cx-summary-stat--locked"><b>{locked.length}</b> נעולות</span>
+            {finished.length > 0 && (
+              <span className="cx-summary-stat cx-summary-stat--finished"><b>{finished.length}</b> הסתיימו</span>
+            )}
+            <span className="cx-summary-stat cx-summary-stat--locked"><b>{stillLocked.length}</b> נעולות</span>
             <span className="cx-summary-stat cx-summary-stat--potential"><b>{livePotential.length}</b> בפוטנציאל</span>
             {gone > 0 && (
               <span className="cx-summary-stat cx-summary-stat--dead"><b>{gone}</b> לא יקרו</span>
             )}
           </div>
 
-          {locked.length > 0 && (
+          {finished.length > 0 && (
+            <section className="cx-sec">
+              <button
+                type="button"
+                className="cx-sec-head cx-sec-head--toggle"
+                onClick={() => setFinishedOpen(o => !o)}
+                aria-expanded={finishedOpen}
+              >
+                <span className="cx-sec-title cx-sec-title--finished">
+                  🏁 הסתיימו ({finished.length})
+                  <span className="cx-sec-chevron" aria-hidden="true">{finishedOpen ? '⌃' : '⌄'}</span>
+                </span>
+                <span className="cx-sec-sub">
+                  {finishedOpen ? 'המשחק כבר שוחק — התוצאה האמיתית, מי עלתה, והניחוש שלך מולה' : 'משחקים שכבר הסתיימו — לחצו כדי לפתוח'}
+                </span>
+              </button>
+              {finishedOpen && (
+                <div className="cx-cards">
+                  {finished.map(c => (
+                    <FinishedCard
+                      key={c.matchNum} crossing={c}
+                      mates={matesFor(c)} expanded={openMates.has(c.matchNum)} onToggle={() => toggleMates(c.matchNum)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {stillLocked.length > 0 && (
             <section className="cx-sec">
               <div className="cx-sec-head">
                 <span className="cx-sec-title cx-sec-title--locked">✓ נעולות</span>
                 <span className="cx-sec-sub">המפגש כבר סגור — מכאן אפשר לצבור עליו ניקוד</span>
               </div>
               <div className="cx-cards">
-                {locked.map(c => (
+                {stillLocked.map(c => (
                   <CrossingCard
                     key={c.matchNum} crossing={c} locked certain={c.certain} prob={null} status={probStatus}
                     mates={matesFor(c)} expanded={openMates.has(c.matchNum)} onToggle={() => toggleMates(c.matchNum)}
@@ -868,6 +993,16 @@ export default function CrossingsView({ user, users, results }: { user?: User; u
     () => bracket.filter(m => m.matchNum >= round.lo && m.matchNum <= round.hi),
     [bracket, round.lo, round.hi],
   )
+  // Real played scorelines keyed by match number, pulled from the same played-state
+  // the bracket is built from (knockout entries there are keyed by matchNum string).
+  const actualScoreByNum = useMemo(() => {
+    const map: Record<number, MatchScores> = {}
+    for (const [k, v] of Object.entries(played)) {
+      const n = Number(k)
+      if (Number.isInteger(n) && v && !isUnpredicted(v)) map[n] = v
+    }
+    return map
+  }, [played])
   // Golden-boot goals don't affect the bracket pairings, so passing them is only
   // about sharing the win-prob cache; the empty default keeps it simple.
   const { status, crossingProbByMatch } = useWinProbabilities(played, results.playerGoals ?? {})
@@ -884,6 +1019,7 @@ export default function CrossingsView({ user, users, results }: { user?: User; u
       round={round}
       onRoundChange={setRoundKey}
       actualMatches={actualMatches}
+      actualScoreByNum={actualScoreByNum}
       probByMatch={crossingProbByMatch}
       probStatus={status}
       liveStages={liveStages}

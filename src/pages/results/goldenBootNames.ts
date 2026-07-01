@@ -1,0 +1,54 @@
+// Latin (ESPN athlete displayName) -> Hebrew, for UNPICKED players shown on the
+// Golden Boot race board only.
+//
+// Deliberately SEPARATE from SCORER_ALIASES in shared/espnLive.ts: names there
+// feed picked players' live goals into tournamentResults.playerGoals (and from
+// there into points, the win-prob sim, Records, etc.). Adding an unpicked name
+// to that map would leak an uninvolved player into all of it. This map is
+// display-only — it never touches playerGoals.
+//
+// Curate the current real leaders/chasers here. An uncurated player who reaches
+// (or nears) the lead falls back to their Latin name on the board rather than
+// being dropped, so we never silently misreport the race; add the Hebrew here
+// and it swaps in on the next load.
+export const GOLDEN_BOOT_NAMES: Record<string, string> = {
+  'Lionel Messi': 'ליאו מסי',
+  'Erling Haaland': 'ארלינג הולאנד',
+  'Julián Álvarez': 'חוליאן אלברס',
+  'Cristiano Ronaldo': 'כריסטיאנו רונאלדו',
+  'Ousmane Dembélé': 'עוסמאן דמבלה',
+  'Randal Kolo Muani': 'רנדל קולו מואני',
+  'Victor Osimhen': 'ויקטור אוסימחן',
+  'Mohamed Salah': 'מוחמד סלאח',
+  'Robert Lewandowski': 'רוברט לבנדובסקי',
+}
+
+// Hebrew display name (exactly as a race-board row is keyed) -> the player's
+// national team, using our internal team names (shared/groups.ts). Covers picked
+// players plus the curated unpicked contenders in GOLDEN_BOOT_NAMES.
+//
+// Used only to mark a player as OUT OF THE RACE once their team is eliminated and
+// they trail the lead — a player whose team is out can't add goals, so if they're
+// already behind they can never (co-)win the Golden Boot. A player missing here
+// (e.g. an uncurated Latin-fallback row) is simply never marked out — we never
+// report a false elimination.
+export const TEAM_BY_PLAYER: Record<string, string> = {
+  // picked
+  'קיליאן אמבפה': 'France',
+  'הארי קיין': 'England',
+  'קאי האברץ': 'Germany',
+  'פלוריאן וירץ': 'Germany',
+  'פראן טורס': 'Spain',
+  'לאמין ימאל': 'Spain',
+  'ויניסיוס ג׳וניור': 'Brazil',
+  // curated unpicked contenders
+  'ליאו מסי': 'Argentina',
+  'ארלינג הולאנד': 'Norway',
+  'חוליאן אלברס': 'Argentina',
+  'כריסטיאנו רונאלדו': 'Portugal',
+  'עוסמאן דמבלה': 'France',
+  'רנדל קולו מואני': 'France',
+  'ויקטור אוסימחן': 'Nigeria',
+  'מוחמד סלאח': 'Egypt',
+  'רוברט לבנדובסקי': 'Poland',
+}

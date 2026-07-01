@@ -96,6 +96,13 @@ export function isAnyLive(
   return matches.some(m => !finalIds.has(m.id) && isLive(m, now))
 }
 
+// Convenience wrapper over isAnyLive bound to the real fixtures/final scores, so
+// other live consumers (e.g. the Golden Boot race board's scorer-totals hook)
+// can gate their polling without re-deriving the fixture list.
+export function anyLiveNow(now: Date = new Date()): boolean {
+  return isAnyLive(ALL_MATCHES, finalMatchIds(), now)
+}
+
 // Polls /api/live-scores ONLY while a match is in progress (the "only during
 // games" rule), and only on the client. Returns an empty overlay otherwise, or
 // if the fetch fails. No commits, no redeploys: this is a pure runtime overlay.
