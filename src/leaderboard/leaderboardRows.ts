@@ -155,18 +155,32 @@ export const playedMatchChronoLabel = (p: PlayedMatch): string =>
     ? playedMatchLabel(p.match)
     : `${TEAMS[p.match.home]?.he ?? p.match.home} ${p.match.scores!.home}–${p.match.scores!.away} ${TEAMS[p.match.away]?.he ?? p.match.away}`
 
+// The bettor's own knockout round a result fixture must be matched within, keyed
+// by match number (r32 73–88, r16 89–96, qf 97–100, sf 101–102, third 103, final
+// 104). Match points are round-scoped: a bettor only scores a fixture if they
+// predicted those two teams to meet in *that same round*, exactly as koMatchPoints
+// (and thus computeUserPoints) does — the same pairing tipped for a later round
+// doesn't count against an earlier-round result.
+function koRoundKey(matchNum: number): keyof User['knockoutStages'] {
+  return matchNum <= 88 ? 'r32'
+    : matchNum <= 96 ? 'r16'
+    : matchNum <= 100 ? 'qf'
+    : matchNum <= 102 ? 'sf'
+    : matchNum === 103 ? 'thirdPlace'
+    : 'final'
+}
+
 // A bettor's צליפה/פגיעה tally and match points across a set of played knockout
 // matches. Mirrors the group-match loop in rowsForPlayedMatches but routes through
-// the pairing matcher: a KO fixture is credited wherever the bettor predicted its
-// two teams to meet (same round, either order), oriented to the real home/away.
+// the pairing matcher: a KO fixture is credited when the bettor predicted its two
+// teams to meet in that same round (either order), oriented to the real home/away.
 function koHits(user: User, koMatches: KnockoutMatch[]): { tzelifa: number; pgiya: number; points: number } {
   if (koMatches.length === 0) return { tzelifa: 0, pgiya: 0, points: 0 }
   const uko = user.knockoutStages
-  const userMatches = [...uko.r32, ...uko.r16, ...uko.qf, ...uko.sf, ...uko.thirdPlace, ...uko.final]
   let tzelifa = 0, pgiya = 0, points = 0
   for (const rm of koMatches) {
     if (!rm.scores || isUnpredicted(rm.scores) || !rm.home || !rm.away) continue
-    const um = userMatches.find(m => isPairing(m, rm.home, rm.away))
+    const um = (uko[koRoundKey(rm.matchNum)] ?? []).find(m => isPairing(m, rm.home, rm.away))
     if (!um || !um.scores || isUnpredicted(um.scores)) continue
     const predicted = orientPrediction(um, rm)!
     const outcome = singleMatchOutcome(predicted, rm.scores)
