@@ -3,6 +3,11 @@ import type { TournamentResults, MatchScores, PredictionsState } from './shared/
 import { deriveGroupStatus } from './shared/groupStatus.ts'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './formView/thirdPlace/thirdPlace.ts'
 import { deriveKnockoutStages } from './formView/knockout/deriveKnockoutStages.ts'
+// Real goals by picked players: player → match ID → goals in that match.
+// Lives in real-goals.json so the cron (scripts/results-file.ts) can read and
+// write it as plain JSON. Keys must be canonical PICKED_SCORERS names
+// (shared/scorers.ts) — the registry test fails on any other name.
+import realGoals from './real-goals.json' with { type: 'json' }
 
 // Fill in real scores here as matches are played, keyed by match ID
 const groupScores: Record<string, MatchScores> = {
@@ -95,16 +100,6 @@ const koScores: Record<string, MatchScores> = {
   81: { home: 2, away: 0 },
   82: { home: 2, away: 2, drawWinner: 'home' },
   84: { home: 3, away: 0 },
-}
-
-// Real goals by picked players: player → match ID → goals in that match.
-// Names must match users' topGoalscorer strings exactly.
-const realGoals: Record<string, Record<string, number>> = {
-  'ויניסיוס ג׳וניור': { C1: 1, C4: 1, C5: 2 },
-  'קאי האברץ': { 74: 1, E1: 2 },
-  'קיליאן אמבפה': { 77: 2, I1: 2, I3: 2 },
-  'הארי קיין': { 80: 2, L1: 2, L5: 1 },
-  'לאמין ימאל': { H3: 1 },
 }
 
 export function derivePlayerGoals(perMatch: Record<string, Record<string, number>>): Record<string, number> {

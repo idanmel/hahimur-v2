@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { TRACKED_PLAYERS, pendingScorerQuestions } from './update-scorers'
-import { parseRealGoals, renderRealGoals } from './results-file'
 import { USERS } from '../src/users/index'
 
 describe('TRACKED_PLAYERS', () => {
@@ -38,28 +37,5 @@ describe('pendingScorerQuestions', () => {
       { 'קאי האברץ': { E1: 1 } },
     )
     expect(pending).toEqual([{ player: 'פלוריאן וירץ', matchId: 'E1' }])
-  })
-})
-
-describe('realGoals parse/render round-trip', () => {
-  const empty = [
-    'const realGoals: Record<string, Record<string, number>> = {',
-    '}',
-  ].join('\n')
-
-  it('parses an empty block', () => {
-    expect(parseRealGoals(empty)).toEqual({})
-  })
-
-  it('renders goals and parses them back', () => {
-    const goals = { 'קיליאן אמבפה': { I1: 2, I3: 0 }, 'הארי קיין': { L1: 1 } }
-    const rendered = renderRealGoals(empty, goals)
-    expect(parseRealGoals(rendered)).toEqual(goals)
-  })
-
-  it('overwrites an existing block instead of appending', () => {
-    const once = renderRealGoals(empty, { 'הארי קיין': { L1: 1 } })
-    const twice = renderRealGoals(once, { 'הארי קיין': { L1: 1, L2: 2 } })
-    expect(parseRealGoals(twice)).toEqual({ 'הארי קיין': { L1: 1, L2: 2 } })
   })
 })

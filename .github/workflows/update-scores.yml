@@ -33,13 +33,13 @@ jobs:
         run: node scripts/fetch-scores.ts
       - name: Commit, push, and trigger deploy
         run: |
-          if git diff --quiet src/tournament-results.ts; then
+          if git diff --quiet src/tournament-results.ts src/real-goals.json; then
             echo "No score changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/tournament-results.ts
+          git add src/tournament-results.ts src/real-goals.json
           if [ -n "$FAKE_FINISHED" ]; then
             # Rehearsal: same commit/push/dispatch path, but on a test branch
             # where ci.yml's master-only deploy step is skipped.

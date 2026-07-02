@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { parseKoScores, renderKoScores } from './results-file.ts'
+import { parseKoScores, renderKoScores, readRealGoals } from './results-file.ts'
+import { tournamentResults } from '../src/tournament-results.ts'
 
 // A predicted/real knockout score is the regulation (90') score; drawWinner names
 // the advancer when regulation ended level. These prove the results-file format
@@ -40,5 +41,13 @@ describe('koScores parse/render', () => {
     const once = renderKoScores(empty, { '73': { home: 1, away: 0 } })
     const twice = renderKoScores(once, { '73': { home: 2, away: 1 } })
     expect(parseKoScores(twice)).toEqual({ '73': { home: 2, away: 1 } })
+  })
+})
+
+describe('real goals', () => {
+  // The cron writes real goals and the app ships them; both must see the exact
+  // same data, whatever the storage format is.
+  test('the cron reads the same real-goals data the app ships', () => {
+    expect(readRealGoals()).toEqual(tournamentResults.playerMatchGoals)
   })
 })

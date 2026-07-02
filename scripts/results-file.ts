@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 export const RESULTS_PATH = join(__dirname, '../src/tournament-results.ts')
+export const REAL_GOALS_PATH = join(__dirname, '../src/real-goals.json')
 
 export function readGroupScores(): Record<string, { home: number; away: number }> {
   const content = readFileSync(RESULTS_PATH, 'utf-8')
@@ -18,39 +19,15 @@ export function readGroupScores(): Record<string, { home: number; away: number }
   return scores
 }
 
-export function parseRealGoals(content: string): Record<string, Record<string, number>> {
-  const block = content.match(/const realGoals: Record<string, Record<string, number>> = \{([^]*?)\n\}/)
-  const goals: Record<string, Record<string, number>> = {}
-  for (const entry of (block?.[1] ?? '').matchAll(/'([^']+)': \{([^}]*)\}/g)) {
-    const byMatch: Record<string, number> = {}
-    for (const m of entry[2].matchAll(/(\w+): (\d+)/g)) byMatch[m[1]] = parseInt(m[2])
-    goals[entry[1]] = byMatch
-  }
-  return goals
-}
-
-export function renderRealGoals(content: string, goals: Record<string, Record<string, number>>): string {
-  const lines = Object.entries(goals)
-    .map(([player, byMatch]) => {
-      const entries = Object.entries(byMatch).map(([id, g]) => `${id}: ${g}`).join(', ')
-      return `  '${player}': { ${entries} },`
-    })
-    .join('\n')
-  return content.replace(
-    /const realGoals: Record<string, Record<string, number>> = \{[^]*?\n\}/,
-    lines
-      ? `const realGoals: Record<string, Record<string, number>> = {\n${lines}\n}`
-      : `const realGoals: Record<string, Record<string, number>> = {\n}`
-  )
-}
-
+// Real goals live in their own JSON file (the app imports it directly), so
+// unlike the score blocks below there's no source text to parse — plain JSON
+// in, plain JSON out.
 export function readRealGoals(): Record<string, Record<string, number>> {
-  return parseRealGoals(readFileSync(RESULTS_PATH, 'utf-8'))
+  return JSON.parse(readFileSync(REAL_GOALS_PATH, 'utf-8'))
 }
 
 export function writeRealGoals(goals: Record<string, Record<string, number>>): void {
-  const content = readFileSync(RESULTS_PATH, 'utf-8')
-  writeFileSync(RESULTS_PATH, renderRealGoals(content, goals), 'utf-8')
+  writeFileSync(REAL_GOALS_PATH, JSON.stringify(goals, null, 2) + '\n', 'utf-8')
 }
 
 // Knockout scores are the regulation (90') score, keyed by matchNum. drawWinner
