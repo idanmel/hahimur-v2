@@ -438,42 +438,171 @@
   padding-bottom: 20px;
 }
 
-/* ── Goal scorer section ─────────────────────────────────────── */
+/* ── Goal scorer section — the race to the Golden Boot ───────── */
+
+/* The board: one framed piece in the site's editorial style — navy frame,
+   offset gold shadow, rows as horizontal "race bars" toward the lead. */
+.pg-scorer-board {
+  border: 1.5px solid var(--navy);
+  background: var(--paper);
+  box-shadow: 5px 5px 0 rgba(200, 184, 122, 0.55);
+  margin-bottom: 6px;
+}
+
+.pg-scorer-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px 7px;
+  background: var(--navy);
+}
+
+.pg-scorer-board-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.pg-scorer-board-captions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pg-scorer-board-caption {
+  font-family: 'Heebo', sans-serif;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(251, 248, 236, 0.55);
+  text-align: center;
+  line-height: 1;
+}
+
+/* Column captions sized to sit over the goals input / winner toggle below */
+.pg-scorer-board-caption--goals { width: 52px; }
+.pg-scorer-board-caption--winner { width: 30px; }
 
 .pg-scorer-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .pg-scorer-row {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border: 1.5px solid rgba(200, 184, 122, 0.4);
-  transition: border-color 0.15s;
-  gap: 0.5rem;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(200, 184, 122, 0.35);
+  animation: pg-scorer-row-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--pg-scorer-i, 0) * 50ms);
+}
+
+.pg-scorer-row:last-child {
+  border-bottom: none;
+}
+
+/* No `to` frame: rows animate to their natural values, so modifier opacity
+   (e.g. the dimmed out-of-race rows) isn't overridden by the fill mode. */
+@keyframes pg-scorer-row-in {
+  from { opacity: 0; transform: translateY(7px); }
+}
+
+/* The race bar: gold wash growing from the right, proportional to the lead.
+   It follows the *edited* goals live, so simming a scorer visibly moves them. */
+.pg-scorer-bar {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(to left, rgba(212, 160, 22, 0.16), rgba(212, 160, 22, 0.04));
+  border-inline-end: 2px solid rgba(212, 160, 22, 0.35);
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: right;
+  animation: pg-scorer-bar-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--pg-scorer-i, 0) * 50ms + 0.15s);
+  pointer-events: none;
+}
+
+@keyframes pg-scorer-bar-in {
+  from { transform: scaleX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-scorer-row, .pg-scorer-bar {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Row content sits above the bar */
+.pg-scorer-row > *:not(.pg-scorer-bar) {
+  position: relative;
+}
+
+.pg-scorer-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.55rem;
+  line-height: 1;
+  color: rgba(11, 34, 68, 0.22);
+  width: 1.4ch;
+  text-align: center;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-scorer-row--leader .pg-scorer-rank {
+  color: var(--gold);
+}
+
+.pg-scorer-flag {
+  width: 21px;
+  height: 15.75px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(11, 34, 68, 0.18);
+  background-size: cover;
+}
+
+/* Uncurated player (no known team): keep the column aligned with a blank slot */
+.pg-scorer-flag--blank {
+  box-shadow: 0 0 0 1px rgba(11, 34, 68, 0.1);
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(11, 34, 68, 0.05),
+    rgba(11, 34, 68, 0.05) 2px,
+    transparent 2px,
+    transparent 4px
+  );
 }
 
 .pg-scorer-row--winner {
-  border-color: var(--gold);
-  background: rgba(200, 184, 122, 0.08);
+  background: linear-gradient(to left, rgba(212, 160, 22, 0.14), rgba(212, 160, 22, 0.03));
+}
+
+.pg-scorer-row--winner .pg-scorer-bar {
+  border-inline-end-color: var(--gold);
 }
 
 /* The current top scorer(s) — a display-only cue derived from live goals. It is
    intentionally decoupled from the winner checkbox: leading the race mid-
    tournament does not award the +10 bonus. */
-.pg-scorer-row--leader {
-  border-color: color-mix(in srgb, var(--gold) 60%, transparent);
+.pg-scorer-row--leader .pg-scorer-bar {
+  background: linear-gradient(to left, rgba(212, 160, 22, 0.22), rgba(212, 160, 22, 0.06));
 }
 
 .pg-scorer-name {
   font-family: 'Heebo', sans-serif;
   font-size: 14px;
+  font-weight: 500;
   color: var(--navy);
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.4rem;
 }
 
@@ -525,35 +654,96 @@
   border: 1px solid color-mix(in srgb, var(--navy) 18%, transparent);
 }
 
+/* Winner toggle: a medallion that fills gold with a star when checked.
+   Still a native checkbox — role, label and keyboard behavior are untouched. */
 .pg-scorer-checkbox {
-  width: 16px;
-  height: 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 30px;
+  height: 30px;
+  margin: 0;
   flex-shrink: 0;
   cursor: pointer;
-  accent-color: var(--navy);
+  border: 1.5px solid rgba(11, 34, 68, 0.3);
+  border-radius: 50%;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.pg-scorer-checkbox::after {
+  content: '★';
+  font-size: 15px;
+  line-height: 1;
+  color: rgba(11, 34, 68, 0.18);
+  transition: color 0.15s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(0.8);
+}
+
+.pg-scorer-checkbox:not(:disabled):hover {
+  border-color: var(--gold);
+}
+
+.pg-scorer-checkbox:not(:disabled):hover::after {
+  color: color-mix(in srgb, var(--gold) 65%, transparent);
+}
+
+.pg-scorer-checkbox:checked {
+  background: var(--gold);
+  border-color: var(--navy);
+  box-shadow: 2px 2px 0 rgba(11, 34, 68, 0.35);
+}
+
+.pg-scorer-checkbox:checked::after {
+  color: var(--navy);
+  transform: scale(1);
+}
+
+.pg-scorer-checkbox:disabled {
+  cursor: default;
+  border-color: rgba(11, 34, 68, 0.12);
+}
+
+.pg-scorer-checkbox:disabled::after {
+  color: rgba(11, 34, 68, 0.08);
+}
+
+.pg-scorer-checkbox:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 
 .pg-scorer-row--winner .pg-scorer-name {
   font-weight: 700;
 }
 
+/* Goals: a big Bebas numeral over an editorial underline — reads like a tally,
+   still an editable spinbutton for simming. */
 .pg-scorer-input {
-  width: 56px;
-  padding: 4px 8px;
+  width: 52px;
+  padding: 2px 6px 0;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   letter-spacing: 0.05em;
   text-align: center;
   color: var(--navy);
   background: transparent;
-  border: 1.5px solid rgba(11, 34, 68, 0.25);
+  border: none;
+  border-bottom: 2px solid rgba(11, 34, 68, 0.2);
   outline: none;
   transition: border-color 0.15s;
   -moz-appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-scorer-row--leader .pg-scorer-input {
+  border-bottom-color: color-mix(in srgb, var(--gold) 60%, transparent);
 }
 
 .pg-scorer-input:focus {
-  border-color: var(--navy);
+  border-bottom-color: var(--gold);
 }
 
 .pg-scorer-input::-webkit-inner-spin-button,
@@ -568,10 +758,20 @@
   }
   .pg-scorer-input {
     -moz-appearance: textfield;
+    width: 44px;
+    font-size: 1.35rem;
   }
-  .pg-scorer-checkbox {
-    width: 20px;
-    height: 20px;
+  .pg-scorer-board-caption--goals { width: 44px; }
+  .pg-scorer-board-captions { gap: 8px; }
+  .pg-scorer-rank {
+    font-size: 1.3rem;
+  }
+  .pg-scorer-row {
+    gap: 8px;
+    padding: 10px 10px;
+  }
+  .pg-scorer-board-header {
+    padding-inline: 10px;
   }
 }
 

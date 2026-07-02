@@ -17,7 +17,7 @@ describe('buildGoldenBootBoard', () => {
     expect(realGoals['קיין']).toBe(0)
   })
 
-  it('ranks an unpicked leader above picked players and includes a within-one chaser', () => {
+  it('ranks unpicked players with 4+ goals above picked players, sorted by goals', () => {
     const { players, realGoals } = buildGoldenBootBoard({
       pickedPlayers: ['אמבפה'],
       pickedGoals: { אמבפה: 4 },
@@ -30,15 +30,28 @@ describe('buildGoldenBootBoard', () => {
     expect(realGoals).toEqual({ מסי: 6, הולאנד: 5, אמבפה: 4 })
   })
 
-  it('excludes an unpicked player two behind the lead', () => {
-    const { players } = buildGoldenBootBoard({
+  it('includes an unpicked player far behind the lead once he reaches 4 goals', () => {
+    const { players, realGoals } = buildGoldenBootBoard({
       pickedPlayers: ['אמבפה'],
-      pickedGoals: { אמבפה: 6 },
-      espnTotals: { 'Kylian Mbappé': 6, 'Erling Haaland': 4 },
+      pickedGoals: { אמבפה: 7 },
+      espnTotals: { 'Kylian Mbappé': 7, 'Erling Haaland': 4 },
       pickedEspnNames,
       nameMap,
     })
-    // Haaland (4) is 2 behind the lead (6) -> excluded
+    // Haaland (4) is 3 behind the lead (7), but 4 goals is enough to show
+    expect(players).toEqual(['אמבפה', 'הולאנד'])
+    expect(realGoals['הולאנד']).toBe(4)
+  })
+
+  it('excludes an unpicked player with fewer than 4 goals, even within one of the lead', () => {
+    const { players } = buildGoldenBootBoard({
+      pickedPlayers: ['אמבפה'],
+      pickedGoals: { אמבפה: 4 },
+      espnTotals: { 'Kylian Mbappé': 4, 'Erling Haaland': 3 },
+      pickedEspnNames,
+      nameMap,
+    })
+    // Haaland (3) chases within one, but is below the 4-goal bar -> excluded
     expect(players).toEqual(['אמבפה'])
   })
 
@@ -51,6 +64,36 @@ describe('buildGoldenBootBoard', () => {
       nameMap,
     })
     expect(players).toEqual(['אמבפה'])
+  })
+
+  it('excludes an unpicked eliminated player who trails the lead', () => {
+    const { players } = buildGoldenBootBoard({
+      pickedPlayers: ['אמבפה'],
+      pickedGoals: { אמבפה: 6 },
+      espnTotals: { 'Kylian Mbappé': 6, 'Erling Haaland': 4 },
+      pickedEspnNames,
+      nameMap,
+      teamByPlayer: { הולאנד: 'Norway' },
+      eliminatedTeams: new Set(['Norway']),
+    })
+    // Haaland (4, Norway out) trails the lead (6): frozen, can't win -> hidden
+    expect(players).toEqual(['אמבפה'])
+  })
+
+  it('keeps an unpicked eliminated player who is (co-)leading', () => {
+    const { players, realGoals } = buildGoldenBootBoard({
+      pickedPlayers: ['אמבפה'],
+      pickedGoals: { אמבפה: 4 },
+      espnTotals: { 'Kylian Mbappé': 4, 'Erling Haaland': 5 },
+      pickedEspnNames,
+      nameMap,
+      teamByPlayer: { הולאנד: 'Norway' },
+      eliminatedTeams: new Set(['Norway']),
+    })
+    // Norway is out but Haaland leads — he can still win the Golden Boot,
+    // which is exactly what decides whether any picker gets the bonus.
+    expect(players).toEqual(['הולאנד', 'אמבפה'])
+    expect(realGoals['הולאנד']).toBe(5)
   })
 
   it('falls back to the Latin name for an uncurated leader', () => {

@@ -21,17 +21,20 @@ export const GOLDEN_BOOT_NAMES: Record<string, string> = {
   'Victor Osimhen': 'ויקטור אוסימחן',
   'Mohamed Salah': 'מוחמד סלאח',
   'Robert Lewandowski': 'רוברט לבנדובסקי',
+  'Mikel Oyarzabal': 'מיקל אויארסבאל',
+  'Ismaïla Sarr': 'איסמעילה סאר',
 }
 
 // Hebrew display name (exactly as a race-board row is keyed) -> the player's
 // national team, using our internal team names (shared/groups.ts). Covers picked
 // players plus the curated unpicked contenders in GOLDEN_BOOT_NAMES.
 //
-// Used only to mark a player as OUT OF THE RACE once their team is eliminated and
-// they trail the lead — a player whose team is out can't add goals, so if they're
-// already behind they can never (co-)win the Golden Boot. A player missing here
-// (e.g. an uncurated Latin-fallback row) is simply never marked out — we never
-// report a false elimination.
+// Used to spot a player whose team is eliminated while they trail the lead — a
+// player whose team is out can't add goals, so if they're already behind they can
+// never (co-)win the Golden Boot. For a PICKED player that shows the "מחוץ למירוץ"
+// badge; an UNPICKED one is dropped from the board entirely (nobody's points
+// depend on him). A player missing here (e.g. an uncurated Latin-fallback row) is
+// simply never marked out — we never report a false elimination.
 export const TEAM_BY_PLAYER: Record<string, string> = {
   // picked
   'קיליאן אמבפה': 'France',
@@ -51,4 +54,6 @@ export const TEAM_BY_PLAYER: Record<string, string> = {
   'ויקטור אוסימחן': 'Nigeria',
   'מוחמד סלאח': 'Egypt',
   'רוברט לבנדובסקי': 'Poland',
+  'מיקל אויארסבאל': 'Spain',
+  'איסמעילה סאר': 'Senegal',
 }

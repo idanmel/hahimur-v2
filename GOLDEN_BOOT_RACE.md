@@ -59,8 +59,14 @@ picked or not — no football-data, no token, no cron, no repo snapshot.
 - **Picked rows render from `playerGoals`** (the exact number their points are scored from, live via
   the existing overlay). **Unpicked rows render from the ESPN accumulation.** The two currently agree;
   keeping picked on `playerGoals` guarantees the board never contradicts the points beside it.
-- **Roster = all picked players ∪ unpicked players within 1 goal of the lead** (leaders + chasers),
-  sorted by goals desc. Picked players always show, even at 0.
+- **Roster = all picked players ∪ unpicked players with 4+ goals** (`RACE_BOARD_MIN_GOALS` in
+  goldenBootBoard.ts), sorted by goals desc. Picked players always show, even at 0. (Originally
+  "within 1 goal of the lead"; changed 2026-07-03 so every real contender stays visible.)
+- **Unpicked + eliminated + trailing the lead = dropped from the board** (added 2026-07-03, the
+  Ismaïla Sarr case): his tally is frozen below a total he can't reach and nobody's points depend
+  on him. An eliminated unpicked player **at** the lead stays — he can still (co-)win, which is
+  what denies everyone the bonus. Picked players are never dropped; they get the "מחוץ למירוץ"
+  badge instead.
 - **Visual leader only.** The "מוביל" highlight is derived from max goals for *display*; it does
   **not** auto-award the +10. `goldenBootWinner` stays undefined by default (no premature bonus mid-
   tournament, matching today). The **checkbox remains the manual what-if** that awards the bonus.

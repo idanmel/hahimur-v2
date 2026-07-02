@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { clampGoals } from './resultsUtils'
+import { TEAMS } from '../../shared/groups'
+import { TEAM_BY_PLAYER } from './goldenBootNames'
 
 interface Props {
   players: string[]
@@ -55,6 +57,20 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
     [players, realGoals],
   )
 
+  // Competition ranking ("1224") over the fixed mount order, so tied totals
+  // share a numeral and the rank never jumps while typing.
+  const ranks = useMemo(() => {
+    const map: Record<string, number> = {}
+    let rank = 0
+    let prev = -1
+    orderedPlayers.forEach((p, i) => {
+      const goals = realGoals[p] ?? 0
+      if (goals !== prev) { rank = i + 1; prev = goals }
+      map[p] = rank
+    })
+    return map
+  }, [orderedPlayers, realGoals])
+
   const commitGoals = (player: string, val: number) => {
     const nextGoals = { ...playerGoals, [player]: val }
     const nextMax = Math.max(0, ...players.map(p => nextGoals[p] ?? 0))
@@ -79,47 +95,67 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
   }
 
   return (
-    <div className="pg-scorer-list">
-      {orderedPlayers.map(player => {
-        const isLeader = maxGoals > 0 && (playerGoals[player] ?? 0) === maxGoals
-        const isWinner = goldenBootWinners.includes(player)
-        // Out of the race: team already eliminated AND already behind the lead,
-        // so their goal count is frozen below a total they can never reach.
-        const isOut = eliminated.has(player) && maxGoals > 0 && (playerGoals[player] ?? 0) < maxGoals
-        return (
-        <div key={player} className={`pg-scorer-row${isWinner ? ' pg-scorer-row--winner' : ''}${isLeader ? ' pg-scorer-row--leader' : ''}${isOut ? ' pg-scorer-row--out' : ''}`}>
-          <input
-            type="checkbox"
-            aria-label={player}
-            className="pg-scorer-checkbox"
-            checked={isWinner}
-            disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
-            onChange={toggleWinners}
-          />
-          <div className="pg-scorer-player">
-            <span className="pg-scorer-name">
-              {player}
-              {isLeader ? <span className="pg-scorer-leader-badge"><span className="pg-scorer-leader-star" aria-hidden="true">★</span>מוביל</span> : null}
-              {isOut ? <span className="pg-scorer-out-badge">מחוץ למירוץ</span> : null}
-            </span>
-            {pickersByPlayer?.[player]?.length ? (
-              <div className="pg-scorer-pickers">
-                {pickersByPlayer[player].map(label => (
-                  <span key={label} className="pg-scorer-picker">{label}</span>
-                ))}
-              </div>
-            ) : null}
+    <div className="pg-scorer-board">
+      <div className="pg-scorer-board-header">
+        <span className="pg-scorer-board-title">המירוץ לנעל הזהב</span>
+        <span className="pg-scorer-board-captions" aria-hidden="true">
+          <span className="pg-scorer-board-caption pg-scorer-board-caption--goals">שערים</span>
+          <span className="pg-scorer-board-caption pg-scorer-board-caption--winner">זוכה</span>
+        </span>
+      </div>
+      <div className="pg-scorer-list">
+        {orderedPlayers.map((player, i) => {
+          const isLeader = maxGoals > 0 && (playerGoals[player] ?? 0) === maxGoals
+          const isWinner = goldenBootWinners.includes(player)
+          // Out of the race: team already eliminated AND already behind the lead,
+          // so their goal count is frozen below a total they can never reach.
+          const isOut = eliminated.has(player) && maxGoals > 0 && (playerGoals[player] ?? 0) < maxGoals
+          const iso = TEAMS[TEAM_BY_PLAYER[player] ?? '']?.iso
+          const barPct = maxGoals > 0 ? ((playerGoals[player] ?? 0) / maxGoals) * 100 : 0
+          return (
+          <div
+            key={player}
+            className={`pg-scorer-row${isWinner ? ' pg-scorer-row--winner' : ''}${isLeader ? ' pg-scorer-row--leader' : ''}${isOut ? ' pg-scorer-row--out' : ''}`}
+            style={{ '--pg-scorer-i': i } as CSSProperties}
+          >
+            <span className="pg-scorer-bar" style={{ width: `${barPct}%` }} aria-hidden="true" />
+            <span className="pg-scorer-rank" aria-hidden="true">{ranks[player]}</span>
+            {iso
+              ? <span className={`fi fi-${iso} pg-scorer-flag`} aria-hidden="true" />
+              : <span className="pg-scorer-flag pg-scorer-flag--blank" aria-hidden="true" />}
+            <div className="pg-scorer-player">
+              <span className="pg-scorer-name">
+                {player}
+                {isLeader ? <span className="pg-scorer-leader-badge"><span className="pg-scorer-leader-star" aria-hidden="true">★</span>מוביל</span> : null}
+                {isOut ? <span className="pg-scorer-out-badge">מחוץ למירוץ</span> : null}
+              </span>
+              {pickersByPlayer?.[player]?.length ? (
+                <div className="pg-scorer-pickers">
+                  {pickersByPlayer[player].map(label => (
+                    <span key={label} className="pg-scorer-picker">{label}</span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <PlayerGoalInput
+              key={playerGoals[player] ?? 0}
+              player={player}
+              min={realGoals[player] ?? 0}
+              value={playerGoals[player] ?? 0}
+              onCommit={val => commitGoals(player, val)}
+            />
+            <input
+              type="checkbox"
+              aria-label={player}
+              className="pg-scorer-checkbox"
+              checked={isWinner}
+              disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
+              onChange={toggleWinners}
+            />
           </div>
-          <PlayerGoalInput
-            key={playerGoals[player] ?? 0}
-            player={player}
-            min={realGoals[player] ?? 0}
-            value={playerGoals[player] ?? 0}
-            onCommit={val => commitGoals(player, val)}
-          />
-        </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

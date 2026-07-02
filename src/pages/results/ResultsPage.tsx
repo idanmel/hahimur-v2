@@ -148,6 +148,8 @@ export default function ResultsPage({ users }: { users: User[] }) {
       espnTotals,
       pickedEspnNames: PICKED_ESPN_NAMES,
       nameMap: GOLDEN_BOOT_NAMES,
+      teamByPlayer: TEAM_BY_PLAYER,
+      eliminatedTeams: ELIMINATED_TEAMS,
     }),
     [players, espnTotals],
   )
@@ -481,7 +483,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
               liveMatches={liveBracketMatches}
             />
           </CollapsibleSection>
-          <CollapsibleSection label="מלך השערים">
+          <CollapsibleSection label="מלך השערים" defaultOpen>
             <GoalScorerSection
               key={`${goalScorerResetKey}-${JSON.stringify(raceBoard.realGoals)}`}
               players={raceBoard.players}
