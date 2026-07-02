@@ -25,9 +25,8 @@ test('switching the group stage to by-date scrolls the next unplayed match into 
   render(<ResultsPage users={[]} />)
 
   // open the group-stage accordion, then switch to the chronological view
-  // (the bracket section has its own לפי תאריך toggle — the group stage's is first)
   await userEvent.click(screen.getByRole('button', { name: 'שלב הבתים' }))
-  await userEvent.click(screen.getAllByRole('button', { name: 'לפי תאריך' })[0])
+  await userEvent.click(screen.getByRole('button', { name: 'לפי תאריך — שלב הבתים' }))
 
   expect(scrollSpy).toHaveBeenCalled()
 })

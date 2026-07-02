@@ -387,6 +387,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
                 type="button"
                 className={`pg-group-btn${groupStageView === 'by-date' ? ' pg-group-btn--active' : ''}`}
                 onClick={() => setGroupStageView('by-date')}
+                aria-label="לפי תאריך — שלב הבתים"
               >לפי תאריך</button>
             </div>
 
@@ -482,6 +483,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
                 type="button"
                 className={`pg-group-btn${bracketView === 'byDate' ? ' pg-group-btn--active' : ''}`}
                 onClick={() => { reportUsage('bracket-date-view', me); setBracketView('byDate') }}
+                aria-label="לפי תאריך — בראקט"
               >לפי תאריך</button>
             </div>
             <Bracket
