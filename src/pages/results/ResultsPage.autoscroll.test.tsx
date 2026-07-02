@@ -11,7 +11,7 @@ vi.mock('../../users/index', () => ({ get USERS() { return [] }, get USERS_SORTE
 // match has a score there is no next unplayed match, and nothing to scroll to).
 vi.mock('../../shared/matchesByDate', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../shared/matchesByDate')>()
-  return { ...actual, nextUnplayedMatchId: () => 'A1' }
+  return { ...actual, nextUnplayedMatchId: () => 'A1', nextUnplayedKOMatchId: () => '73' }
 })
 
 afterEach(() => {
@@ -27,6 +27,18 @@ test('switching the group stage to by-date scrolls the next unplayed match into 
   // open the group-stage accordion, then switch to the chronological view
   await userEvent.click(screen.getByRole('button', { name: 'שלב הבתים' }))
   await userEvent.click(screen.getByRole('button', { name: 'לפי תאריך — שלב הבתים' }))
+
+  expect(scrollSpy).toHaveBeenCalled()
+})
+
+test('switching the bracket to by-date scrolls the next unplayed KO match into view', async () => {
+  const scrollSpy = vi
+    .spyOn(Element.prototype, 'scrollIntoView')
+    .mockImplementation(() => {})
+  render(<ResultsPage users={[]} />)
+
+  // the bracket section is open by default — just flip it to the chronological view
+  await userEvent.click(screen.getByRole('button', { name: 'לפי תאריך — בראקט' }))
 
   expect(scrollSpy).toHaveBeenCalled()
 })

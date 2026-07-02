@@ -1,5 +1,5 @@
 import { matchSortKey } from './matchOrder'
-import type { Match, MatchScores, TournamentResults } from './types'
+import type { KnockoutMatch, KnockoutStages, Match, MatchScores, TournamentResults } from './types'
 import { GROUPS, ALL_GROUP_LETTERS, type GroupLetter } from './groups'
 
 export type MatchEntry = { match: Match; group: GroupLetter }
@@ -63,4 +63,16 @@ export function nextUnplayedMatchId(results: TournamentResults): string | undefi
     }
   }
   return undefined
+}
+
+// The knockout twin of nextUnplayedMatchId: earliest chronological KO fixture
+// with no finished score, or undefined once they're all played. The bracket's
+// by-date view auto-scrolls here.
+export function nextUnplayedKOMatchId(stages: KnockoutStages): string | undefined {
+  const next = Object.values(stages).flat()
+    .filter(m => !m.scores || m.scores.home === null || m.scores.away === null)
+    .reduce<KnockoutMatch | null>((earliest, m) =>
+      !earliest || matchSortKey(m.matchDate, m.kickoffIST) < matchSortKey(earliest.matchDate, earliest.kickoffIST)
+        ? m : earliest, null)
+  return next ? String(next.matchNum) : undefined
 }

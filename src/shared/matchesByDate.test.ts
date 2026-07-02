@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { groupMatchesByDate, dateGroups } from './matchesByDate'
-import type { Match } from './types'
+import { groupMatchesByDate, dateGroups, nextUnplayedKOMatchId } from './matchesByDate'
+import type { KnockoutMatch, KnockoutStages, Match, MatchScores } from './types'
 import type { GroupLetter } from './groups'
 
 const makeMatch = (id: string, matchDate: string, kickoffIST: string): Match => ({
@@ -58,6 +58,51 @@ describe('groupMatchesByDate', () => {
     const result = groupMatchesByDate(input)
 
     expect(result[0].matches[0].group).toBe('C')
+  })
+})
+
+const koMatch = (matchNum: number, matchDate: string, kickoffIST: string, scores?: MatchScores): KnockoutMatch =>
+  ({ matchNum, home: 'A', away: 'B', resolved: true, matchDate, kickoffIST, scores })
+
+const koStages = (partial: Partial<KnockoutStages>): KnockoutStages =>
+  ({ r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [], ...partial })
+
+describe('nextUnplayedKOMatchId', () => {
+  it('returns the earliest chronological KO match with no finished score', () => {
+    const stages = koStages({
+      r32: [
+        koMatch(74, '29 ביוני', '23:30'),
+        koMatch(73, '28 ביוני', '22:00', { home: 0, away: 1 }),
+      ],
+    })
+
+    expect(nextUnplayedKOMatchId(stages)).toBe('74')
+  })
+
+  it('looks across all stages, not just the round of 32', () => {
+    const stages = koStages({
+      r32: [koMatch(73, '28 ביוני', '22:00', { home: 0, away: 1 })],
+      r16: [koMatch(89, '4 ביולי', '19:00')],
+    })
+
+    expect(nextUnplayedKOMatchId(stages)).toBe('89')
+  })
+
+  it('treats a half-entered score as unplayed', () => {
+    const stages = koStages({
+      r32: [koMatch(73, '28 ביוני', '22:00', { home: 1, away: null })],
+    })
+
+    expect(nextUnplayedKOMatchId(stages)).toBe('73')
+  })
+
+  it('returns undefined once every KO match is played', () => {
+    const stages = koStages({
+      r32: [koMatch(73, '28 ביוני', '22:00', { home: 0, away: 1 })],
+      final: [koMatch(104, '19 ביולי', '22:00', { home: 2, away: 2, drawWinner: 'home' })],
+    })
+
+    expect(nextUnplayedKOMatchId(stages)).toBeUndefined()
   })
 })
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { KnockoutMatch, KnockoutStages, MatchScores } from './types'
 import { TEAMS } from './groups'
 import TeamSlot from '../formView/knockout/TeamSlot'
@@ -272,14 +273,24 @@ interface BracketProps extends CardCtx {
   // lays the same cards out as a chronological schedule, bucketed by date —
   // the knockout twin of the group stage's "לפי תאריך" view.
   view?: 'tree' | 'byDate'
+  // matchNum (as string) of the next unplayed KO fixture. The by-date view
+  // scrolls it into view when it opens, so the schedule lands where the
+  // tournament currently is instead of at the round of 32.
+  nextMatchId?: string
 }
 
 // Every knockout fixture in kickoff order under date bands. Same MatchCards as
 // the tree (badges, live clock, score inputs all included), different geometry.
-function ByDateBoard({ stages, ctx }: { stages: KnockoutStages; ctx: CardCtx }) {
+function ByDateBoard({ stages, ctx, nextMatchId }: { stages: KnockoutStages; ctx: CardCtx; nextMatchId?: string }) {
   const entries = STAGE_ORDER.flatMap(k =>
     stages[k].map(m => ({ m, round: STAGE_LABELS[k] }))
   )
+  // The board only mounts when the by-date view opens, so a mount effect is
+  // exactly "the user just switched to לפי תאריך" — scroll to today's match.
+  const nextRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    nextRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [])
   return (
     <div className="bk-list" dir="rtl">
       {dateGroups(entries, e => e.m).map(({ date, dayLabel, items }) => (
@@ -293,7 +304,11 @@ function ByDateBoard({ stages, ctx }: { stages: KnockoutStages; ctx: CardCtx }) 
             <span className="bk-date-band__rule" aria-hidden="true" />
           </div>
           <div className="bk-list-day">
-            {items.map(({ m, round }) => <MatchCard key={m.matchNum} m={m} ctx={ctx} round={round} />)}
+            {items.map(({ m, round }) =>
+              String(m.matchNum) === nextMatchId
+                ? <div key={m.matchNum} ref={nextRef}><MatchCard m={m} ctx={ctx} round={round} /></div>
+                : <MatchCard key={m.matchNum} m={m} ctx={ctx} round={round} />
+            )}
           </div>
         </div>
       ))}
@@ -301,13 +316,13 @@ function ByDateBoard({ stages, ctx }: { stages: KnockoutStages; ctx: CardCtx }) 
   )
 }
 
-export default function Bracket({ stages, view = 'tree', predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }: BracketProps) {
+export default function Bracket({ stages, view = 'tree', nextMatchId, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }: BracketProps) {
   const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }
 
   if (view === 'byDate') {
     return (
       <div className={`bk bk--list${onChange ? ' bk--editable' : ''}`}>
-        <ByDateBoard stages={stages} ctx={ctx} />
+        <ByDateBoard stages={stages} ctx={ctx} nextMatchId={nextMatchId} />
       </div>
     )
   }

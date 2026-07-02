@@ -25,7 +25,7 @@ import { GOLDEN_BOOT_NAMES, TEAM_BY_PLAYER } from './goldenBootNames'
 import { eliminatedTeams } from '../forms/compareStats'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
-import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId } from '../../shared/matchesByDate'
+import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId, nextUnplayedKOMatchId } from '../../shared/matchesByDate'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
 import { getLockedMatchIds, allTzelifotResults } from './resultsUtils'
 import { possibleParticipation } from './possibleParticipation'
@@ -47,6 +47,8 @@ const ELIMINATED_TEAMS = eliminatedTeams(realTournamentResults)
 const INITIAL_PLAYED_COUNT = playedMatchesChrono(realTournamentResults).length
 // Frozen at load from the committed real scores — the by-date view scrolls here
 const NEXT_MATCH_ID = nextUnplayedMatchId(realTournamentResults)
+// The bracket's by-date twin: simulated what-if scores must not move the target
+const NEXT_KO_MATCH_ID = nextUnplayedKOMatchId(realTournamentResults.knockoutStages)
 
 function getInitialState(): PredictionsState {
   const state: PredictionsState = {}
@@ -488,6 +490,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
             </div>
             <Bracket
               view={bracketView}
+              nextMatchId={NEXT_KO_MATCH_ID}
               stages={tournamentResults.knockoutStages}
               predictions={editedResults}
               onChange={updateMatch}
