@@ -23,12 +23,12 @@ describe('POST /api/click', () => {
 
   it('records a click with feature and who, and responds 200', async () => {
     const res = makeRes()
-    await handler({ method: 'POST', body: { feature: 'sim', who: 'idan' } } as VercelRequest, res)
+    await handler({ method: 'POST', body: { feature: 'all-tzelifot', who: 'idan' } } as VercelRequest, res)
 
     expect(sqlMock).toHaveBeenCalledOnce()
     const [strings, feature, who] = sqlMock.mock.calls[0]
     expect(strings.join('')).toMatch(/INSERT INTO clicks/i)
-    expect(feature).toBe('sim')
+    expect(feature).toBe('all-tzelifot')
     expect(who).toBe('idan')
     expect(res.status).toHaveBeenCalledWith(200)
   })

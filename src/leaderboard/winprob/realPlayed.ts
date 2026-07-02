@@ -8,7 +8,7 @@ const teamHe = (team: string) => TEAMS[team]?.he ?? team
 
 // The real, actually-played results (group + knockout) as a PredictionsState
 // keyed exactly the way the sim engine expects: 'A1'..'L6' for groups, the
-// match number as a string for knockout. Manual "סימלוץ" edits never reach here.
+// match number as a string for knockout. Manual what-if edits never reach here.
 export function realPlayedState(results: TournamentResults): PredictionsState {
   const played: PredictionsState = {}
   for (const matches of Object.values(results.groupMatches ?? {})) {

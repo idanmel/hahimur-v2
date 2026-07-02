@@ -29,15 +29,9 @@ import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId, nextUnplayedKOMatchId } fro
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
 import { getLockedMatchIds, allTzelifotResults } from './resultsUtils'
 import { possibleParticipation } from './possibleParticipation'
-import { TEAM_STRENGTH } from './teamStrength'
 import '../../leaderboard/LeaderboardPage.css'
 import '../../pages/form/FormPage.css'
 import './ResultsPage.css'
-
-const GROUP_MATCH_TEAMS: Record<string, { homeTeam: string; awayTeam: string }> = {}
-Object.values(GROUPS).forEach(group =>
-  group.matches.forEach(m => { GROUP_MATCH_TEAMS[m.id] = { homeTeam: m.homeTeam, awayTeam: m.awayTeam } })
-)
 
 const LOCKED_MATCH_IDS = getLockedMatchIds(realTournamentResults)
 // Teams really out of the tournament (never a false positive — see eliminatedTeams).
@@ -198,36 +192,6 @@ export default function ResultsPage({ users }: { users: User[] }) {
     })
   }, [liveOverlay])
 
-  const randomize = () => {
-    // fire-and-forget click counter — must never affect the simulation itself
-    reportUsage('sim', me)
-    const poisson = (lambda: number) => {
-      const L = Math.exp(-lambda)
-      let k = 0, p = 1
-      do { k++; p *= Math.random() } while (p > L)
-      return k - 1
-    }
-    const BASE = 1.3
-    setEditedResults(prev =>
-      Object.fromEntries(Object.keys(prev).map(id => {
-        if (LOCKED_MATCH_IDS.has(id)) return [id, prev[id]]
-        // A simulated score is a user choice — keep the live feed from overwriting it.
-        userEditedIds.current.add(id)
-        const teams = GROUP_MATCH_TEAMS[id]
-        const avg = { att: 1.0, def: 1.0 }
-        const homeStr = (teams && TEAM_STRENGTH[teams.homeTeam]) ?? avg
-        const awayStr = (teams && TEAM_STRENGTH[teams.awayTeam]) ?? avg
-        const home = poisson(BASE * homeStr.att * awayStr.def)
-        const away = poisson(BASE * awayStr.att * homeStr.def)
-        const isKO = !isNaN(Number(id))
-        const drawWinner = isKO && home === away
-          ? (Math.random() < 0.5 ? 'home' : 'away') as 'home' | 'away'
-          : undefined
-        return [id, { home, away, ...(drawWinner ? { drawWinner } : {}) }]
-      }))
-    )
-  }
-
   // "הכל צליפות": paint every unplayed match with your own prediction, so your
   // whole bet comes true and you score צליפה on every undecided match. (Not a
   // true "best case" — locked results can reseed a group and reshuffle the
@@ -363,7 +327,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
           <p className="pg-sim-note-body">
             ערכו תוצאות ידנית בכל שלב — הניקוד מתעדכן בזמן אמת.
             לחצו <strong>הכל צליפות</strong> כדי למלא את כל המשחקים בניחושים שלכם — צליפה בכל משחק,
-            <strong>סימלוץ</strong> לתוצאות אקראיות, או <strong>איפוס</strong> לחזרה לתוצאות האמיתיות.
+            או <strong>איפוס</strong> לחזרה לתוצאות האמיתיות.
           </p>
         </aside>
 
@@ -372,7 +336,6 @@ export default function ResultsPage({ users }: { users: User[] }) {
           {myUser && (
             <button type="button" className="pg-all-tzelifot-btn" onClick={showAllTzelifot}>הכל צליפות</button>
           )}
-          <button type="button" className="pg-random-btn" onClick={randomize}>סימלוץ</button>
           <button type="button" className="pg-reset-btn" onClick={reset}>איפוס</button>
         </div>
 

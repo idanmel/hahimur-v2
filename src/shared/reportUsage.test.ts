@@ -26,12 +26,12 @@ test('defaults who to empty string when the viewer is anonymous', () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}'))
   vi.stubGlobal('fetch', fetchMock)
 
-  reportUsage('sim')
+  reportUsage('all-tzelifot')
 
   expect(fetchMock).toHaveBeenCalledWith('/api/click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feature: 'sim', who: '' }),
+    body: JSON.stringify({ feature: 'all-tzelifot', who: '' }),
   })
 })
 
@@ -40,7 +40,7 @@ test('does not POST from localhost', () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}'))
   vi.stubGlobal('fetch', fetchMock)
 
-  reportUsage('sim', 'idan')
+  reportUsage('all-tzelifot', 'idan')
 
   expect(fetchMock).not.toHaveBeenCalled()
 })
@@ -49,5 +49,5 @@ test('swallows a failed report instead of throwing', () => {
   window.happyDOM.setURL('https://hahimur.vercel.app/')
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
 
-  expect(() => reportUsage('sim', 'idan')).not.toThrow()
+  expect(() => reportUsage('all-tzelifot', 'idan')).not.toThrow()
 })
