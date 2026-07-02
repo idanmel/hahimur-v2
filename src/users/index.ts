@@ -33,6 +33,9 @@ import * as omer_apel from './omer-apel'
 export interface User {
   label: string
   predictions: PredictionsState
+  // A pick is identity, not just display: points and live goals join on the
+  // exact string. Real users' picks must be canonical PICKED_SCORERS names
+  // (shared/scorers.ts) — scorers.test.ts enforces that at the data boundary.
   topGoalscorer: string
   groupTables: Record<string, Standing[]>
   thirdPlaceQualification: ThirdPlaceQualification

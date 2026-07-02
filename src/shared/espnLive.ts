@@ -2,6 +2,7 @@ import type { MatchScores } from './types'
 import { GROUPS } from './groups'
 import { espnIdToMatchNum } from './koEventIds'
 import { isKoReversed, orientKoScore } from './koOrient'
+import { SCORER_ALIASES } from './scorers'
 
 // Re-exported for back-compat: the KO orientation helpers now live in koOrient.ts
 // (shared with the cron), but useLiveScores still imports them from here.
@@ -55,17 +56,10 @@ const NAME_ALIASES: Record<string, string> = {
   'Bosnia-Herzegovina': 'Bosnia and Herzegovina',
 }
 
-// Allowlist of picked players: ESPN athlete displayName -> Hebrew topGoalscorer
-// string (must match users/*.ts exactly). Only players users picked appear here.
-export const SCORER_ALIASES: Record<string, string> = {
-  'Kylian Mbappé': 'קיליאן אמבפה',
-  'Harry Kane': 'הארי קיין',
-  'Kai Havertz': 'קאי האברץ',
-  'Ferran Torres': 'פראן טורס',
-  'Lamin Yamal': 'לאמין ימאל',
-  'Florian Wirtz': 'פלוריאן וירץ',
-  'Vinícius Júnior': 'ויניסיוס ג׳וניור',
-}
+// Allowlist of picked players: ESPN athlete displayName -> canonical Hebrew
+// name, derived from the PICKED_SCORERS registry. Only picked players appear;
+// every other scorer is intentionally ignored.
+export { SCORER_ALIASES }
 
 function canonical(name: string | null): string | null {
   return name == null ? null : NAME_ALIASES[name] ?? name

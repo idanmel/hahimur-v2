@@ -1,3 +1,5 @@
+import { TEAM_BY_PICKED } from '../../shared/scorers'
+
 // Latin (ESPN athlete displayName) -> Hebrew, for UNPICKED players shown on the
 // Golden Boot race board only.
 //
@@ -36,14 +38,9 @@ export const GOLDEN_BOOT_NAMES: Record<string, string> = {
 // depend on him). A player missing here (e.g. an uncurated Latin-fallback row) is
 // simply never marked out — we never report a false elimination.
 export const TEAM_BY_PLAYER: Record<string, string> = {
-  // picked
-  'קיליאן אמבפה': 'France',
-  'הארי קיין': 'England',
-  'קאי האברץ': 'Germany',
-  'פלוריאן וירץ': 'Germany',
-  'פראן טורס': 'Spain',
-  'לאמין ימאל': 'Spain',
-  'ויניסיוס ג׳וניור': 'Brazil',
+  // picked players come from the registry, so a name can't drift from the
+  // one points and live goals are keyed by
+  ...TEAM_BY_PICKED,
   // curated unpicked contenders
   'ליאו מסי': 'Argentina',
   'ארלינג הולאנד': 'Norway',

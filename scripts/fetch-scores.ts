@@ -9,6 +9,7 @@ import {
   extractEspnKnockoutResult,
   type EspnKnockoutCompetitor,
 } from '../src/shared/espnKnockout.ts'
+import { SCORER_ALIASES } from '../src/shared/scorers.ts'
 import {
   readGroupScores,
   writeGroupScores,
@@ -29,18 +30,10 @@ export interface ApiMatch {
   score: { fullTime: { home: number | null; away: number | null } }
 }
 
-// Allowlist of picked players: source scorer names (ESPN athlete.displayName)
-// → Hebrew topGoalscorer strings (must match users/*.ts exactly). Only players
-// users picked appear here; every other scorer is intentionally ignored.
-export const SCORER_ALIASES: Record<string, string> = {
-  'Kylian Mbappé': 'קיליאן אמבפה',
-  'Harry Kane': 'הארי קיין',
-  'Kai Havertz': 'קאי האברץ',
-  'Ferran Torres': 'פראן טורס',
-  'Lamine Yamal': 'לאמין ימאל',
-  'Florian Wirtz': 'פלוריאן וירץ',
-  'Vinícius Júnior': 'ויניסיוס ג׳וניור',
-}
+// Allowlist of picked players: source scorer names (ESPN athlete.displayName,
+// football-data) → canonical Hebrew names, derived from the PICKED_SCORERS
+// registry. Only picked players appear; every other scorer is ignored.
+export { SCORER_ALIASES }
 
 // football-data.org names → the names used in shared/groups.ts
 const NAME_ALIASES: Record<string, string> = {

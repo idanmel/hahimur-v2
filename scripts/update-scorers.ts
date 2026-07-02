@@ -1,21 +1,13 @@
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout } from 'node:process'
-import { readFileSync, writeFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { GROUPS } from '../src/shared/groups.ts'
-import { RESULTS_PATH, readGroupScores, parseRealGoals, renderRealGoals } from './results-file.ts'
+import { TEAM_BY_PICKED } from '../src/shared/scorers.ts'
+import { readGroupScores, readRealGoals, writeRealGoals } from './results-file.ts'
 
 // Every distinct topGoalscorer pick, mapped to the team whose matches
 // we need to ask about. Guarded by a test against src/users.
-export const TRACKED_PLAYERS: Record<string, string> = {
-  'קיליאן אמבפה': 'France',
-  'הארי קיין': 'England',
-  'קאי האברץ': 'Germany',
-  'פלוריאן וירץ': 'Germany',
-  'פראן טורס': 'Spain',
-  'לאמין ימאל': 'Spain',
-  'ויניסיוס ג׳וניור': 'Brazil',
-}
+export const TRACKED_PLAYERS: Record<string, string> = TEAM_BY_PICKED
 
 const matchById = new Map(
   Object.values(GROUPS).flatMap(g => g.matches.map(m => [m.id, m]))
@@ -40,7 +32,7 @@ export function pendingScorerQuestions(
 
 async function main(): Promise<void> {
   const scores = readGroupScores()
-  let goals = parseRealGoals(readFileSync(RESULTS_PATH, 'utf-8'))
+  let goals = readRealGoals()
   const pending = pendingScorerQuestions(scores, goals)
 
   if (pending.length === 0) {
@@ -66,7 +58,7 @@ async function main(): Promise<void> {
     }
 
     goals = { ...goals, [q.player]: { ...goals[q.player], [q.matchId]: n } }
-    writeFileSync(RESULTS_PATH, renderRealGoals(readFileSync(RESULTS_PATH, 'utf-8'), goals), 'utf-8')
+    writeRealGoals(goals)
     console.log('  ✓ Saved')
   }
 
