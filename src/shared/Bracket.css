@@ -407,6 +407,81 @@ a.bk-match:hover {
 /* a level scoreline still needs a winner picked, or the match scores nothing */
 .bk-match--draw-pending { box-shadow: 0 0 0 2px var(--gold); }
 
+/* ── By-date list view ────────────────────────────────────────
+   The same cards laid out as a chronological schedule: gold date bands
+   (mirroring the group stage's לפי תאריך view) with that day's fixtures
+   stacked in kickoff order. No connector geometry, so cards size to
+   content and stretch to a comfortable reading width. */
+
+.bk--list { overflow-x: visible; }
+
+.bk-list {
+  max-width: 380px;
+  margin-inline: auto;
+}
+
+.bk-list-day {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* room for the משתתף / עדיין אפשרי chips that overhang the card top */
+  padding-top: 8px;
+}
+
+.bk--list .bk-match--editable { height: auto; }
+.bk--list .bk-match-row { padding-block: 2px; }
+
+/* the round name on each card — bolder than the kickoff time beside it,
+   since the round is what the date bands can't tell you */
+.bk-meta-round {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--navy);
+}
+
+.bk-date-band {
+  display: flex;
+  align-items: center;
+  padding: 14px 0 8px;
+  direction: rtl;
+}
+
+.bk-list > div:first-child .bk-date-band { padding-top: 0; }
+
+.bk-date-band__rule {
+  flex: 1;
+  height: 1px;
+  background: rgba(200, 184, 122, 0.45);
+  display: block;
+}
+
+.bk-date-band__label {
+  padding: 0 14px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.bk-date-band__date {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.28em;
+  color: var(--navy);
+  line-height: 1.1;
+}
+
+.bk-date-band__day {
+  display: block;
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  text-align: center;
+  margin-top: 2px;
+  line-height: 1;
+}
+
 /* The final card is centred in a full-height column, leaving a big empty gap
    below it. Sit the third-place block about halfway down that gap — not stranded
    at the very bottom, but not crowding the final either. */

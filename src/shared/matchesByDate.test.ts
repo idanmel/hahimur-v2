@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupMatchesByDate } from './matchesByDate'
+import { groupMatchesByDate, dateGroups } from './matchesByDate'
 import type { Match } from './types'
 import type { GroupLetter } from './groups'
 
@@ -58,5 +58,39 @@ describe('groupMatchesByDate', () => {
     const result = groupMatchesByDate(input)
 
     expect(result[0].matches[0].group).toBe('C')
+  })
+})
+
+describe('dateGroups', () => {
+  it('sorts June dates before July dates', () => {
+    const items = [
+      { matchDate: '1 ביולי', kickoffIST: '19:00' },
+      { matchDate: '30 ביוני', kickoffIST: '22:00' },
+    ]
+
+    const result = dateGroups(items, x => x)
+
+    expect(result.map(g => g.date)).toEqual(['30 ביוני', '1 ביולי'])
+  })
+
+  it('labels a July date with the right Hebrew day', () => {
+    const items = [{ matchDate: '1 ביולי', kickoffIST: '19:00' }]
+
+    const result = dateGroups(items, x => x)
+
+    // July 1 2026 is a Wednesday = יום רביעי
+    expect(result[0].dayLabel).toBe('יום רביעי')
+  })
+
+  it('buckets same-date items together in kickoff order', () => {
+    const items = [
+      { id: 'late', matchDate: '4 ביולי', kickoffIST: '23:00' },
+      { id: 'early', matchDate: '4 ביולי', kickoffIST: '19:00' },
+    ]
+
+    const result = dateGroups(items, x => x)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].items.map(i => i.id)).toEqual(['early', 'late'])
   })
 })

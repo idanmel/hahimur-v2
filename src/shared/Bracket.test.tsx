@@ -158,3 +158,52 @@ describe('interactive Bracket', () => {
     expect(container.querySelector('.bk-pred')).toBeNull()
   })
 })
+
+describe('by-date view', () => {
+  // Fixtures spanning rounds and dates, deliberately out of chronological
+  // order within their rounds, so the sort is actually exercised.
+  const stages: KnockoutStages = {
+    r32: [
+      { matchNum: 77, home: 'France', away: 'Senegal', resolved: true, matchDate: '1 ביולי', kickoffIST: '00:00' },
+      { matchNum: 73, home: 'Brazil', away: 'Korea Republic', resolved: true, matchDate: '28 ביוני', kickoffIST: '22:00' },
+    ],
+    r16: [{ matchNum: 89, home: 'מנצח 74', away: 'מנצח 77', resolved: false, matchDate: '4 ביולי', kickoffIST: '23:00' }],
+    qf: [],
+    sf: [],
+    thirdPlace: [{ matchNum: 103, home: 'מפסיד 101', away: 'מפסיד 102', resolved: false, matchDate: '18 ביולי', kickoffIST: '23:00' }],
+    final: [{ matchNum: 104, home: 'מנצח 101', away: 'מנצח 102', resolved: false, matchDate: '19 ביולי', kickoffIST: '22:00' }],
+  }
+
+  test('lists all knockout matches chronologically under date bands', () => {
+    const { container } = render(<Bracket stages={stages} view="byDate" />)
+    const bands = [...container.querySelectorAll('.bk-date-band__date')].map(b => b.textContent)
+    expect(bands).toEqual(['28 ביוני', '1 ביולי', '4 ביולי', '18 ביולי', '19 ביולי'])
+    const cards = [...container.querySelectorAll('a.bk-match')].map(a => a.getAttribute('href'))
+    expect(cards).toEqual(['/matches/73', '/matches/77', '/matches/89', '/matches/103', '/matches/104'])
+  })
+
+  test('names the round on each card', () => {
+    const { container } = render(<Bracket stages={stages} view="byDate" />)
+    const metas = [...container.querySelectorAll('.bk-meta')].map(m => m.textContent)
+    expect(metas[0]).toContain('שלב ה-32')
+    expect(metas[2]).toContain('שמינית גמר')
+    expect(metas[3]).toContain('מקום שלישי')
+    expect(metas[4]).toContain('גמר')
+  })
+
+  test('the date band carries the date, so the card meta shows only the kickoff time', () => {
+    const { container } = render(<Bracket stages={stages} view="byDate" />)
+    const meta = container.querySelector('.bk-meta')!
+    expect(meta.textContent).toContain('22:00')
+    expect(meta.textContent).not.toContain('28 ביוני')
+  })
+
+  test('stays editable: score inputs render and report changes', () => {
+    const onChange = vi.fn()
+    render(<Bracket stages={stages} view="byDate" predictions={{}} onChange={onChange} />)
+    const inputs = [...document.querySelectorAll<HTMLInputElement>('input.score-input')]
+    expect(inputs.length).toBe(10) // five matches, two inputs each
+    fireEvent.change(inputs[0], { target: { value: '3' } })
+    expect(onChange).toHaveBeenCalledWith('73', { home: 3, away: null })
+  })
+})

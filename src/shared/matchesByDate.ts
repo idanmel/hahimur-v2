@@ -7,24 +7,37 @@ export type DateGroup  = { date: string; dayLabel: string; matches: MatchEntry[]
 
 const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
-export function groupMatchesByDate(entries: MatchEntry[]): DateGroup[] {
-  const sorted = [...entries].sort((a, b) =>
-    matchSortKey(a.match.matchDate, a.match.kickoffIST) -
-    matchSortKey(b.match.matchDate, b.match.kickoffIST)
-  )
-  const grouped: DateGroup[] = []
-  for (const entry of sorted) {
-    const date = entry.match.matchDate ?? ''
+type Dated = { matchDate?: string; kickoffIST?: string }
+export type DatedGroup<T> = { date: string; dayLabel: string; items: T[] }
+
+// Chronological date buckets for any list of dated items — group fixtures and
+// knockout fixtures alike. `dated` says where an item keeps its date/time.
+// Month-aware: matchDate strings name their Hebrew month ('30 ביוני' / '1 ביולי'),
+// so June and July sort and day-label correctly.
+export function dateGroups<T>(items: T[], dated: (item: T) => Dated): DatedGroup<T>[] {
+  const sorted = [...items].sort((a, b) => {
+    const da = dated(a), db = dated(b)
+    return matchSortKey(da.matchDate, da.kickoffIST) - matchSortKey(db.matchDate, db.kickoffIST)
+  })
+  const grouped: DatedGroup<T>[] = []
+  for (const item of sorted) {
+    const date = dated(item).matchDate ?? ''
     const last = grouped[grouped.length - 1]
     if (last?.date === date) {
-      last.matches.push(entry)
+      last.items.push(item)
     } else {
       const day = parseInt(date, 10)
-      const d = new Date(2026, 5, day)
-      grouped.push({ date, dayLabel: `יום ${HE_DAYS[d.getDay()]}`, matches: [entry] })
+      const month = date.includes('ביולי') ? 6 : 5
+      const d = new Date(2026, month, day)
+      grouped.push({ date, dayLabel: `יום ${HE_DAYS[d.getDay()]}`, items: [item] })
     }
   }
   return grouped
+}
+
+export function groupMatchesByDate(entries: MatchEntry[]): DateGroup[] {
+  return dateGroups(entries, e => e.match)
+    .map(({ date, dayLabel, items }) => ({ date, dayLabel, matches: items }))
 }
 
 // All group-stage matches in kickoff order, bucketed by date. Derived from

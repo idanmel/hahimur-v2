@@ -3,6 +3,7 @@ import { TEAMS } from './groups'
 import TeamSlot from '../formView/knockout/TeamSlot'
 import ScoreInput from '../formView/ScoreInput'
 import { orderedRounds, type OrderedRounds } from './bracketLayout'
+import { dateGroups } from './matchesByDate'
 import './Bracket.css'
 
 // Knockout bracket in the classic Wikipedia layout: one column per round, R32 on
@@ -26,6 +27,15 @@ const ROUND_LABELS: Record<keyof OrderedRounds, string> = {
   sf: 'חצי גמר',
 }
 const ORDER: (keyof OrderedRounds)[] = ['r32', 'r16', 'qf', 'sf']
+
+// The full stage → label map (the tree names thirdPlace/final in its own layout,
+// so ROUND_LABELS stops at the semis; the by-date list needs every stage named).
+const STAGE_LABELS: Record<keyof KnockoutStages, string> = {
+  ...ROUND_LABELS,
+  thirdPlace: 'מקום שלישי',
+  final: 'גמר',
+}
+const STAGE_ORDER: (keyof KnockoutStages)[] = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final']
 
 interface CardCtx {
   predictions?: Record<string, MatchScores>
@@ -115,13 +125,25 @@ function PredDigit({ value, advancing }: { value: number; advancing: boolean }) 
 // the top of every card so the bracket reads as a schedule, not just a tree. While
 // the match is in progress the live "חי" badge (with the minute) stands in for it —
 // the running score is what matters then, not the kickoff time.
-function MatchMeta({ m, live }: { m: KnockoutMatch; live?: LiveClock | null }) {
+// `round` is set by the by-date list view: there the card sits under a date band
+// (which already names the day) but outside its round column, so the meta line
+// shows the round name + kickoff time instead of the date.
+function MatchMeta({ m, live, round }: { m: KnockoutMatch; live?: LiveClock | null; round?: string }) {
   if (live) {
     return (
       <div className="bk-meta bk-meta--live" data-testid="bk-live" dir="rtl">
         <span className="bk-live-dot" aria-hidden="true" />
         <span>חי</span>
         {live.clock && <span className="bk-live-clock" dir="ltr">{live.clock}</span>}
+      </div>
+    )
+  }
+  if (round) {
+    return (
+      <div className="bk-meta">
+        <span className="bk-meta-round">{round}</span>
+        {m.kickoffIST && <span className="bk-meta-sep">·</span>}
+        {m.kickoffIST && <span dir="ltr">{m.kickoffIST}</span>}
       </div>
     )
   }
@@ -135,7 +157,7 @@ function MatchMeta({ m, live }: { m: KnockoutMatch; live?: LiveClock | null }) {
   )
 }
 
-function ReadOnlyCard({ m, mine, minePred, possible, possiblePred, live, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; possible?: boolean; possiblePred?: { home: string; away: string }; live?: LiveClock | null; className?: string }) {
+function ReadOnlyCard({ m, mine, minePred, possible, possiblePred, live, round, className = '' }: { m: KnockoutMatch; mine: boolean; minePred?: MatchScores; possible?: boolean; possiblePred?: { home: string; away: string }; live?: LiveClock | null; round?: string; className?: string }) {
   const pd = predDigits(minePred)
   const teamLine = (name: string, value: number, advancing: boolean) =>
     pd
@@ -150,7 +172,7 @@ function ReadOnlyCard({ m, mine, minePred, possible, possiblePred, live, classNa
     <a href={`/matches/${m.matchNum}`} className={`bk-match ${className}`}>
       {mine && <MineMark />}
       {possible && <PossibleMark pred={possiblePred} />}
-      <MatchMeta m={m} live={live} />
+      <MatchMeta m={m} live={live} round={round} />
       {teamLine(m.home, pd?.home ?? 0, pd?.advHome ?? false)}
       {teamLine(m.away, pd?.away ?? 0, pd?.advAway ?? false)}
     </a>
@@ -158,8 +180,8 @@ function ReadOnlyCard({ m, mine, minePred, possible, possiblePred, live, classNa
 }
 
 function EditableCard({
-  m, ctx, mine, minePred, possible, possiblePred, live, className = '',
-}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; possible?: boolean; possiblePred?: { home: string; away: string }; live?: LiveClock | null; className?: string }) {
+  m, ctx, mine, minePred, possible, possiblePred, live, round, className = '',
+}: { m: KnockoutMatch; ctx: Required<Pick<CardCtx, 'onChange'>> & CardCtx; mine: boolean; minePred?: MatchScores; possible?: boolean; possiblePred?: { home: string; away: string }; live?: LiveClock | null; round?: string; className?: string }) {
   const { predictions, onChange, lockedMatchIds } = ctx
   const id = String(m.matchNum)
   const locked = lockedMatchIds?.has(id) ?? false
@@ -206,7 +228,7 @@ function EditableCard({
     <div className={`bk-match bk-match--editable ${className}${m.resolved ? ' bk-match--resolved' : ''}${needsDrawWinner ? ' bk-match--draw-pending' : ''}${live ? ' bk-match--live' : ''}`}>
       {mine && <MineMark />}
       {possible && <PossibleMark pred={possiblePred} />}
-      <MatchMeta m={m} live={live} />
+      <MatchMeta m={m} live={live} round={round} />
       {slot('home', m.home, pred.home)}
       <div className="bk-row-divider" />
       {slot('away', m.away, pred.away)}
@@ -218,7 +240,7 @@ function EditableCard({
   )
 }
 
-function MatchCard({ m, ctx, className = '' }: { m: KnockoutMatch; ctx: CardCtx; className?: string }) {
+function MatchCard({ m, ctx, round, className = '' }: { m: KnockoutMatch; ctx: CardCtx; round?: string; className?: string }) {
   const id = String(m.matchNum)
   const mine = ctx.participatingMatchIds?.has(id) ?? false
   const minePred = mine ? ctx.participatingPredictions?.[id] : undefined
@@ -229,8 +251,8 @@ function MatchCard({ m, ctx, className = '' }: { m: KnockoutMatch; ctx: CardCtx;
   const possiblePred = possible ? ctx.possiblePredictions?.[id] : undefined
   const live = ctx.liveMatches?.[id] ?? null
   const cls = `${className}${mine ? ' bk-match--mine' : ''}${possible ? ' bk-match--possible' : ''}`
-  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} possible={possible} possiblePred={possiblePred} live={live} className={cls} />
-  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} possible={possible} possiblePred={possiblePred} live={live} className={cls} />
+  if (!ctx.onChange) return <ReadOnlyCard m={m} mine={mine} minePred={minePred} possible={possible} possiblePred={possiblePred} live={live} round={round} className={cls} />
+  return <EditableCard m={m} ctx={ctx as Required<Pick<CardCtx, 'onChange'>> & CardCtx} mine={mine} minePred={minePred} possible={possible} possiblePred={possiblePred} live={live} round={round} className={cls} />
 }
 
 function Column({ rkey, matches, ctx }: { rkey: keyof OrderedRounds; matches: KnockoutMatch[]; ctx: CardCtx }) {
@@ -246,10 +268,50 @@ function Column({ rkey, matches, ctx }: { rkey: keyof OrderedRounds; matches: Kn
 
 interface BracketProps extends CardCtx {
   stages: KnockoutStages
+  // 'tree' (default) is the classic columns-and-connectors bracket; 'byDate'
+  // lays the same cards out as a chronological schedule, bucketed by date —
+  // the knockout twin of the group stage's "לפי תאריך" view.
+  view?: 'tree' | 'byDate'
 }
 
-export default function Bracket({ stages, predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }: BracketProps) {
+// Every knockout fixture in kickoff order under date bands. Same MatchCards as
+// the tree (badges, live clock, score inputs all included), different geometry.
+function ByDateBoard({ stages, ctx }: { stages: KnockoutStages; ctx: CardCtx }) {
+  const entries = STAGE_ORDER.flatMap(k =>
+    stages[k].map(m => ({ m, round: STAGE_LABELS[k] }))
+  )
+  return (
+    <div className="bk-list" dir="rtl">
+      {dateGroups(entries, e => e.m).map(({ date, dayLabel, items }) => (
+        <div key={date}>
+          <div className="bk-date-band">
+            <span className="bk-date-band__rule" aria-hidden="true" />
+            <div className="bk-date-band__label">
+              <span className="bk-date-band__date">{date}</span>
+              <span className="bk-date-band__day">{dayLabel}</span>
+            </div>
+            <span className="bk-date-band__rule" aria-hidden="true" />
+          </div>
+          <div className="bk-list-day">
+            {items.map(({ m, round }) => <MatchCard key={m.matchNum} m={m} ctx={ctx} round={round} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function Bracket({ stages, view = 'tree', predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }: BracketProps) {
   const ctx: CardCtx = { predictions, onChange, lockedMatchIds, participatingMatchIds, participatingPredictions, possibleMatchIds, possiblePredictions, liveMatches }
+
+  if (view === 'byDate') {
+    return (
+      <div className={`bk bk--list${onChange ? ' bk--editable' : ''}`}>
+        <ByDateBoard stages={stages} ctx={ctx} />
+      </div>
+    )
+  }
+
   const rounds = orderedRounds(stages)
   const final = stages.final[0]
   const thirdPlace = stages.thirdPlace[0]

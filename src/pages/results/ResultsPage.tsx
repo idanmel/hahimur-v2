@@ -116,6 +116,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
   const [lbRangeTo, setLbRangeTo] = useState(INITIAL_PLAYED_COUNT)
   const [activeGroup, setActiveGroup] = useState('A')
   const [groupStageView, setGroupStageView] = useState<'by-group' | 'by-date'>('by-group')
+  const [bracketView, setBracketView] = useState<'tree' | 'byDate'>('tree')
   const [goalScorerState, setGoalScorerState] = useState(() => ({
     playerGoals: realTournamentResults.playerGoals ?? {} as Record<string, number>,
     goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
@@ -471,7 +472,20 @@ export default function ResultsPage({ users }: { users: User[] }) {
             <ThirdPlaceTable qualification={thirdPlaceQual} allGroupsFilled={allGroupsFilled} />
           </CollapsibleSection>
           <CollapsibleSection label="בראקט" defaultOpen>
+            <div className="pg-view-toggle">
+              <button
+                type="button"
+                className={`pg-group-btn${bracketView === 'tree' ? ' pg-group-btn--active' : ''}`}
+                onClick={() => setBracketView('tree')}
+              >עץ הבראקט</button>
+              <button
+                type="button"
+                className={`pg-group-btn${bracketView === 'byDate' ? ' pg-group-btn--active' : ''}`}
+                onClick={() => { reportUsage('bracket-date-view', me); setBracketView('byDate') }}
+              >לפי תאריך</button>
+            </div>
             <Bracket
+              view={bracketView}
               stages={tournamentResults.knockoutStages}
               predictions={editedResults}
               onChange={updateMatch}
