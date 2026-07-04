@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import type { Row, AdvancementSummary, PickStatus, StageReach, StageStat } from '../../../sim-core'
-import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, potentialClause, fragilityClause, nextStepClause, buildStageForecast, stageForecastTotalEdge } from './summaryText'
+import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, potentialClause, fragilityClause, nextStepClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause } from './summaryText'
 
 function pick(over: Partial<PickStatus> & { team: string; predictedRank: number; stage: PickStatus['stage'] }): PickStatus {
   return { teamHe: over.team, reach: 0, groupFirst: 0, topsGroup: false, ...over }
@@ -199,6 +199,36 @@ describe('goldenBootClause', () => {
   })
 })
 
+describe('remainingPotentialClause', () => {
+  test('sums the points left in the unfinished rounds and names the biggest edge', () => {
+    const r = row({ stages: [
+      stage('r32', 'שלב 32', 30, 25, 5),   // done → excluded
+      stage('r16', 'שמינית', 8, 22, 14),   // biggest edge
+      stage('sf', 'חצי', -3, 14, 17),
+    ] })
+    expect(remainingPotentialClause(r, { r32: 'done', r16: 'live', sf: 'upcoming' }))
+      .toBe('עוד כ-36 נק׳ צפויות לך מהשלבים שנותרו — עיקר ההזדמנות: שמינית +8 נק׳ מול השדה')
+  })
+
+  test('frames a negative top edge as the risk', () => {
+    const r = row({ stages: [stage('final', 'גמר', -9, 12, 21)] })
+    expect(remainingPotentialClause(r, { final: 'upcoming' }))
+      .toBe('עוד כ-12 נק׳ צפויות לך מהשלבים שנותרו — עיקר הסיכון: גמר −9 נק׳ מול השדה')
+  })
+
+  test('drops the edge tail when no round has a meaningful gap', () => {
+    const r = row({ stages: [stage('qf', 'רבע', 0, 8, 8)] })
+    expect(remainingPotentialClause(r, { qf: 'live' })).toBe('עוד כ-8 נק׳ צפויות לך מהשלבים שנותרו')
+  })
+
+  test('null when every knockout round is settled or holds no points', () => {
+    const done = row({ stages: [stage('r16', 'שמינית', 5, 20, 15)] })
+    expect(remainingPotentialClause(done, { r16: 'done' })).toBeNull()
+    const empty = row({ stages: [stage('r16', 'שמינית', 0, 0, 0)] })
+    expect(remainingPotentialClause(empty, { r16: 'live' })).toBeNull()
+  })
+})
+
 describe('buildBettorHeadline', () => {
   const ME = { self: true, firstName: 'דני' } as const
 
@@ -270,7 +300,7 @@ describe('buildBettorHeadline', () => {
     expect(h.bigBets).toBeUndefined()
   })
 
-  test('once knockouts start: compresses advancers, keeps only knockout losses in eliminated, and leads with the forward line', () => {
+  test('once knockouts start: drops the settled advancers recap, keeps only knockout losses in eliminated, and leads with the forward line', () => {
     const adv = summary([
       pick({ team: 'ספרד', predictedRank: 5, stage: 'likely', reach: 1 }),    // deep, alive
       pick({ team: 'ברזיל', predictedRank: 7, stage: 'out', reach: 1 }),       // reached R32 then fell → a knockout loss
@@ -281,10 +311,25 @@ describe('buildBettorHeadline', () => {
     const nextStep = { picks: [{ teamHe: 'ספרד', predictedRank: 5, pct: 43, others: 0 }] }
     const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, null, true, nextStep)
     expect(h.nextStep).toBe('ספרד לחצי הגמר 43% (רק אתה עליה)')
-    // advancers has no field-average tail once the group is history
-    expect(h.advancers).toBe('2 מתוך 4 שבחרת עלו מהבתים — 8 נק׳ עלייה כבר בכיס')
+    // the group is settled history now — its advancers recap is gone
+    expect(h.advancers).toBeUndefined()
     // only teams that reached the bracket and then lost remain; group flops (deep or not) are gone
     expect(h.eliminated).toBe('ברזיל')
+  })
+
+  test('once knockouts start: replaces the settled recap with a forward "points still to come" line', () => {
+    const adv = summary([pick({ team: 'ספרד', predictedRank: 5, stage: 'likely', reach: 1 })])
+    const r = row({ stages: [
+      stage('group', 'שלב הבתים', 18, 70, 52),
+      stage('r32', 'שלב 32', 20, 20, 0),   // settled → excluded
+      stage('r16', 'שמינית', 6, 24, 18),   // live → counted, biggest edge (mine 24)
+      stage('qf', 'רבע', -2, 10, 12),      // upcoming → counted (mine 10)
+    ] })
+    const phases = { r32: 'done', r16: 'live', qf: 'upcoming' } as const
+    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, null, true, null, phases)
+    // 24 + 10 = 34 expected points across the rounds left; R32 (settled) is excluded
+    expect(h.remaining).toBe('עוד כ-34 נק׳ צפויות לך מהשלבים שנותרו — עיקר ההזדמנות: שמינית +6 נק׳ מול השדה')
+    expect(h.crossings).toBeUndefined()
   })
 
   test('a leader the model expects to slip gets a blunt "leading now, but" verdict', () => {

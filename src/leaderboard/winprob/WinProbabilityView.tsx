@@ -183,6 +183,7 @@ function HeadlineBody({ h, knockoutsStarted, forecast, pivotal }: { h: BettorHea
         {h.nextStep && <li className="wp-me-line--next"><span className="wp-me-label">מה צריך לקרות</span><span>{emphasize(h.nextStep)}</span></li>}
         {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{emphasize(h.route.ladder)}</span></li>}
         {h.bigBets && <li><span className="wp-me-label">עוד קלפים גדולים</span><span>{emphasize(h.bigBets)}</span></li>}
+        {h.remaining && <li><span className="wp-me-label">פוטנציאל בהמשך</span><span>{emphasize(h.remaining)}</span></li>}
         {h.advancers && <li><span className="wp-me-label">עולות</span><span>{emphasize(h.advancers)}</span></li>}
         {h.crossings && <li><span className="wp-me-label">הצלבות R32</span><span>{emphasize(h.crossings)}</span></li>}
         {h.potential && <li><span className="wp-me-label">פוטנציאל מול השדה</span><span>{emphasize(h.potential)}</span></li>}
@@ -204,9 +205,11 @@ function WhatIfFork({ o, dir, lead }: { o: PivotalOutcome; dir: 'up' | 'down'; l
   // reaching the top 5 is shown next to the win, whichever one is the headline.
   const top5 = <>טופ 5 {lead === 'podium' ? <b>{fmtPct(o.podiumPct)}</b> : fmtPct(o.podiumPct)}</>
   const win = <>זכייה {lead === 'win' ? <b>{fmtPct(o.winPct)}</b> : fmtPct(o.winPct)}</>
+  // RTL line: the arrow reads in the flow direction (right→left), pointing from the
+  // condition ("X advances") to the resulting odds. A '→' glyph points backwards here.
   return (
     <span className={`wp-whatif-fork wp-whatif-fork--${dir}`}>
-      {o.teamHe} עולה → {lead === 'win' ? <>{win} · {top5}</> : <>{top5} · {win}</>}
+      {o.teamHe} עולה ← {lead === 'win' ? <>{win} · {top5}</> : <>{top5} · {win}</>}
     </span>
   )
 }
@@ -245,7 +248,8 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
 }) {
   const firstName = row.label.split(' ')[0]
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
-  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, fragility, knockoutsStarted, nextStep)
+  const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
+  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, stagePhases)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
@@ -264,7 +268,8 @@ function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossing
   pivotalCards: PivotalCard[]; pivotalMetric: PivotalMetric
 }) {
   const firstName = name.split(' ')[0]
-  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility, knockoutsStarted, nextStep)
+  const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
+  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, stagePhases)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>

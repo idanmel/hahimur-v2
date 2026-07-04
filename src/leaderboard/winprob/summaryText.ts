@@ -110,6 +110,7 @@ export interface BettorHeadline {
   route?: { teamHe: string; ladder: string } // deepest live pick's simulated path
   bigBets?: string    // the other marquee depth calls (finalist/SF), with odds
   advancers?: string  // how many backed teams escaped the group + points banked, vs field
+  remaining?: string  // forward look at the points still to be won in the rounds left
   crossings?: string  // R32 cross-bracket pairings: locked / possible / broken, vs field
   potential?: string  // total projected points vs the field + the stage driving the gap
   fragility?: string  // how result-dependent the bet is (the central-90% points band)
@@ -310,6 +311,26 @@ export function stageForecastTotalEdge(rows: StageForecastRow[]): number {
   return rows.reduce((acc, r) => acc + r.edge, 0)
 }
 
+// פוטנציאל בהמשך — once the settled group/R32 recap drops away, this looks purely
+// forward: the expected points still to be won across the knockout rounds that
+// haven't finished, plus the round carrying the biggest edge vs the field (framed as
+// the opportunity or the risk). It replaces the backward "advancers/crossings banked"
+// recap once those stages are history. Null when no live round holds real points.
+export function remainingPotentialClause(row: Row, phases: Partial<Record<string, StagePhase>>): string | null {
+  const live = FORECAST_KEYS
+    .map(k => row.stages.find(st => st.key === k))
+    .filter((s): s is Row['stages'][number] => !!s && phases[s.key] !== 'done')
+  if (!live.length) return null
+  const mine = Math.round(live.reduce((a, s) => a + s.val, 0))
+  if (mine < 1) return null
+  const base = `עוד כ-${mine} נק׳ צפויות לך מהשלבים שנותרו`
+  const top = [...live].sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))[0]
+  const e = Math.round(top.edge)
+  if (Math.abs(e) < 1) return base
+  const lever = `${top.label} ${e >= 0 ? '+' : '−'}${Math.abs(e)} נק׳ מול השדה`
+  return `${base} — ${e >= 0 ? 'עיקר ההזדמנות' : 'עיקר הסיכון'}: ${lever}`
+}
+
 // נעל זהב — the picked scorer's race: goals banked so far, a flag if their team is out
 // (which caps the bet), and the projected points edge against the field when it matters.
 export function goldenBootClause(d: GoldenBootDigest): string | null {
@@ -380,9 +401,12 @@ export function buildBettorHeadline(
   goldenBoot: GoldenBootDigest | null = null,
   fragility: FragilityDigest | null = null,
   // Once the knockouts are under way the group stage is settled history: the
-  // advancers line compresses and only knockout-depth busts stay in "eliminated".
+  // advancers line drops and only knockout-depth busts stay in "eliminated".
   knockoutsStarted = false,
   nextStep: NextStepDigest | null = null,
+  // Phase of each knockout round at the viewed point — lets the settled group/R32
+  // recap give way to a forward "points still to come" line once they're history.
+  stagePhases: Partial<Record<string, StagePhase>> = {},
 ): BettorHeadline {
   const standing = standingText(row, totalPlayers, subject)
 
@@ -404,8 +428,12 @@ export function buildBettorHeadline(
     const others = advancement.picks.filter(p => p.predictedRank >= 5 && p.team !== lead?.team).sort((a, b) => b.predictedRank - a.predictedRank)
     if (others.length) out.bigBets = others.map(p => betPhrase(p, stageReach)).join(', ')
 
-    const advancers = advancersClause(advancement, row, knockoutsStarted)
-    if (advancers) out.advancers = advancers
+    // Before the knockouts, recap the group escapes + banked points. Once they start,
+    // the group is settled history — drop that recap and look forward instead.
+    if (!knockoutsStarted) {
+      const advancers = advancersClause(advancement, row, false)
+      if (advancers) out.advancers = advancers
+    }
 
     // Eliminated picks. Before the knockouts it's every bust (group calls still fresh).
     // Once they start we keep only *knockout* losses — deep picks (QF+) that reached the
@@ -417,9 +445,18 @@ export function buildBettorHeadline(
     if (eliminated.length) out.eliminated = eliminated.join(', ')
   }
 
-  if (crossings) {
+  // The R32 cross-bracket recap only while the round is still live; once it's settled
+  // it's behind us, so the forward "remaining rounds" line takes its place.
+  if (crossings && !crossings.done) {
     const c = crossingsClause(crossings, row)
     if (c) out.crossings = c
+  }
+
+  // With the group (and any settled early rounds) behind us, look ahead: the points
+  // still on the table in the rounds left, and where the biggest edge sits.
+  if (knockoutsStarted) {
+    const rem = remainingPotentialClause(row, stagePhases)
+    if (rem) out.remaining = rem
   }
 
   const potential = potentialClause(row)
