@@ -459,12 +459,13 @@ test('offers a summary tab that switches to the summary board on click', () => {
   expect(onRoundChange).toHaveBeenCalledWith('summary')
 })
 
+// totals fold to played 2 · guaranteed 3 · possible 4
 const summaryStub = [
   {
-    label: 'אני שחקן', participated: 2, willParticipate: 3, mayParticipate: 4,
+    label: 'אני שחקן',
     byStage: [
-      { key: 'r32' as const, participated: 2, willParticipate: 1, mayParticipate: 0 },
-      { key: 'sf' as const, participated: 0, willParticipate: 2, mayParticipate: 4 },
+      { key: 'r32' as const, played: 2, guaranteed: 1, possible: 0 },
+      { key: 'sf' as const, played: 0, guaranteed: 2, possible: 4 },
     ],
   },
 ]

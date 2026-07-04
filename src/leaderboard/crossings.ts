@@ -327,6 +327,17 @@ export interface CrossingStanding {
   expected: number
 }
 
+// Is an open crossing still on the table? A simulated 0% (once the sims are in)
+// rules it out; a null prob means the sims haven't run yet, so we keep it live.
+// The single home for "still possible", so every tally applies the same rule.
+export function isLiveCrossing(
+  crossing: Crossing,
+  crossingProbByMatch: Record<number, Record<string, number>>,
+): boolean {
+  const p = crossingProbability(crossing, crossingProbByMatch)
+  return p === null || p > 0
+}
+
 export function computeCrossingsLeaderboard(
   bettors: CrossingsBettor[],
   roundKey: RoundKey,
@@ -337,9 +348,9 @@ export function computeCrossingsLeaderboard(
     .map(u => {
       const { locked, potential, missed } = computeUserCrossings(u.knockoutStages?.[roundKey] ?? [], actualMatches, crossingProbByMatch)
       const expectedOpen = potential.reduce((s, c) => s + (crossingProbability(c, crossingProbByMatch) ?? 0), 0)
-      // Only count open pairings the model still gives a chance — a simulated 0%
-      // is effectively ruled out, so it shouldn't inflate the "open" tally.
-      const live = potential.filter(c => { const p = crossingProbability(c, crossingProbByMatch); return p === null || p > 0 })
+      // Only count open pairings the model still gives a chance — a ruled-out 0%
+      // shouldn't inflate the "open" tally.
+      const live = potential.filter(c => isLiveCrossing(c, crossingProbByMatch))
       const gone = missed.length + (potential.length - live.length)
       return { label: u.label, locked: locked.length, potential: live.length, gone, expected: locked.length + expectedOpen }
     })
@@ -351,36 +362,52 @@ export function computeCrossingsLeaderboard(
 // explicit, stable list rather than whatever order the object happens to expose.)
 const SUMMARY_ROUNDS: (keyof KnockoutStages)[] = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final']
 
-// The same three buckets for a single knockout stage, tagged with its round key —
-// the per-stage breakdown a summary row expands to show. Only stages the bettor has
-// any involvement in are emitted, in bracket order.
-export interface CrossingSummaryStage {
-  key: keyof KnockoutStages
-  participated: number
-  willParticipate: number
-  mayParticipate: number
+// A bettor's crossings at one granularity, split by how settled they are:
+//   • played     — the pairing came true and the match has been played
+//   • guaranteed — locked in (both teams in the slot / sim-certain), not yet played
+//   • possible   — still open, and the sim hasn't ruled it out
+// The unit the summary counts, reused for a whole tournament and for a single stage.
+export interface CrossingBuckets {
+  played: number
+  guaranteed: number
+  possible: number
 }
 
-// One bettor's tournament-wide crossings involvement, summed across every knockout
-// round: how many of their predicted pairings have already been played out
-// (participated), how many are locked in and still to come (willParticipate), and
-// how many are merely still possible (mayParticipate). The "how deep is my bet
-// riding" headline the per-round tabs can't give on their own. `byStage` carries the
-// same split per stage, for the expand-on-tap detail.
+// One knockout stage's buckets, tagged with its round key — the per-stage breakdown
+// a summary row expands to show. Only stages the bettor is involved in are emitted,
+// in bracket order.
+export interface CrossingSummaryStage extends CrossingBuckets {
+  key: keyof KnockoutStages
+}
+
+// One bettor's tournament-wide crossings involvement as the per-stage breakdown, in
+// bracket order. The whole-tournament totals aren't stored here — they're a fold over
+// `byStage` (see summaryTotals), so the headline can never drift from the detail.
 export interface CrossingSummaryStanding {
   label: string
-  participated: number
-  willParticipate: number
-  mayParticipate: number
   byStage: CrossingSummaryStage[]
 }
 
-// The field-wide participation board: for every bettor, classify their crossings in
-// each round against the real bracket and add the buckets up. Uses the same
+const emptyBuckets = (): CrossingBuckets => ({ played: 0, guaranteed: 0, possible: 0 })
+const bucketsTotal = (b: CrossingBuckets): number => b.played + b.guaranteed + b.possible
+const addBuckets = (a: CrossingBuckets, b: CrossingBuckets): CrossingBuckets => ({
+  played: a.played + b.played,
+  guaranteed: a.guaranteed + b.guaranteed,
+  possible: a.possible + b.possible,
+})
+
+// The whole-tournament totals for a standing: a plain fold over its per-stage split.
+// Derived on demand rather than stored, so there's one source of truth for the row.
+export function summaryTotals(standing: CrossingSummaryStanding): CrossingBuckets {
+  return standing.byStage.reduce(addBuckets, emptyBuckets())
+}
+
+// The field-wide participation data: for every bettor, classify their crossings in
+// each round against the real bracket into the three buckets. Uses the same
 // computeUserCrossings the per-round view does — locked (both teams in / sim-certain)
-// splits into already-played vs still-to-come by whether the match carries a real
-// score; potential the sim hasn't ruled out is "may". Ranked by guaranteed
-// involvement (played + locked) so the most-invested bettors lead.
+// splits into played vs guaranteed by whether the match carries a real score, and an
+// open pairing the sim hasn't ruled out is "possible". Pure per-stage data, in
+// bracket order — no ranking (that's presentation policy; see rankedCrossingsSummary).
 export function computeCrossingsSummary(
   bettors: CrossingsBettor[],
   fullBracket: KnockoutMatch[],
@@ -396,36 +423,33 @@ export function computeCrossingsSummary(
     matchesByRound.set(key, list)
   }
 
-  return bettors
-    .map(u => {
-      let participated = 0
-      let willParticipate = 0
-      let mayParticipate = 0
-      const byStage: CrossingSummaryStage[] = []
-      for (const key of SUMMARY_ROUNDS) {
-        const actual = matchesByRound.get(key) ?? []
-        const userMatches = u.knockoutStages?.[key] ?? []
-        const { locked, potential } = computeUserCrossings(userMatches, actual, crossingProbByMatch, actualScoreByNum)
-        const played = locked.filter(c => c.result).length
-        const guaranteed = locked.filter(c => !c.result).length
-        // A simulated 0% is effectively ruled out, so it isn't "still possible".
-        const possible = potential.filter(c => {
-          const p = crossingProbability(c, crossingProbByMatch)
-          return p === null || p > 0
-        }).length
-        participated += played
-        willParticipate += guaranteed
-        mayParticipate += possible
-        if (played + guaranteed + possible > 0) {
-          byStage.push({ key, participated: played, willParticipate: guaranteed, mayParticipate: possible })
-        }
+  return bettors.map(u => {
+    const byStage: CrossingSummaryStage[] = []
+    for (const key of SUMMARY_ROUNDS) {
+      const actual = matchesByRound.get(key) ?? []
+      const userMatches = u.knockoutStages?.[key] ?? []
+      const { locked, potential } = computeUserCrossings(userMatches, actual, crossingProbByMatch, actualScoreByNum)
+      const buckets: CrossingBuckets = {
+        played: locked.filter(c => c.result).length,
+        guaranteed: locked.filter(c => !c.result).length,
+        possible: potential.filter(c => isLiveCrossing(c, crossingProbByMatch)).length,
       }
-      return { label: u.label, participated, willParticipate, mayParticipate, byStage }
-    })
-    .sort((a, b) =>
-      (b.participated + b.willParticipate) - (a.participated + a.willParticipate) ||
-      b.mayParticipate - a.mayParticipate ||
-      a.label.localeCompare(b.label, 'he'))
+      if (bucketsTotal(buckets) > 0) byStage.push({ key, ...buckets })
+    }
+    return { label: u.label, byStage }
+  })
+}
+
+// The board's ordering: most guaranteed involvement (played + locked) first, then
+// most still-possible, then name. Kept apart from the computation — it's a ranking
+// decision the view makes, over data that stands on its own.
+export function rankedCrossingsSummary(standings: CrossingSummaryStanding[]): CrossingSummaryStanding[] {
+  const guaranteed = (b: CrossingBuckets) => b.played + b.guaranteed
+  return [...standings].sort((a, b) => {
+    const ta = summaryTotals(a)
+    const tb = summaryTotals(b)
+    return guaranteed(tb) - guaranteed(ta) || tb.possible - ta.possible || a.label.localeCompare(b.label, 'he')
+  })
 }
 
 // A bettor's R32 crossings (the cross-bracket pairings they predicted),

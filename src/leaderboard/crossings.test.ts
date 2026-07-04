@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeUserCrossings, crossingBreakdown, computeDeterminedCrossings, computeCrossingsSummary } from './crossings'
+import { computeUserCrossings, crossingBreakdown, computeDeterminedCrossings, computeCrossingsSummary, rankedCrossingsSummary, summaryTotals } from './crossings'
 import type { Crossing, CrossingsBettor } from './crossings'
 import type { KnockoutStages } from '../shared/types'
 import type { KnockoutMatch } from '../shared/types'
@@ -395,20 +395,22 @@ describe('computeCrossingsSummary', () => {
     const actualScoreByNum = { 73: { home: 2, away: 1 } } // only match 73 has been played
 
     const [row] = computeCrossingsSummary([bettor], bracket, {}, actualScoreByNum)
-    expect(row).toMatchObject({ label: 'דני', participated: 1, willParticipate: 1, mayParticipate: 1 })
-    // and the same split is available per stage, only for stages with involvement
+    // the per-stage split is the stored data — only stages with involvement, in order
     expect(row.byStage).toEqual([
-      { key: 'r32', participated: 1, willParticipate: 1, mayParticipate: 0 },
-      { key: 'r16', participated: 0, willParticipate: 0, mayParticipate: 1 },
+      { key: 'r32', played: 1, guaranteed: 1, possible: 0 },
+      { key: 'r16', played: 0, guaranteed: 0, possible: 1 },
     ])
+    // the tournament totals are a fold over it, not a stored (drift-prone) field
+    expect(summaryTotals(row)).toEqual({ played: 1, guaranteed: 1, possible: 1 })
   })
 
   it('ranks bettors by their guaranteed involvement (played + locked) first', () => {
     const bracket = [km(73, 'Mexico', 'Canada'), km(74, 'Brazil', 'Spain')]
     const involved = bettorOn('מעורב', { r32: [km(73, 'Mexico', 'Canada'), km(74, 'Brazil', 'Spain')] })
     const bystander = bettorOn('צופה', { r32: [km(73, 'Germany', 'Italy')] }) // pairing broke
-    const out = computeCrossingsSummary([bystander, involved], bracket)
+    // computation is order-agnostic; ranking is a separate, explicit step
+    const out = rankedCrossingsSummary(computeCrossingsSummary([bystander, involved], bracket))
     expect(out.map(s => s.label)).toEqual(['מעורב', 'צופה'])
-    expect(out[0].willParticipate).toBe(2)
+    expect(summaryTotals(out[0]).guaranteed).toBe(2)
   })
 })

@@ -6,9 +6,9 @@ import { buildKnockoutBracket } from '../formView/knockout/knockout'
 import { realPlayedState } from './winprob/realPlayed'
 import { useWinProbabilities } from './winprob/useWinProbabilities'
 import type { WinProbStatus } from './winprob/useWinProbabilities'
-import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings, computeCrossingsSummary } from './crossings'
-import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing, CrossingSummaryStanding, CrossingSummaryStage } from './crossings'
-import { OUTCOME_LABEL } from './points'
+import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings, computeCrossingsSummary, rankedCrossingsSummary, summaryTotals } from './crossings'
+import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing, CrossingSummaryStanding, CrossingSummaryStage, CrossingBuckets } from './crossings'
+import { OUTCOME_LABEL, ROUND_POINTS } from './points'
 import { buildLiveStages } from '../pages/forms/survivorsStats'
 import type { LiveTeamsStanding, LiveStage, LiveStageKey, Collision } from '../pages/forms/survivorsStats'
 import { TeamChip } from './LeaderboardTable'
@@ -18,10 +18,9 @@ import './CrossingsView.css'
 const teamHe = (team: string) => TEAMS[team]?.he ?? team
 
 // One knockout stage's worth of config: the matchNum range it owns, the user
-// bracket key it reads, in-sentence vs short labels, the noun ("הצלבות" only fits
-// the round of 32; later rounds are plain "מפגשים"), and its match payouts
-// (mirrors leaderboard/points.ts ROUND_POINTS). A locked pair only fixes the
-// *matchup*; the score is still a separate bet, so payouts are an opportunity.
+// bracket key it reads, in-sentence vs short labels, and the noun ("הצלבות" only
+// fits the round of 32; later rounds are plain "מפגשים"). Match payouts are NOT
+// here — they live once in points.ts ROUND_POINTS; see roundPoints below.
 export interface RoundCfg {
   key: RoundKey
   tab: string
@@ -29,18 +28,20 @@ export interface RoundCfg {
   noun: string
   lo: number
   hi: number
-  pagiya: number
-  tzelifa: number
 }
 
 export const ROUNDS: RoundCfg[] = [
-  { key: 'r32',   tab: 'שלב 32',  label: 'שלב ה-32', noun: 'הצלבות', lo: 73,  hi: 88,  pagiya: 5,  tzelifa: 7  },
-  { key: 'r16',   tab: 'שמינית',  label: 'השמינית',  noun: 'מפגשים', lo: 89,  hi: 96,  pagiya: 6,  tzelifa: 8  },
-  { key: 'qf',    tab: 'רבע גמר', label: 'רבע הגמר', noun: 'מפגשים', lo: 97,  hi: 100, pagiya: 8,  tzelifa: 12 },
-  { key: 'sf',    tab: 'חצי גמר', label: 'חצי הגמר', noun: 'מפגשים', lo: 101, hi: 102, pagiya: 12, tzelifa: 16 },
-  { key: 'thirdPlace', tab: 'מקום 3', label: 'המקום השלישי', noun: 'מפגשים', lo: 103, hi: 103, pagiya: 16, tzelifa: 20 },
-  { key: 'final', tab: 'גמר',     label: 'הגמר',     noun: 'מפגשים', lo: 104, hi: 104, pagiya: 20, tzelifa: 25 },
+  { key: 'r32',   tab: 'שלב 32',  label: 'שלב ה-32', noun: 'הצלבות', lo: 73,  hi: 88  },
+  { key: 'r16',   tab: 'שמינית',  label: 'השמינית',  noun: 'מפגשים', lo: 89,  hi: 96  },
+  { key: 'qf',    tab: 'רבע גמר', label: 'רבע הגמר', noun: 'מפגשים', lo: 97,  hi: 100 },
+  { key: 'sf',    tab: 'חצי גמר', label: 'חצי הגמר', noun: 'מפגשים', lo: 101, hi: 102 },
+  { key: 'thirdPlace', tab: 'מקום 3', label: 'המקום השלישי', noun: 'מפגשים', lo: 103, hi: 103 },
+  { key: 'final', tab: 'גמר',     label: 'הגמר',     noun: 'מפגשים', lo: 104, hi: 104 },
 ]
+
+// A crossings round's payouts, from the single source in points.ts. Its round keys
+// match ours except the third-place match, which points.ts calls 'third'.
+const roundPoints = (key: RoundKey) => ROUND_POINTS[key === 'thirdPlace' ? 'third' : key]
 
 function fmtPct(p: number): string {
   // Never claim 100% for an open crossing: only a *locked* pair (both teams already
@@ -737,18 +738,14 @@ function RoundTabs({ activeKey, onRoundChange }: { activeKey: string; onRoundCha
 const STAGE_TAB_BY_KEY: Record<string, string> = Object.fromEntries(ROUNDS.map(r => [r.key, r.tab]))
 
 // The three participation buckets, as a compact inline strip. Shared by a summary
-// row (the totals) and each stage line inside its expanded detail.
-function SummaryBuckets({ participated, willParticipate, mayParticipate, labelled = false }: {
-  participated: number
-  willParticipate: number
-  mayParticipate: number
-  labelled?: boolean
-}) {
+// row (the totals) and each stage line inside its expanded detail. `labelled` names
+// each bucket (for the row headline); the stage lines omit the words to stay tight.
+function SummaryBuckets({ buckets, labelled = false }: { buckets: CrossingBuckets; labelled?: boolean }) {
   return (
     <span className="cx-sum-stats">
-      <span className="cx-sum-stat cx-sum-stat--done"><b>{participated}</b>{labelled ? ' כבר שוחקו' : ''}</span>
-      <span className="cx-sum-stat cx-sum-stat--sure"><b>{willParticipate}</b>{labelled ? ' מובטחות' : ''}</span>
-      <span className="cx-sum-stat cx-sum-stat--maybe"><b>{mayParticipate}</b>{labelled ? ' עוד אפשריות' : ''}</span>
+      <span className="cx-sum-stat cx-sum-stat--done"><b>{buckets.played}</b>{labelled ? ' כבר שוחקו' : ''}</span>
+      <span className="cx-sum-stat cx-sum-stat--sure"><b>{buckets.guaranteed}</b>{labelled ? ' מובטחות' : ''}</span>
+      <span className="cx-sum-stat cx-sum-stat--maybe"><b>{buckets.possible}</b>{labelled ? ' עוד אפשריות' : ''}</span>
     </span>
   )
 }
@@ -764,7 +761,7 @@ function SummaryStageDetail({ byStage }: { byStage: CrossingSummaryStage[] }) {
       {byStage.map(st => (
         <div key={st.key} className="cx-sum-detail-row">
           <span className="cx-sum-detail-stage">{STAGE_TAB_BY_KEY[st.key] ?? st.key}</span>
-          <SummaryBuckets participated={st.participated} willParticipate={st.willParticipate} mayParticipate={st.mayParticipate} />
+          <SummaryBuckets buckets={st} />
         </div>
       ))}
     </div>
@@ -806,7 +803,7 @@ function SummaryBoard({ standings, me }: { standings: CrossingSummaryStanding[];
                   {isMe && <span className="cx-board-mebadge">אתה</span>}
                   <span className="cx-board-chevron" aria-hidden="true">{isOpen ? '⌃' : '⌄'}</span>
                 </span>
-                <SummaryBuckets participated={s.participated} willParticipate={s.willParticipate} mayParticipate={s.mayParticipate} labelled />
+                <SummaryBuckets buckets={summaryTotals(s)} labelled />
               </button>
               {isOpen && <SummaryStageDetail byStage={s.byStage} />}
             </li>
@@ -983,7 +980,7 @@ export function CrossingsList({ user, users, round = ROUNDS[0], activeKey, onRou
             ה{round.noun} של {round.label} שניחשת — אילו זוגות כבר נסגרו לטובתך, ובאילו עוד אפשר לפגוע (עם סיכוי משוער שיֵצאו).
           </p>
           <p className="cx-scoring-note">
-            ניקוד {round.label}: פגיעה בתוצאה {round.pagiya} נק׳ · צליפה מדויקת {round.tzelifa} נק׳ · אם לא פגעת — 0.
+            ניקוד {round.label}: פגיעה בתוצאה {roundPoints(round.key).pagiya} נק׳ · צליפה מדויקת {roundPoints(round.key).tzelifa} נק׳ · אם לא פגעת — 0.
           </p>
 
           <div className="cx-summary">
@@ -1136,7 +1133,7 @@ export default function CrossingsView({ user, users, results }: { user?: User; u
   // consistently with the per-round view (computeUserCrossings' certain-promotion).
   const liveProb = useMemo(() => (status === 'ready' ? crossingProbByMatch : {}), [status, crossingProbByMatch])
   const summaryStandings = useMemo(
-    () => computeCrossingsSummary(users, bracket, liveProb, actualScoreByNum),
+    () => rankedCrossingsSummary(computeCrossingsSummary(users, bracket, liveProb, actualScoreByNum)),
     [users, bracket, liveProb, actualScoreByNum],
   )
 
