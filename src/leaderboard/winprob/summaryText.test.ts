@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import type { Row, AdvancementSummary, PickStatus, StageReach, StageStat } from '../../../sim-core'
-import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, potentialClause, fragilityClause, nextStepClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause } from './summaryText'
+import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, nextStepClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause } from './summaryText'
 
 function pick(over: Partial<PickStatus> & { team: string; predictedRank: number; stage: PickStatus['stage'] }): PickStatus {
   return { teamHe: over.team, reach: 0, groupFirst: 0, topsGroup: false, ...over }
@@ -155,36 +155,6 @@ describe('buildStageForecast', () => {
   })
 })
 
-describe('potentialClause', () => {
-  test('sums the per-stage edges into a total gap and names the biggest lever', () => {
-    const r = row({ stages: [stage('group', 'שלב הבתים', 8), stage('final', 'גמר', 22), stage('gb', 'נעל זהב', -5)] })
-    expect(potentialClause(r)).toBe('הצפי הכולל שלך כ-25 נק׳ מעל ממוצע המהמרים — עיקר היתרון: גמר +22 נק׳')
-  })
-  test('frames a deficit when the bettor trails the field', () => {
-    const r = row({ stages: [stage('group', 'שלב הבתים', -4), stage('sf', 'חצי גמר', -16)] })
-    expect(potentialClause(r)).toBe('הצפי הכולל שלך כ-20 נק׳ מתחת לממוצע המהמרים — עיקר הפיגור: חצי גמר −16 נק׳')
-  })
-  test('returns null without stage data', () => {
-    expect(potentialClause(row({ stages: [] }))).toBeNull()
-  })
-})
-
-describe('fragilityClause', () => {
-  test('focuses on the consensus deep picks (rare ones live in «מה צריך לקרות»)', () => {
-    expect(fragilityClause({
-      rare: [{ teamHe: 'צרפת', others: 2 }, { teamHe: 'ספרד', others: 0 }],
-      consensus: [{ teamHe: 'אנגליה', others: 11 }],
-    })).toBe('אנגליה (עוד 11) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
-  })
-  test('lists the consensus note when there is one', () => {
-    expect(fragilityClause({ rare: [], consensus: [{ teamHe: 'ספרד', others: 9 }] }))
-      .toBe('ספרד (עוד 9) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
-  })
-  test('returns null when there is no consensus pick, even if rare picks exist', () => {
-    expect(fragilityClause({ rare: [{ teamHe: 'צרפת', others: 1 }], consensus: [] })).toBeNull()
-  })
-})
-
 describe('goldenBootClause', () => {
   test('shows goals so far and the edge when meaningful', () => {
     expect(goldenBootClause({ scorerHe: 'הארי קיין', goalsSoFar: 4, alive: true, edge: 8 }))
@@ -256,8 +226,6 @@ describe('buildBettorHeadline', () => {
     expect(h.bigBets).toBe('אנגליה לגמר (16%), ספרד לחצי הגמר (43%)')
     // three of four backed teams escaped the group → 12 banked, plus the field comparison
     expect(h.advancers).toBe('3 מתוך 4 שבחרת עלו מהבתים — 12 נק׳ עלייה כבר בכיס · בשלב הבתים 80 נק׳ מול 58 בממוצע (+22)')
-    // the gap-explainer: total edge summed across stages, biggest lever named
-    expect(h.potential).toBe('הצפי הכולל שלך כ-29 נק׳ מעל ממוצע המהמרים — עיקר היתרון: שלב הבתים +22 נק׳')
     expect(h.eliminated).toBe('טורקיה')
   })
 
@@ -275,7 +243,6 @@ describe('buildBettorHeadline', () => {
     const h = buildBettorHeadline(r, adv, {}, 27, ME)
     expect(h.route).toBeUndefined()
     expect(h.bigBets).toBe('ברזיל (לאליפות) — הודחה')
-    expect(h.potential).toBe('הצפי הכולל שלך כ-10 נק׳ מתחת לממוצע המהמרים — עיקר הפיגור: נעל זהב −15 נק׳')
     expect(h.eliminated).toBe('ברזיל')
   })
 
@@ -309,7 +276,7 @@ describe('buildBettorHeadline', () => {
     ])
     const r = row({ stages: [stage('group', 'שלב הבתים', 18, 70, 52)] })
     const nextStep = { picks: [{ teamHe: 'ספרד', predictedRank: 5, pct: 43, others: 0 }] }
-    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, null, true, nextStep)
+    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, true, nextStep)
     expect(h.nextStep).toBe('ספרד לחצי הגמר 43% (רק אתה עליה)')
     // the group is settled history now — its advancers recap is gone
     expect(h.advancers).toBeUndefined()
@@ -326,7 +293,7 @@ describe('buildBettorHeadline', () => {
       stage('qf', 'רבע', -2, 10, 12),      // upcoming → counted (mine 10)
     ] })
     const phases = { r32: 'done', r16: 'live', qf: 'upcoming' } as const
-    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, null, true, null, phases)
+    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, true, null, phases)
     // 24 + 10 = 34 expected points across the rounds left; R32 (settled) is excluded
     expect(h.remaining).toBe('עוד כ-34 נק׳ צפויות לך מהשלבים שנותרו — עיקר ההזדמנות: שמינית +6 נק׳ מול השדה')
     expect(h.crossings).toBeUndefined()

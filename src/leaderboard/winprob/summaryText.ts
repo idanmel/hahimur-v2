@@ -112,8 +112,6 @@ export interface BettorHeadline {
   advancers?: string  // how many backed teams escaped the group + points banked, vs field
   remaining?: string  // forward look at the points still to be won in the rounds left
   crossings?: string  // R32 cross-bracket pairings: locked / possible / broken, vs field
-  potential?: string  // total projected points vs the field + the stage driving the gap
-  fragility?: string  // how result-dependent the bet is (the central-90% points band)
   goldenBoot?: string // the picked top scorer's standing and projected edge
   eliminated?: string // every pick already knocked out (group or knockout)
 }
@@ -166,30 +164,6 @@ export function nextStepClause(d: NextStepDigest): string | null {
     return `${p.teamHe} ${DEPTH_TO[p.predictedRank]} ${p.pct}% (${who})`
   })
   return items.join(' · ')
-}
-
-// How result-dependent a bet is *relative to the pool* — the only fragility that
-// matters in a winner-takes-the-pot race. The view digests the bettor's live deep
-// picks (QF+) into two buckets:
-//   • rare      — few other bettors backed them this deep, so they're where the bettor
-//                 wins or loses ground vs the field (high leverage, true fragility).
-//   • consensus — most of the field backed them too, so if they fall everyone falls
-//                 together and the bettor's standing barely moves (low leverage).
-// Each carries `others` = how many *other* bettors share that deep pick.
-export interface FragilityDigest {
-  rare: { teamHe: string; others: number }[]
-  consensus: { teamHe: string; others: number }[]
-}
-
-// תלות בתוצאות — answers "if my big teams go out, does it actually cost me, given who
-// else picked them?". The rare, high-leverage picks are already spelled out in «מה
-// צריך לקרות», so this line stays focused on the *consensus* deep picks — the ones most
-// of the field shares, whose collapse drags everyone down together and so barely moves
-// this bettor's standing. Returns null when there's no consensus pick to reassure about.
-export function fragilityClause(d: FragilityDigest): string | null {
-  if (!d.consensus.length) return null
-  const list = d.consensus.map(p => `${p.teamHe} (עוד ${p.others})`).join(', ')
-  return `${list} קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה`
 }
 
 // The expected points the bettor banks at one stage and how it compares to the field
@@ -250,20 +224,6 @@ export function crossingsClause(d: CrossingsDigest, row?: Row): string | null {
     parts.push(`בשלב ה-32 ${r.val} נק׳ צפויות מול ${r.field} בממוצע (${r.edge >= 0 ? '+' : '−'}${Math.abs(r.edge)})`)
   }
   return parts.length ? parts.join(' · ') : null
-}
-
-// פוטנציאל — the line that answers the question every bettor asks looking at their
-// win-%: "why am I at X%?". It sums the per-stage edges into a single total-points gap
-// vs the field (what the sim is really ranking on) and names the stage carrying most of
-// it — so the percentage reads as a consequence of concrete projected points, not magic.
-export function potentialClause(row: Row): string | null {
-  if (!row.stages.length) return null
-  const diff = Math.round(row.stages.reduce((acc, s) => acc + s.edge, 0))
-  const top = [...row.stages].sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))[0]
-  if (!top || Math.abs(Math.round(top.edge)) < 1) return null
-  const lever = `${top.label} ${top.edge >= 0 ? '+' : '−'}${Math.abs(Math.round(top.edge))} נק׳`
-  const side = diff >= 0 ? `כ-${diff} נק׳ מעל ממוצע המהמרים` : `כ-${Math.abs(diff)} נק׳ מתחת לממוצע המהמרים`
-  return `הצפי הכולל שלך ${side} — ${diff >= 0 ? 'עיקר היתרון' : 'עיקר הפיגור'}: ${lever}`
 }
 
 // גזרת התחזית — the per-stage forecast that unpacks the win-% and expected place into
@@ -389,8 +349,8 @@ function standingText(row: Row, totalPlayers: number, subject: HeadlineSubject):
 // A synthesised read of one bettor's bet, used both for the viewer's featured card
 // at the top and for the expand-on-tap detail of any row (same prose, subject aside).
 // Beyond the standing it shows the simulated *route* of the deepest live pick (which
-// already bakes in the bracket/draw difficulty), the other marquee calls, where the
-// bettor most beats and trails the field in points, and the group busts.
+// already bakes in the bracket/draw difficulty), the other marquee calls, the points
+// still to be won in the rounds left, and the group/knockout busts.
 export function buildBettorHeadline(
   row: Row,
   advancement: AdvancementSummary | null,
@@ -399,7 +359,6 @@ export function buildBettorHeadline(
   subject: HeadlineSubject,
   crossings: CrossingsDigest | null = null,
   goldenBoot: GoldenBootDigest | null = null,
-  fragility: FragilityDigest | null = null,
   // Once the knockouts are under way the group stage is settled history: the
   // advancers line drops and only knockout-depth busts stay in "eliminated".
   knockoutsStarted = false,
@@ -457,14 +416,6 @@ export function buildBettorHeadline(
   if (knockoutsStarted) {
     const rem = remainingPotentialClause(row, stagePhases)
     if (rem) out.remaining = rem
-  }
-
-  const potential = potentialClause(row)
-  if (potential) out.potential = potential
-
-  if (fragility) {
-    const f = fragilityClause(fragility)
-    if (f) out.fragility = f
   }
 
   if (goldenBoot) {

@@ -13,7 +13,7 @@ import { useWinProbabilities } from './useWinProbabilities'
 import { usePivotalMatches } from './usePivotalMatches'
 import { pickPivotal, type PivotalCard, type PivotalMetric, type PivotalOutcome } from './pivotalPick'
 import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge } from './summaryText'
-import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, FragilityDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow } from './summaryText'
+import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow } from './summaryText'
 
 const KO_KEYS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
 
@@ -186,8 +186,6 @@ function HeadlineBody({ h, knockoutsStarted, forecast, pivotal }: { h: BettorHea
         {h.remaining && <li><span className="wp-me-label">פוטנציאל בהמשך</span><span>{emphasize(h.remaining)}</span></li>}
         {h.advancers && <li><span className="wp-me-label">עולות</span><span>{emphasize(h.advancers)}</span></li>}
         {h.crossings && <li><span className="wp-me-label">הצלבות R32</span><span>{emphasize(h.crossings)}</span></li>}
-        {h.potential && <li><span className="wp-me-label">פוטנציאל מול השדה</span><span>{emphasize(h.potential)}</span></li>}
-        {h.fragility && <li><span className="wp-me-label">תלות בתוצאות</span><span>{emphasize(h.fragility)}</span></li>}
         {h.eliminated && <li><span className="wp-me-label">{knockoutsStarted ? 'נפלו בנוקאאוט' : 'הודחו'}</span><span className="wp-elim">{h.eliminated}</span></li>}
       </ul>
       {pivotal}
@@ -241,15 +239,15 @@ function WhatIf({ cards, metric }: { cards: PivotalCard[]; metric: PivotalMetric
 // Tap-to-open personal read for one bettor — the very same synthesis shown in the
 // featured card up top, just for the clicked row (named, third person; or "אתה"
 // when it's the viewer's own row).
-function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, forecast }: {
+function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, knockoutsStarted, nextStep, forecast }: {
   row: Row; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number; isMe: boolean
-  crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
+  crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null
   knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
 }) {
   const firstName = row.label.split(' ')[0]
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
-  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, stagePhases)
+  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, knockoutsStarted, nextStep, stagePhases)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
@@ -261,15 +259,15 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
 // The featured personal read for the identified bettor, pinned to the top of the
 // page so they don't have to find and expand their own row — identical prose to the
 // row detail. Built entirely from this bettor's own picks (no generic filler).
-function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, forecast, pivotalCards, pivotalMetric }: {
+function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, knockoutsStarted, nextStep, forecast, pivotalCards, pivotalMetric }: {
   name: string; row: Row; advancement: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number
-  crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
+  crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null
   knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
   pivotalCards: PivotalCard[]; pivotalMetric: PivotalMetric
 }) {
   const firstName = name.split(' ')[0]
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
-  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, stagePhases)
+  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, knockoutsStarted, nextStep, stagePhases)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
@@ -410,29 +408,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, reachByTeam, groupFirstByTeam, eliminationsEff])
 
-  // Pool-relative fragility for one bettor: split their live deep picks into the rare
-  // ones (few co-backers → where their standing diverges from the field) and the
-  // consensus ones (widely shared → a collapse drags everyone down together).
-  const fragilityDigestFor = (row: Row): FragilityDigest | null => {
-    const total = rows.length
-    if (!total) return null
-    const adv = advancementSummaryForLabel(row.label, reachByTeam, groupFirstByTeam, eliminationsEff)
-    const deep = (adv?.picks ?? [])
-      .filter(p => p.stage !== 'out' && p.predictedRank >= 4)
-      .sort((a, b) => b.predictedRank - a.predictedRank)
-    const rare: { teamHe: string; others: number }[] = []
-    const consensus: { teamHe: string; others: number }[] = []
-    for (const p of deep) {
-      const backers = deepBackers.get(p.team) ?? 1
-      const others = Math.max(0, backers - 1)
-      const share = backers / total
-      if (share <= 0.33) rare.push({ teamHe: p.teamHe, others })
-      else if (share >= 0.5) consensus.push({ teamHe: p.teamHe, others })
-    }
-    if (!rare.length && !consensus.length) return null
-    return { rare: rare.slice(0, 3), consensus: consensus.slice(0, 2) }
-  }
-
   // The forward-looking "what needs to happen" digest: the bettor's live deep picks
   // (QF+) that few others backed this deep — where their fate diverges from the field —
   // each with the model's chance to reach the backed depth. Rarest (highest-leverage)
@@ -530,7 +505,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
             totalPlayers={rows.length}
             crossings={crossingsDigestFor(me!)}
             goldenBoot={goldenBootDigestFor(meRow)}
-            fragility={fragilityDigestFor(meRow)}
             knockoutsStarted={knockoutsStarted}
             nextStep={nextStepDigestFor(meRow)}
             forecast={stageForecastFor(meRow)}
@@ -593,7 +567,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
                           isMe={isMe}
                           crossings={crossingsDigestFor(r.label)}
                           goldenBoot={goldenBootDigestFor(r)}
-                          fragility={fragilityDigestFor(r)}
                           knockoutsStarted={knockoutsStarted}
                           nextStep={nextStepDigestFor(r)}
                           forecast={stageForecastFor(r)}
