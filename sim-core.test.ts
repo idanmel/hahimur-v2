@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { KnockoutMatch, PredictionsState, Standing, TournamentResults } from './src/shared/types'
 import { makeUser } from './src/leaderboard/testFixtures'
 import { USERS } from './src/users'
-import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg, podiumByAdvancer } from './sim-core'
+import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg, podiumByAdvancer, pivotalMatches } from './sim-core'
 import { tournamentResults } from './src/tournament-results'
 import { realPlayedState } from './src/leaderboard/winprob/realPlayed'
 import { buildKnockoutBracket } from './src/formView/knockout/knockout'
@@ -502,5 +502,40 @@ describe('podiumByAdvancer', () => {
     const a = podiumByAdvancer(viewer, played, openMatch.matchNum, 150, 7)
     const b = podiumByAdvancer(viewer, played, openMatch.matchNum, 150, 7)
     expect(a).toEqual(b)
+  })
+})
+
+describe('pivotalMatches', () => {
+  const viewer = USERS[0]
+  const played = realPlayedState(tournamentResults)
+  const bracket = buildKnockoutBracket(played)
+  const openMatches = bracket.filter(m => TEAMS[m.home] && TEAMS[m.away] && !played[String(m.matchNum)])
+
+  test('scores exactly the open, known-teams fixtures', () => {
+    const pivotal = pivotalMatches(viewer, played, 120, 3)
+    expect(pivotal.map(p => p.matchNum).sort((a, b) => a - b))
+      .toEqual(openMatches.map(m => m.matchNum).sort((a, b) => a - b))
+  })
+
+  test('each fixture matches its standalone podiumByAdvancer (same shared sim plan)', () => {
+    const n = 120, seed = 3
+    const pivotal = pivotalMatches(viewer, played, n, seed)
+    for (const p of pivotal) {
+      const solo = podiumByAdvancer(viewer, played, p.matchNum, n, seed)!
+      expect(p).toEqual(solo)
+    }
+  })
+
+  test('returns nothing once every knockout fixture is decided', () => {
+    // Playing one round open the next (its feeders resolve), so we play the whole
+    // bracket out until no known-teams fixture is left undecided.
+    const allDecided: PredictionsState = { ...played }
+    for (let round = 0; round < 10; round++) {
+      const open = buildKnockoutBracket(allDecided)
+        .filter(m => TEAMS[m.home] && TEAMS[m.away] && !allDecided[String(m.matchNum)])
+      if (!open.length) break
+      for (const m of open) allDecided[String(m.matchNum)] = { home: 1, away: 0 }
+    }
+    expect(pivotalMatches(viewer, allDecided, 50, 1)).toEqual([])
   })
 })

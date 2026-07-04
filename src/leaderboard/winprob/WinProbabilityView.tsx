@@ -10,6 +10,8 @@ import { computeUserCrossings, crossingProbability } from '../crossings'
 import { playedChrono, playedStateUpTo, winProbMatchLabel } from './realPlayed'
 import { playedMatchId } from '../leaderboardRows'
 import { useWinProbabilities } from './useWinProbabilities'
+import { usePivotalMatches } from './usePivotalMatches'
+import { pickPivotal, type PivotalCard, type PivotalMetric } from './pivotalPick'
 import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge } from './summaryText'
 import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, FragilityDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow } from './summaryText'
 
@@ -141,8 +143,7 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
     <div className="wp-fc" dir="rtl">
       <div className="wp-fc-head">
         <span className="wp-fc-title">גזרת התחזית — נקודות לפי גזרה</span>
-        <span className="wp-fc-sub">כמה שוות הבחירות שלך בכל גזרה מול ממוצע המהמרים. «סוכם» = כבר נסגר, «תחזית» = צפי שיתעדכן.</span>
-        <span className="wp-fc-sub">בגזרה שטרם הוכרעה המספר הוא <b>ממוצע על פני אלפי סימולציות</b> (משוקלל לפי הסיכוי), לא סכום מובטח — למשל «כ-6 נק׳ בגמר» = ברוב הסימולציות 0, ובאלו שהאלופה שלך זוכה קופצים ל-25+, והממוצע יוצא ~6.</span>
+        <span className="wp-fc-sub">הבחירות שלך בכל גזרה מול ממוצע המהמרים. «סוכם» = כבר נסגר; «תחזית» = <b>ממוצע על פני אלפי סימולציות</b> (לא סכום מובטח — ברוב התרחישים 0, ובאלו שהבחירה מצליחה קופץ גבוה).</span>
       </div>
       <ul className="wp-fc-list">
         {rows.map(s => (
@@ -174,7 +175,7 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
 // The shared body of a bettor's personal read: the standing paragraph plus the
 // labelled storyline lines. Rendered identically at the top of the page and inside
 // any row's expand-on-tap detail, so the two never drift apart.
-function HeadlineBody({ h, knockoutsStarted, forecast }: { h: BettorHeadline; knockoutsStarted: boolean; forecast: ForecastData }) {
+function HeadlineBody({ h, knockoutsStarted, forecast, pivotal }: { h: BettorHeadline; knockoutsStarted: boolean; forecast: ForecastData; pivotal?: ReactNode }) {
   return (
     <>
       <p className="wp-me-standing">{emphasize(h.standing)}</p>
@@ -188,8 +189,38 @@ function HeadlineBody({ h, knockoutsStarted, forecast }: { h: BettorHeadline; kn
         {h.fragility && <li><span className="wp-me-label">תלות בתוצאות</span><span>{emphasize(h.fragility)}</span></li>}
         {h.eliminated && <li><span className="wp-me-label">{knockoutsStarted ? 'נפלו בנוקאאוט' : 'הודחו'}</span><span className="wp-elim">{h.eliminated}</span></li>}
       </ul>
+      {pivotal}
       <StageForecast rows={forecast.stages} goldenBoot={forecast.goldenBoot} />
     </>
+  )
+}
+
+// מה אם — the viewer's real decision point(s): the current-round fixture(s) whose
+// outcome most swings their finish, each shown as a two-way fork with the odds on
+// either result. Answers "which game should I actually sweat?" without making them
+// open every match page. Renders nothing until the (worker-computed) picks arrive.
+function WhatIf({ cards, metric }: { cards: PivotalCard[]; metric: PivotalMetric }) {
+  if (!cards.length) return null
+  const finish = metric === 'win' ? 'לזכייה' : 'לטופ 5'
+  const plural = cards.length > 1
+  return (
+    <div className="wp-whatif" dir="rtl">
+      <div className="wp-whatif-head">
+        <span className="wp-whatif-title">מה אם — רגע ההכרעה שלך</span>
+        <span className="wp-whatif-sub">הסיכוי שלך {finish} תלוי בעיקר {plural ? 'במשחקים הבאים' : 'במשחק הבא'} — כל תרחיש והסיכוי שהוא נותן לך:</span>
+      </div>
+      <ul className="wp-whatif-list">
+        {cards.map(c => (
+          <li key={c.matchNum} className="wp-whatif-row">
+            <span className="wp-whatif-match">{c.aHe}–{c.bHe}</span>
+            <span className="wp-whatif-forks">
+              <span className="wp-whatif-fork wp-whatif-fork--up">{c.better.teamHe} עולה → <b>{fmtPct(c.better.pct)}</b></span>
+              <span className="wp-whatif-fork wp-whatif-fork--down">{c.worse.teamHe} עולה → <b>{fmtPct(c.worse.pct)}</b></span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -215,17 +246,18 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
 // The featured personal read for the identified bettor, pinned to the top of the
 // page so they don't have to find and expand their own row — identical prose to the
 // row detail. Built entirely from this bettor's own picks (no generic filler).
-function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, forecast }: {
+function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, forecast, pivotalCards, pivotalMetric }: {
   name: string; row: Row; advancement: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number
   crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
   knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
+  pivotalCards: PivotalCard[]; pivotalMetric: PivotalMetric
 }) {
   const firstName = name.split(' ')[0]
   const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility, knockoutsStarted, nextStep)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
-      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} />
+      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} pivotal={<WhatIf cards={pivotalCards} metric={pivotalMetric} />} />
     </section>
   )
 }
@@ -267,6 +299,10 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
   }, [results, played])
 
   const { status, rows, reachByTeam, groupFirstByTeam, stageReachByTeam, crossingProbByMatch } = useWinProbabilities(played, playerGoals)
+  // "מה אם" for the viewer only, and only while following the latest match — the
+  // conditional read is a per-viewer Monte-Carlo pass, so we don't fire it for
+  // every scrubbed point in time or every other bettor's row.
+  const pivotal = usePivotalMatches(isLatest && me ? me : '', played, playerGoals)
   // Certain real exits, widened by the model's verdict: a pick the simulation gives
   // essentially no path to the knockouts is shown as eliminated even before its
   // group formally closes — so "still alive" never contradicts a ~0% pick.
@@ -464,7 +500,12 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
       <>
       {(() => {
         const meRow = me ? rows.find(r => r.label === me) : undefined
-        return meRow ? (
+        if (!meRow) return null
+        // A bettor who's essentially a lock for the top 5 sweats the *win*; everyone
+        // else sweats *reaching* it — so the fork reads on whichever race is live.
+        const pivotalMetric: PivotalMetric = meRow.top5Pct >= 55 ? 'win' : 'podium'
+        const pivotalCards = pickPivotal(pivotal.result, pivotalMetric)
+        return (
           <MyHeadline
             name={me!}
             row={meRow}
@@ -477,8 +518,10 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
             knockoutsStarted={knockoutsStarted}
             nextStep={nextStepDigestFor(meRow)}
             forecast={stageForecastFor(meRow)}
+            pivotalCards={pivotalCards}
+            pivotalMetric={pivotalMetric}
           />
-        ) : null
+        )
       })()}
       <div className="lb-prob-scroll">
         <table className="wp-table">

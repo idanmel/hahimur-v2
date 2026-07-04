@@ -170,18 +170,18 @@ describe('potentialClause', () => {
 })
 
 describe('fragilityClause', () => {
-  test('leads with the rare differentiating picks and notes the consensus ones', () => {
+  test('focuses on the consensus deep picks (rare ones live in «מה צריך לקרות»)', () => {
     expect(fragilityClause({
       rare: [{ teamHe: 'צרפת', others: 2 }, { teamHe: 'ספרד', others: 0 }],
       consensus: [{ teamHe: 'אנגליה', others: 11 }],
-    })).toBe('מה שבאמת מזיז את הסיכוי שלך: צרפת (עוד 2), ספרד (ייחודית לך) — מעטים הימרו עליהן, שם נקבע הפער מול המתחרים. אנגליה (עוד 11) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
+    })).toBe('אנגליה (עוד 11) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
   })
-  test('shows only the consensus note when nothing is rare', () => {
+  test('lists the consensus note when there is one', () => {
     expect(fragilityClause({ rare: [], consensus: [{ teamHe: 'ספרד', others: 9 }] }))
       .toBe('ספרד (עוד 9) קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה')
   })
-  test('returns null when there is nothing differentiating', () => {
-    expect(fragilityClause({ rare: [], consensus: [] })).toBeNull()
+  test('returns null when there is no consensus pick, even if rare picks exist', () => {
+    expect(fragilityClause({ rare: [{ teamHe: 'צרפת', others: 1 }], consensus: [] })).toBeNull()
   })
 })
 

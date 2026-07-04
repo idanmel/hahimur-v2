@@ -181,20 +181,14 @@ export interface FragilityDigest {
 }
 
 // תלות בתוצאות — answers "if my big teams go out, does it actually cost me, given who
-// else picked them?". Leads with the rare picks (where the bettor's fate diverges from
-// the field) and notes the consensus ones (whose collapse drags everyone down equally,
-// so they barely move the standing). Returns null when there's nothing differentiating.
+// else picked them?". The rare, high-leverage picks are already spelled out in «מה
+// צריך לקרות», so this line stays focused on the *consensus* deep picks — the ones most
+// of the field shares, whose collapse drags everyone down together and so barely moves
+// this bettor's standing. Returns null when there's no consensus pick to reassure about.
 export function fragilityClause(d: FragilityDigest): string | null {
-  const parts: string[] = []
-  if (d.rare.length) {
-    const list = d.rare.map(p => p.others === 0 ? `${p.teamHe} (ייחודית לך)` : `${p.teamHe} (עוד ${p.others})`).join(', ')
-    parts.push(`מה שבאמת מזיז את הסיכוי שלך: ${list} — מעטים הימרו עליהן, שם נקבע הפער מול המתחרים`)
-  }
-  if (d.consensus.length) {
-    const list = d.consensus.map(p => `${p.teamHe} (עוד ${p.others})`).join(', ')
-    parts.push(`${list} קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה`)
-  }
-  return parts.length ? parts.join('. ') : null
+  if (!d.consensus.length) return null
+  const list = d.consensus.map(p => `${p.teamHe} (עוד ${p.others})`).join(', ')
+  return `${list} קונצנזוס — אם ייפלו, כל המתחרים נופלים יחד, אז מיקומך כמעט לא ישתנה`
 }
 
 // The expected points the bettor banks at one stage and how it compares to the field

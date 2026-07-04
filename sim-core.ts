@@ -541,6 +541,66 @@ export function podiumByAdvancer(
   }
 }
 
+// The same conditional read as podiumByAdvancer, but for *every* still-undecided
+// knockout fixture whose two teams are already known (i.e. the current round),
+// scored in a single shared Monte-Carlo pass. One tournament is simulated per
+// draw and every candidate match is tallied off it, so the whole set costs the
+// same as one podiumByAdvancer run — and the numbers match the win-prob board
+// (same chunk plan + seed). The caller ranks these to surface the fixture whose
+// outcome swings the viewer's finish the most: their real "what if" moment.
+export function pivotalMatches(
+  viewer: User,
+  played: PredictionsState,
+  n: number,
+  seed: number,
+  realGoals: Record<string, number> = {},
+): PodiumByAdvancer[] {
+  const cands = buildKnockoutBracket(played)
+    .filter(m => {
+      const settled = played[String(m.matchNum)]
+      if (settled && !isUnpredicted(settled)) return false      // already played
+      return !!TEAMS[m.home] && !!TEAMS[m.away]                  // both teams known
+    })
+    .map(m => ({ matchNum: m.matchNum, teamA: m.home, teamB: m.away, nA: 0, nB: 0, podA: 0, podB: 0, winA: 0, winB: 0 }))
+  if (!cands.length) return []
+
+  const realGames = Object.keys(realGoals).length ? realGamesByTeam(played) : new Map<string, number>()
+  for (const chunk of simChunks(n, seed)) {
+    reseed(chunk.seed)
+    for (let i = 0; i < chunk.count; i++) {
+      const res = simulateTournament(played, realGoals, realGames)
+      const ks = res.knockoutStages
+      const byNum = new Map<number, KnockoutMatch>(
+        [...ks.r32, ...ks.r16, ...ks.qf, ...ks.sf, ...ks.thirdPlace, ...ks.final].map(m => [m.matchNum, m]),
+      )
+      const scored = USERS.map(u => ({ label: u.label, pts: computeUserPoints(u, res).total }))
+      scored.sort((a, b) => b.pts - a.pts)
+      const inTop = scored.slice(0, PODIUM_DEPTH).some(s => s.label === viewer.label)
+      const top = scored[0].pts
+      const winners = scored.filter(s => s.pts === top)
+      const winShare = winners.some(w => w.label === viewer.label) ? 1 / winners.length : 0
+      for (const c of cands) {
+        const advancer = advancingTeam(byNum.get(c.matchNum) ?? ({} as KnockoutMatch))
+        if (advancer === c.teamA) { c.nA++; if (inTop) c.podA++; c.winA += winShare }
+        else if (advancer === c.teamB) { c.nB++; if (inTop) c.podB++; c.winB += winShare }
+      }
+    }
+  }
+  return cands.map(c => {
+    const total = c.nA + c.nB
+    return {
+      matchNum: c.matchNum, teamA: c.teamA, teamB: c.teamB,
+      podiumIfA: c.nA ? c.podA / c.nA : 0,
+      podiumIfB: c.nB ? c.podB / c.nB : 0,
+      podiumBaseline: total ? (c.podA + c.podB) / total : 0,
+      winIfA: c.nA ? c.winA / c.nA : 0,
+      winIfB: c.nB ? c.winB / c.nB : 0,
+      winBaseline: total ? (c.winA + c.winB) / total : 0,
+      nA: c.nA, nB: c.nB,
+    }
+  })
+}
+
 // ---- Monte Carlo aggregation ----------------------------------------------
 export const STAGE_KEYS = ['group', 'r32', 'r16', 'qf', 'sf', 'third', 'final', 'gb'] as const
 export type StageKey = typeof STAGE_KEYS[number]

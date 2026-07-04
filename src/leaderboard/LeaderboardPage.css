@@ -1966,6 +1966,83 @@
 /* גזרת התחזית — the per-knockout-round points breakdown under the prose lines. Turns
    the win-% into concrete per-stage points vs the field, each round drawn as a diverging
    bar and tagged by phase (settled / live / forecast). */
+/* מה אם — the viewer's pivotal fixture(s), a forward-looking fork */
+.wp-whatif {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(212, 160, 23, 0.08);
+  border: 1px solid rgba(212, 160, 23, 0.28);
+}
+
+.wp-whatif-head { margin-bottom: 8px; }
+
+.wp-whatif-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.wp-whatif-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.wp-whatif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wp-whatif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wp-whatif-match {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--navy);
+  flex: none;
+}
+
+.wp-whatif-forks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.wp-whatif-fork {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.wp-whatif-fork b { font-weight: 800; }
+
+.wp-whatif-fork--up {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.wp-whatif-fork--down {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .wp-fc {
   margin-top: 12px;
   padding-top: 10px;
@@ -2085,6 +2162,8 @@
   .wp-me-lines li { flex-direction: column; align-items: flex-start; gap: 1px; }
   .wp-me-label { flex: none; }
   .wp-fc-list { grid-template-columns: 1fr; gap: 7px; }
+  .wp-whatif-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .wp-whatif-forks { justify-content: flex-start; }
 }
 
 /* tap-to-open detail (mobile-first; replaces hover tooltips) */
