@@ -5,9 +5,10 @@ import { roundKeyForMatch, isPairing } from '../formView/knockout/koRounds'
 import { advancingTeam, singleMatchOutcome, singleMatchPoints } from './points'
 import type { MatchOutcome } from './points'
 
-// The knockout rounds this view walks through, in order. (Third place is its own
-// odd one-off and isn't part of the "same principle per stage" progression.)
-export type RoundKey = 'r32' | 'r16' | 'qf' | 'sf' | 'final'
+// The knockout rounds this view walks through, in order. Third place is its own
+// odd one-off (a single match between the semi losers), but it's still a pairing
+// the bettor called, so it gets a tab like the rest.
+export type RoundKey = 'r32' | 'r16' | 'qf' | 'sf' | 'thirdPlace' | 'final'
 
 // One side of a crossing: a team the bettor paired into this R32 slot, and
 // whether it has already actually reached it (confirmed) or is still a hope.
@@ -343,6 +344,69 @@ export function computeCrossingsLeaderboard(
       return { label: u.label, locked: locked.length, potential: live.length, gone, expected: locked.length + expectedOpen }
     })
     .sort((a, b) => b.expected - a.expected || b.locked - a.locked || a.label.localeCompare(b.label, 'he'))
+}
+
+// Every knockout round that has crossings, in bracket order — the whole span the
+// summary walks. (The keys of KnockoutStages, but spelled out so the sum is an
+// explicit, stable list rather than whatever order the object happens to expose.)
+const SUMMARY_ROUNDS: (keyof KnockoutStages)[] = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final']
+
+// One bettor's tournament-wide crossings involvement, summed across every knockout
+// round: how many of their predicted pairings have already been played out
+// (participated), how many are locked in and still to come (willParticipate), and
+// how many are merely still possible (mayParticipate). The "how deep is my bet
+// riding" headline the per-round tabs can't give on their own.
+export interface CrossingSummaryStanding {
+  label: string
+  participated: number
+  willParticipate: number
+  mayParticipate: number
+}
+
+// The field-wide participation board: for every bettor, classify their crossings in
+// each round against the real bracket and add the buckets up. Uses the same
+// computeUserCrossings the per-round view does — locked (both teams in / sim-certain)
+// splits into already-played vs still-to-come by whether the match carries a real
+// score; potential the sim hasn't ruled out is "may". Ranked by guaranteed
+// involvement (played + locked) so the most-invested bettors lead.
+export function computeCrossingsSummary(
+  bettors: CrossingsBettor[],
+  fullBracket: KnockoutMatch[],
+  crossingProbByMatch: Record<number, Record<string, number>> = {},
+  actualScoreByNum: Record<number, MatchScores> = {},
+): CrossingSummaryStanding[] {
+  const matchesByRound = new Map<keyof KnockoutStages, KnockoutMatch[]>()
+  for (const m of fullBracket) {
+    const key = roundKeyForMatch(m.matchNum)
+    if (!key) continue
+    const list = matchesByRound.get(key) ?? []
+    list.push(m)
+    matchesByRound.set(key, list)
+  }
+
+  return bettors
+    .map(u => {
+      let participated = 0
+      let willParticipate = 0
+      let mayParticipate = 0
+      for (const key of SUMMARY_ROUNDS) {
+        const actual = matchesByRound.get(key) ?? []
+        const userMatches = u.knockoutStages?.[key] ?? []
+        const { locked, potential } = computeUserCrossings(userMatches, actual, crossingProbByMatch, actualScoreByNum)
+        participated += locked.filter(c => c.result).length
+        willParticipate += locked.filter(c => !c.result).length
+        // A simulated 0% is effectively ruled out, so it isn't "still possible".
+        mayParticipate += potential.filter(c => {
+          const p = crossingProbability(c, crossingProbByMatch)
+          return p === null || p > 0
+        }).length
+      }
+      return { label: u.label, participated, willParticipate, mayParticipate }
+    })
+    .sort((a, b) =>
+      (b.participated + b.willParticipate) - (a.participated + a.willParticipate) ||
+      b.mayParticipate - a.mayParticipate ||
+      a.label.localeCompare(b.label, 'he'))
 }
 
 // A bettor's R32 crossings (the cross-bracket pairings they predicted),

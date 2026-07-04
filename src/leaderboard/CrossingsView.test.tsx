@@ -24,6 +24,7 @@ function userOnRound(roundKey: string, matches: KnockoutMatch[], label = 'אני
 }
 
 const r16Cfg = ROUNDS.find(r => r.key === 'r16')!
+const thirdCfg = ROUNDS.find(r => r.key === 'thirdPlace')!
 
 test('prompts to pick a player when none is selected', () => {
   render(<CrossingsList user={undefined} users={[]} actualMatches={[km(73, 'Mexico', 'Canada')]} probByMatch={{}} probStatus="ready" />)
@@ -431,6 +432,53 @@ test('reads the bettor predictions for the selected round', () => {
   expect(screen.getByText('✓ נעולות')).toBeInTheDocument()
   expect(screen.getByText(/ניקוד השמינית/)).toBeInTheDocument()
   expect(screen.getByText(/מי יפגע בהכי הרבה מפגשים/)).toBeInTheDocument()
+})
+
+test('offers a third-place tab and reads its predictions with the third-place payouts', () => {
+  // the match on 3rd place (103) is its own crossing round, between the final and the semis
+  expect(thirdCfg).toBeDefined()
+  const actual = [km(103, 'Brazil', 'France')]
+  const user = userOnRound('thirdPlace', [km(103, 'Brazil', 'France')])
+  render(<CrossingsList user={user} users={[user]} round={thirdCfg} actualMatches={actual} probByMatch={{}} probStatus="ready" />)
+  expect(screen.getByText('✓ נעולות')).toBeInTheDocument()
+  // scored with the third-place payouts (16 / 20), read from points.ts ROUND_POINTS.third
+  expect(screen.getByText(/פגיעה בתוצאה 16/)).toBeInTheDocument()
+  expect(screen.getByText(/צליפה מדויקת 20/)).toBeInTheDocument()
+})
+
+test('offers a summary tab that switches to the summary board on click', () => {
+  const user = userWith([km(73, 'Mexico', 'Canada')])
+  const onRoundChange = vi.fn()
+  render(
+    <CrossingsList
+      user={user} users={[user]} actualMatches={[km(73, 'Mexico', 'Canada')]}
+      probByMatch={{}} probStatus="ready" onRoundChange={onRoundChange}
+    />,
+  )
+  fireEvent.click(screen.getByRole('tab', { name: 'סיכום' }))
+  expect(onRoundChange).toHaveBeenCalledWith('summary')
+})
+
+test('the summary board shows each player played / guaranteed / possible crossings', () => {
+  const user = userWith([km(73, 'Mexico', 'Canada')])
+  const summaryStandings = [
+    { label: 'אני שחקן', participated: 2, willParticipate: 3, mayParticipate: 4 },
+  ]
+  render(
+    <CrossingsList
+      user={user} users={[user]} actualMatches={[]} probByMatch={{}} probStatus="ready"
+      onRoundChange={vi.fn()} activeKey="summary" summaryStandings={summaryStandings}
+    />,
+  )
+  const board = within(screen.getByRole('region', { name: /סיכום/ }))
+  expect(board.getByText(/כבר שוחקו/)).toBeInTheDocument()
+  expect(board.getByText(/מובטחות/)).toBeInTheDocument()
+  expect(board.getByText(/עוד אפשריות/)).toBeInTheDocument()
+  expect(board.getByText('2')).toBeInTheDocument()
+  expect(board.getByText('3')).toBeInTheDocument()
+  expect(board.getByText('4')).toBeInTheDocument()
+  // the per-round content is not shown in summary mode
+  expect(screen.queryByText(/מי יפגע בהכי הרבה/)).not.toBeInTheDocument()
 })
 
 test('standing row accounts for every match: locked + open + gone', () => {

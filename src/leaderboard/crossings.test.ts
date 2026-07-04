@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { computeUserCrossings, crossingBreakdown, computeDeterminedCrossings } from './crossings'
+import { computeUserCrossings, crossingBreakdown, computeDeterminedCrossings, computeCrossingsSummary } from './crossings'
 import type { Crossing, CrossingsBettor } from './crossings'
+import type { KnockoutStages } from '../shared/types'
 import type { KnockoutMatch } from '../shared/types'
 
 // Real teams are TEAMS keys; unresolved slots are Hebrew placeholders.
@@ -372,5 +373,37 @@ describe('computeDeterminedCrossings', () => {
     expect(out[0].result!.homeScore).toBe(0)
     expect(out[0].result!.awayScore).toBe(3)
     expect(out[0].result!.advancer).toBe('Canada')
+  })
+})
+
+describe('computeCrossingsSummary', () => {
+  const bettorOn = (label: string, stages: Partial<Record<keyof KnockoutStages, KnockoutMatch[]>>): CrossingsBettor => ({
+    label,
+    knockoutStages: { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [], ...stages } as never,
+  })
+
+  it('splits each bettor into already-played, still-guaranteed, and still-possible across all rounds', () => {
+    const bracket = [
+      km(73, 'Mexico', 'Canada'),     // r32, both real, played -> already participated
+      km(75, 'Brazil', 'Netherlands'), // r32, both real, not played -> will participate
+      km(89, 'France', 'סגנית ו'),     // r16, one real -> may participate (potential)
+    ]
+    const bettor = bettorOn('דני', {
+      r32: [km(73, 'Mexico', 'Canada'), km(75, 'Brazil', 'Netherlands')],
+      r16: [km(89, 'France', 'Germany')],
+    })
+    const actualScoreByNum = { 73: { home: 2, away: 1 } } // only match 73 has been played
+
+    const [row] = computeCrossingsSummary([bettor], bracket, {}, actualScoreByNum)
+    expect(row).toMatchObject({ label: 'דני', participated: 1, willParticipate: 1, mayParticipate: 1 })
+  })
+
+  it('ranks bettors by their guaranteed involvement (played + locked) first', () => {
+    const bracket = [km(73, 'Mexico', 'Canada'), km(74, 'Brazil', 'Spain')]
+    const involved = bettorOn('מעורב', { r32: [km(73, 'Mexico', 'Canada'), km(74, 'Brazil', 'Spain')] })
+    const bystander = bettorOn('צופה', { r32: [km(73, 'Germany', 'Italy')] }) // pairing broke
+    const out = computeCrossingsSummary([bystander, involved], bracket)
+    expect(out.map(s => s.label)).toEqual(['מעורב', 'צופה'])
+    expect(out[0].willParticipate).toBe(2)
   })
 })

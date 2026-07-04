@@ -37,6 +37,44 @@
   color: #fff;
 }
 
+/* the field-wide "סיכום" tab — set slightly apart from the round tabs, since it
+   isn't a round of its own but a roll-up across all of them */
+.cx-round-tab--summary { margin-inline-start: 0.35rem; }
+.cx-round-tab--summary::before { content: "📊 "; }
+
+/* --- summary board: three participation buckets per player --- */
+.cx-sum-row {
+  grid-template-columns: 1.8rem minmax(5.5rem, auto) 1fr;
+  cursor: default;
+}
+.cx-sum-row:hover { background: none; }
+.cx-sum-row.cx-board-row--me:hover { background: rgba(37, 99, 235, 0.1); }
+
+.cx-sum-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem 0.65rem;
+}
+
+.cx-sum-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7385);
+  white-space: nowrap;
+}
+
+.cx-sum-stat b {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cx-sum-stat--done b { color: #16a34a; }
+.cx-sum-stat--sure b { color: #2563eb; }
+.cx-sum-stat--maybe b { color: #d97706; }
+
 /* view switch — your own crossings vs. the shared "who predicted what" board */
 .cx-modes {
   display: inline-flex;

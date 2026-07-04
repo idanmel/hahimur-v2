@@ -6,8 +6,8 @@ import { buildKnockoutBracket } from '../formView/knockout/knockout'
 import { realPlayedState } from './winprob/realPlayed'
 import { useWinProbabilities } from './winprob/useWinProbabilities'
 import type { WinProbStatus } from './winprob/useWinProbabilities'
-import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings } from './crossings'
-import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing } from './crossings'
+import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings, computeCrossingsSummary } from './crossings'
+import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing, CrossingSummaryStanding } from './crossings'
 import { OUTCOME_LABEL } from './points'
 import { buildLiveStages } from '../pages/forms/survivorsStats'
 import type { LiveTeamsStanding, LiveStage, LiveStageKey, Collision } from '../pages/forms/survivorsStats'
@@ -38,6 +38,7 @@ export const ROUNDS: RoundCfg[] = [
   { key: 'r16',   tab: 'שמינית',  label: 'השמינית',  noun: 'מפגשים', lo: 89,  hi: 96,  pagiya: 6,  tzelifa: 8  },
   { key: 'qf',    tab: 'רבע גמר', label: 'רבע הגמר', noun: 'מפגשים', lo: 97,  hi: 100, pagiya: 8,  tzelifa: 12 },
   { key: 'sf',    tab: 'חצי גמר', label: 'חצי הגמר', noun: 'מפגשים', lo: 101, hi: 102, pagiya: 12, tzelifa: 16 },
+  { key: 'thirdPlace', tab: 'מקום 3', label: 'המקום השלישי', noun: 'מפגשים', lo: 103, hi: 103, pagiya: 16, tzelifa: 20 },
   { key: 'final', tab: 'גמר',     label: 'הגמר',     noun: 'מפגשים', lo: 104, hi: 104, pagiya: 20, tzelifa: 25 },
 ]
 
@@ -695,10 +696,15 @@ function LiveTeamsBoard({ stages, defaultStageKey, me }: {
   )
 }
 
+// The tab key of the tournament-wide summary board — a peer of the round tabs, but
+// not a round of its own (it sums across all of them).
+export const SUMMARY_KEY = 'summary'
+
 // The stage switcher. Same principle, every knockout round — tap to move from the
-// round of 32 onward to the final. Rendered only when the container wires up a
-// handler (so the test harness can drive CrossingsList without tabs).
-function RoundTabs({ round, onRoundChange }: { round: RoundCfg; onRoundChange: (key: string) => void }) {
+// round of 32 onward to the final, plus a final "סיכום" tab for the field-wide
+// involvement board. Rendered only when the container wires up a handler (so the
+// test harness can drive CrossingsList without tabs).
+function RoundTabs({ activeKey, onRoundChange }: { activeKey: string; onRoundChange: (key: string) => void }) {
   return (
     <div className="cx-rounds" role="tablist" aria-label="שלב נוקאאוט">
       {ROUNDS.map(r => (
@@ -706,14 +712,62 @@ function RoundTabs({ round, onRoundChange }: { round: RoundCfg; onRoundChange: (
           key={r.key}
           type="button"
           role="tab"
-          aria-selected={r.key === round.key}
-          className={`cx-round-tab${r.key === round.key ? ' cx-round-tab--active' : ''}`}
+          aria-selected={r.key === activeKey}
+          className={`cx-round-tab${r.key === activeKey ? ' cx-round-tab--active' : ''}`}
           onClick={() => onRoundChange(r.key)}
         >
           {r.tab}
         </button>
       ))}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={SUMMARY_KEY === activeKey}
+        className={`cx-round-tab cx-round-tab--summary${SUMMARY_KEY === activeKey ? ' cx-round-tab--active' : ''}`}
+        onClick={() => onRoundChange(SUMMARY_KEY)}
+      >
+        סיכום
+      </button>
     </div>
+  )
+}
+
+// The field-wide involvement board: every bettor's crossings summed across all
+// knockout rounds, split into already-played, still-guaranteed, and still-possible.
+// Answers "how deep is each player's bet riding on the bracket" in one glance —
+// something the per-round tabs can't show. Ranked by guaranteed involvement.
+function SummaryBoard({ standings, me }: { standings: CrossingSummaryStanding[]; me?: string }) {
+  if (standings.length === 0) return null
+  return (
+    <section className="cx-board" dir="rtl" aria-label="סיכום השתתפות בהצלבות">
+      <div className="cx-board-head">
+        <h3 className="cx-board-title">📊 השתתפות בהצלבות</h3>
+        <p className="cx-board-sub">
+          כמה משחקי הצלבה כל שחקן כבר שיחק, בכמה עוד ישחק בוודאות, ובכמה עוד עשוי — לאורך כל שלבי הנוקאאוט.
+        </p>
+      </div>
+      <ol className="cx-board-list">
+        {standings.map((s, i) => {
+          const isMe = s.label === me
+          return (
+            <li key={s.label} className="cx-board-item">
+              <div className={`cx-board-row cx-sum-row${isMe ? ' cx-board-row--me' : ''}${i < 3 ? ` cx-board-row--rank-${i + 1}` : ''}`}>
+                <span className="cx-board-rank">{i < 3 ? MEDALS[i] : i + 1}</span>
+                <span className="cx-board-name">
+                  {s.label}
+                  {isMe && <span className="cx-board-mebadge">אתה</span>}
+                </span>
+                <span className="cx-sum-stats">
+                  <span className="cx-sum-stat cx-sum-stat--done"><b>{s.participated}</b> כבר שוחקו</span>
+                  <span className="cx-sum-stat cx-sum-stat--sure"><b>{s.willParticipate}</b> מובטחות</span>
+                  <span className="cx-sum-stat cx-sum-stat--maybe"><b>{s.mayParticipate}</b> עוד אפשריות</span>
+                </span>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
   )
 }
 
@@ -721,10 +775,13 @@ function RoundTabs({ round, onRoundChange }: { round: RoundCfg; onRoundChange: (
 // pairings for the selected round, and the field-wide standing. Exported so tests
 // can drive it without the Monte-Carlo worker (pass an empty probByMatch /
 // 'unsupported' status). `round` defaults to the round of 32.
-export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, actualMatches, actualScoreByNum = {}, probByMatch, probStatus, liveStages = [] }: {
+export function CrossingsList({ user, users, round = ROUNDS[0], activeKey, onRoundChange, actualMatches, actualScoreByNum = {}, probByMatch, probStatus, liveStages = [], summaryStandings = [] }: {
   user?: User
   users: User[]
   round?: RoundCfg
+  // Which tab is selected: a round key, or SUMMARY_KEY for the field-wide board.
+  // Defaults to the passed round so existing per-round callers need not set it.
+  activeKey?: string
   onRoundChange?: (key: string) => void
   actualMatches: KnockoutMatch[]
   // Real, played scorelines keyed by match number — used to render finished
@@ -733,7 +790,11 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
   probByMatch: Record<number, Record<string, number>>
   probStatus: WinProbStatus
   liveStages?: LiveStage[]
+  // Field-wide involvement rows for the summary tab (computed in the container from
+  // the full bracket, since it spans every round). Empty off the summary tab.
+  summaryStandings?: CrossingSummaryStanding[]
 }) {
+  const selectedKey = activeKey ?? round.key
   // 'mine' = the viewer's own crossings (default); 'all' = the shared board of every
   // determined pairing and who called it.
   const [view, setView] = useState<'mine' | 'all'>('mine')
@@ -783,7 +844,19 @@ export function CrossingsList({ user, users, round = ROUNDS[0], onRoundChange, a
     [users, actualMatches, liveProb, actualScoreByNum],
   )
 
-  const tabs = onRoundChange && <RoundTabs round={round} onRoundChange={onRoundChange} />
+  const tabs = onRoundChange && <RoundTabs activeKey={selectedKey} onRoundChange={onRoundChange} />
+
+  // The summary tab is field-wide, not a round: skip the per-round machinery and the
+  // mine/all mode toggle, and just show the involvement board.
+  if (selectedKey === SUMMARY_KEY) {
+    return (
+      <div className="cx-view" dir="rtl">
+        {tabs}
+        <SummaryBoard standings={summaryStandings} me={user?.label} />
+      </div>
+    )
+  }
+
   const modeToggle = (
     <div className="cx-modes" role="tablist" aria-label="תצוגת הצלבות">
       <button
@@ -1012,17 +1085,28 @@ export default function CrossingsView({ user, users, results }: { user?: User; u
   // sent here". Driven by real results, so the same picture regardless of probs.
   const liveStages = useMemo(() => buildLiveStages(users, results, bracket), [users, results, bracket])
 
+  // Field-wide crossings involvement, summed across every round for the summary tab.
+  // Only feed the sim in once ready, so a near-certain pairing counts as locked
+  // consistently with the per-round view (computeUserCrossings' certain-promotion).
+  const liveProb = useMemo(() => (status === 'ready' ? crossingProbByMatch : {}), [status, crossingProbByMatch])
+  const summaryStandings = useMemo(
+    () => computeCrossingsSummary(users, bracket, liveProb, actualScoreByNum),
+    [users, bracket, liveProb, actualScoreByNum],
+  )
+
   return (
     <CrossingsList
       user={user}
       users={users}
       round={round}
+      activeKey={roundKey}
       onRoundChange={setRoundKey}
       actualMatches={actualMatches}
       actualScoreByNum={actualScoreByNum}
       probByMatch={crossingProbByMatch}
       probStatus={status}
       liveStages={liveStages}
+      summaryStandings={summaryStandings}
     />
   )
 }
