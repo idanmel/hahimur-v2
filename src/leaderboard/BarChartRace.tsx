@@ -24,6 +24,12 @@ const ACT_SCALE = 26   // total rank-distance that counts as "one match worth" o
 // stationary standings before the next one starts shuffling.
 const MOVE_FRAC = 0.7
 
+// The match label switches this far into its segment, not at the very start —
+// a beat of stillness on the old caption before the bars visibly commit to the
+// new match reads as an announcement; flipping at 0% felt like the label was
+// racing ahead of the motion it names.
+const LABEL_LEAD = 0.12
+
 // The dial is labelled in familiar 0.5×/1×/2× terms, but each maps to a much
 // slower real multiplier than the label suggests — the race was too fast to
 // follow. The middle (default) sits at the pace that reads best; the other two
@@ -199,7 +205,12 @@ export default function BarChartRace({ frames, colors, avatars, me, rival, autoP
       elapsedRef.current = Math.min(elapsedRef.current + (now - lastNow) * speed, eng.total)
       lastNow = now
       renderAt(elapsedRef.current)
-      const di = Math.round(positionFromElapsed(elapsedRef.current, eng))
+      // Frame i+1's label names the match driving the i→i+1 move, so it must
+      // switch early in that segment (LABEL_LEAD), not at its midpoint —
+      // otherwise most of the bar movement plays out under the previous
+      // match's caption before the right one ever appears.
+      const p = positionFromElapsed(elapsedRef.current, eng)
+      const di = Math.min(Math.floor(p) + (p % 1 >= LABEL_LEAD ? 1 : 0), eng.N - 1)
       if (di !== dispRef.current) { dispRef.current = di; setDisplayFrame(di) }
       if (elapsedRef.current >= eng.total) { setPlaying(false); return }
       raf = requestAnimationFrame(tick)
