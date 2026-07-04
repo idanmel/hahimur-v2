@@ -103,6 +103,7 @@ const koScores: Record<string, MatchScores> = {
   84: { home: 3, away: 0 },
   85: { home: 2, away: 0 },
   86: { home: 1, away: 1, drawWinner: 'home' },
+  87: { home: 1, away: 0 },
   88: { home: 1, away: 1, drawWinner: 'away' },
 }
 
