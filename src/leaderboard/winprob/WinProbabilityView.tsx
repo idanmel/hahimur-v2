@@ -11,7 +11,7 @@ import { playedChrono, playedStateUpTo, winProbMatchLabel } from './realPlayed'
 import { playedMatchId } from '../leaderboardRows'
 import { useWinProbabilities } from './useWinProbabilities'
 import { usePivotalMatches } from './usePivotalMatches'
-import { pickPivotal, type PivotalCard, type PivotalMetric } from './pivotalPick'
+import { pickPivotal, type PivotalCard, type PivotalMetric, type PivotalOutcome } from './pivotalPick'
 import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge } from './summaryText'
 import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, FragilityDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow } from './summaryText'
 
@@ -199,23 +199,34 @@ function HeadlineBody({ h, knockoutsStarted, forecast, pivotal }: { h: BettorHea
 // outcome most swings their finish, each shown as a two-way fork with the odds on
 // either result. Answers "which game should I actually sweat?" without making them
 // open every match page. Renders nothing until the (worker-computed) picks arrive.
+function WhatIfFork({ o, dir, lead }: { o: PivotalOutcome; dir: 'up' | 'down'; lead: PivotalMetric }) {
+  // Lead with the race the viewer sweats (bold), but always name both finishes so
+  // reaching the top 5 is shown next to the win, whichever one is the headline.
+  const top5 = <>טופ 5 {lead === 'podium' ? <b>{fmtPct(o.podiumPct)}</b> : fmtPct(o.podiumPct)}</>
+  const win = <>זכייה {lead === 'win' ? <b>{fmtPct(o.winPct)}</b> : fmtPct(o.winPct)}</>
+  return (
+    <span className={`wp-whatif-fork wp-whatif-fork--${dir}`}>
+      {o.teamHe} עולה → {lead === 'win' ? <>{win} · {top5}</> : <>{top5} · {win}</>}
+    </span>
+  )
+}
+
 function WhatIf({ cards, metric }: { cards: PivotalCard[]; metric: PivotalMetric }) {
   if (!cards.length) return null
-  const finish = metric === 'win' ? 'לזכייה' : 'לטופ 5'
   const plural = cards.length > 1
   return (
     <div className="wp-whatif" dir="rtl">
       <div className="wp-whatif-head">
         <span className="wp-whatif-title">מה אם — רגע ההכרעה שלך</span>
-        <span className="wp-whatif-sub">הסיכוי שלך {finish} תלוי בעיקר {plural ? 'במשחקים הבאים' : 'במשחק הבא'} — כל תרחיש והסיכוי שהוא נותן לך:</span>
+        <span className="wp-whatif-sub">{plural ? 'המשחקים שהכי מזיזים' : 'המשחק שהכי מזיז'} את הסיכוי שלך — לכל תרחיש, טופ 5 וזכייה:</span>
       </div>
       <ul className="wp-whatif-list">
         {cards.map(c => (
           <li key={c.matchNum} className="wp-whatif-row">
             <span className="wp-whatif-match">{c.aHe}–{c.bHe}</span>
             <span className="wp-whatif-forks">
-              <span className="wp-whatif-fork wp-whatif-fork--up">{c.better.teamHe} עולה → <b>{fmtPct(c.better.pct)}</b></span>
-              <span className="wp-whatif-fork wp-whatif-fork--down">{c.worse.teamHe} עולה → <b>{fmtPct(c.worse.pct)}</b></span>
+              <WhatIfFork o={c.better} dir="up" lead={metric} />
+              <WhatIfFork o={c.worse} dir="down" lead={metric} />
             </span>
           </li>
         ))}

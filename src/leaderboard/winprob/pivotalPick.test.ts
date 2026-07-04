@@ -23,10 +23,21 @@ describe('pickPivotal', () => {
     expect(cards[0].matchNum).toBe(11)
     expect(cards[0].better.teamHe).toBe('DDD')
     expect(cards[0].worse.teamHe).toBe('CCC')
-    expect(cards[0].better.pct).toBeCloseTo(35)
+    expect(cards[0].better.podiumPct).toBeCloseTo(35)
     expect(cards[0].swing).toBe(25)
     expect(cards[1].matchNum).toBe(10)
     expect(cards[1].better.teamHe).toBe('AAA')
+  })
+
+  test('carries both finishes on every outcome, whatever the ranking metric', () => {
+    const [card] = pickPivotal([
+      m({ matchNum: 5, teamA: 'AAA', teamB: 'BBB', winIfA: 0.30, winIfB: 0.05, podiumIfA: 0.85, podiumIfB: 0.60 }),
+    ], 'win')
+    expect(card.better.teamHe).toBe('AAA')
+    expect(card.better.winPct).toBeCloseTo(30)
+    expect(card.better.podiumPct).toBeCloseTo(85)
+    expect(card.worse.winPct).toBeCloseTo(5)
+    expect(card.worse.podiumPct).toBeCloseTo(60)
   })
 
   test('drops foregone conclusions (underdog advances too rarely)', () => {
@@ -50,6 +61,6 @@ describe('pickPivotal', () => {
     ], 'win', 1)
     expect(cards).toHaveLength(1)
     expect(cards[0].matchNum).toBe(1)
-    expect(cards[0].better.pct).toBeCloseTo(30)
+    expect(cards[0].better.winPct).toBeCloseTo(30)
   })
 })

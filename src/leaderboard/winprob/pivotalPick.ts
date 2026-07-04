@@ -8,16 +8,19 @@ export type PivotalMetric = 'win' | 'podium'
 
 export interface PivotalOutcome {
   teamHe: string
-  pct: number // 0–100, the viewer's chance at the chosen finish if this team advances
+  // Both finishes are always carried so the fork can show top-5 *and* the win —
+  // the race the viewer sweats is only used to rank/order the fixtures.
+  podiumPct: number // 0–100, viewer's chance to reach the top 5 if this team advances
+  winPct: number // 0–100, viewer's chance to finish first if this team advances
 }
 
 export interface PivotalCard {
   matchNum: number
   aHe: string
   bHe: string
-  better: PivotalOutcome // the advancer that lifts the viewer more
+  better: PivotalOutcome // the advancer that lifts the viewer more (on the ranking metric)
   worse: PivotalOutcome
-  swing: number // gap between the two outcomes, in percentage points (rounded)
+  swing: number // gap between the two outcomes on the ranking metric, in percentage points (rounded)
 }
 
 // A fixture is a genuine decision point only if it's actually contested (the
@@ -40,8 +43,8 @@ export function pickPivotal(matches: PodiumByAdvancer[], metric: PivotalMetric, 
     const ifB = metric === 'win' ? m.winIfB : m.podiumIfB
     const raw = Math.abs(ifA - ifB)
     if (raw < SWING_MIN) continue
-    const a: PivotalOutcome = { teamHe: he(m.teamA), pct: ifA * 100 }
-    const b: PivotalOutcome = { teamHe: he(m.teamB), pct: ifB * 100 }
+    const a: PivotalOutcome = { teamHe: he(m.teamA), podiumPct: m.podiumIfA * 100, winPct: m.winIfA * 100 }
+    const b: PivotalOutcome = { teamHe: he(m.teamB), podiumPct: m.podiumIfB * 100, winPct: m.winIfB * 100 }
     const [better, worse] = ifA >= ifB ? [a, b] : [b, a]
     scored.push({
       card: { matchNum: m.matchNum, aHe: he(m.teamA), bHe: he(m.teamB), better, worse, swing: Math.round(raw * 100) },
