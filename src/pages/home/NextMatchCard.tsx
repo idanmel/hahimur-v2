@@ -31,6 +31,7 @@ export default function NextMatchCard({ users, now = new Date(), matches = SCORE
           // the team-matched consensus and the user's own called score.
           consensus={ko ? topPrediction(users, { kind: 'ko', match: ko }) : undefined}
           mine={ko ? (currentUser ? knockoutParticipantScore(ko, currentUser) : null) : undefined}
+          knockout={!!ko}
           isNext={!!next && match.matchDate === next.matchDate && match.kickoffIST === next.kickoffIST}
           currentUser={currentUser}
           now={now}

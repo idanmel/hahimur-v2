@@ -10,6 +10,7 @@ import { getThirdPlaceTeams, qualifyBestThirdPlace } from './src/formView/thirdP
 import { resolveRound32, resolveKnockout, buildKnockoutBracket } from './src/formView/knockout/knockout'
 import { computeUserPoints, advancingTeam } from './src/leaderboard/points'
 import { TEAM_STRENGTH } from './src/pages/results/teamStrength'
+import { matchLambdas } from './src/shared/lambdas'
 import { SCORERS } from './golden-boot'
 import { isUnpredicted } from './src/shared/types'
 import type {
@@ -37,35 +38,14 @@ function poisson(lambda: number): number {
 // so only these get the banked-goals treatment in the golden-boot model.
 const TRACKED_SCORERS = new Set(USERS.map(u => u.topGoalscorer).filter(Boolean))
 
-const BASE = 1.3
-const strength = (team: string) => TEAM_STRENGTH[team] ?? { att: 1.0, def: 1.0 }
-
-// Host-nation edge. The 2026 hosts play on home soil (crowd, no travel,
-// familiarity) in front of partisan crowds throughout, an advantage the Elo
-// priors — built from mostly-neutral and mixed-venue history — don't capture.
-// World Cup home advantage is real but smaller and streakier than club football,
-// so we keep it light: a host scores ~10% more and concedes ~8% fewer. Applied to
-// the host team in every match regardless of nominal home/away; cancels out when
-// both sides are hosts.
-const HOST_TEAMS = new Set(['United States', 'Mexico', 'Canada'])
-const HOST_ATT = 1.10
-const HOST_DEF = 0.92
-
-function lambdas(home: string, away: string): [number, number] {
-  const h = strength(home), a = strength(away)
-  let lh = BASE * h.att * a.def
-  let la = BASE * a.att * h.def
-  const homeHost = HOST_TEAMS.has(home), awayHost = HOST_TEAMS.has(away)
-  if (homeHost && !awayHost) { lh *= HOST_ATT; la *= HOST_DEF }
-  else if (awayHost && !homeHost) { la *= HOST_ATT; lh *= HOST_DEF }
-  return [lh, la]
-}
+// The goal-rate model (λ = BASE·att·def + host edge) lives in src/shared/lambdas
+// so the per-match card odds and this engine can't drift apart.
 function sampleScore(home: string, away: string): MatchScores {
-  const [lh, la] = lambdas(home, away)
+  const [lh, la] = matchLambdas(home, away)
   return { home: poisson(lh), away: poisson(la) }
 }
 function sampleKOScore(home: string, away: string): MatchScores {
-  const [lh, la] = lambdas(home, away)
+  const [lh, la] = matchLambdas(home, away)
   const h = poisson(lh), a = poisson(la)
   if (h === a) return { home: h, away: a, drawWinner: rng() < lh / (lh + la) ? 'home' : 'away' }
   return { home: h, away: a }
@@ -577,6 +557,11 @@ export interface SimAgg {
   sumRank: Map<string, number>
   stages: Map<string, Stages>
   champFreq: Map<string, number>
+  // How many simulated tournaments each *scorer* finishes as (or tied for) the top
+  // goalscorer — i.e. wins or shares the golden boot. Read as a probability, this is
+  // exactly the condition on the +10 bonus (an absolute race outcome, not a ranking
+  // against other bettors), so the card can quote "X% to win/share the boot".
+  bootFreq: Map<string, number>
   // How many simulated tournaments each *team* reaches the knockouts (round of
   // 32) — i.e. survives the group stage. Read as a survival probability, this is
   // the model's verdict on whether a team is still realistically in it, which the
@@ -653,6 +638,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   const sumRank = new Map<string, number>()
   const stages = new Map<string, Stages>()
   const champFreq = new Map<string, number>()
+  const bootFreq = new Map<string, number>()
   const reachR32 = new Map<string, number>()
   const groupFirst = new Map<string, number>()
   const reachR16 = new Map<string, number>(), reachQF = new Map<string, number>(), reachSF = new Map<string, number>(), reachFinal = new Map<string, number>()
@@ -668,6 +654,10 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   for (let i = 0; i < n; i++) {
     const results = simulateTournament(played, realGoals, realGames)
     if (results.champion) champFreq.set(results.champion, (champFreq.get(results.champion) ?? 0) + 1)
+    // Every sampled boot winner (usually one, more when tied) gets a tally — a tie
+    // credits each, mirroring the pool rule that a shared boot still pays the bonus.
+    const bootWinners = Array.isArray(results.goldenBootWinner) ? results.goldenBootWinner : results.goldenBootWinner ? [results.goldenBootWinner] : []
+    for (const w of bootWinners) bootFreq.set(w, (bootFreq.get(w) ?? 0) + 1)
     for (const m of results.knockoutStages.r32) {
       if (m.home) reachR32.set(m.home, (reachR32.get(m.home) ?? 0) + 1)
       if (m.away) reachR32.set(m.away, (reachR32.get(m.away) ?? 0) + 1)
@@ -719,7 +709,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       series?.get(s.label)!.push(s.pts)
     }
   }
-  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series }
+  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series }
 }
 
 // Add every tally of `b` into `a` (in place) and return `a`. All aggregate
@@ -734,7 +724,7 @@ export function mergeSimAgg(a: SimAgg, b: SimAgg): SimAgg {
   }
   addMap(a.win, b.win); addMap(a.top3, b.top3); addMap(a.top5, b.top5)
   addMap(a.sumPts, b.sumPts); addMap(a.sumSq, b.sumSq); addMap(a.sumRank, b.sumRank)
-  addMap(a.champFreq, b.champFreq); addMap(a.reachR32, b.reachR32); addMap(a.groupFirst, b.groupFirst)
+  addMap(a.champFreq, b.champFreq); addMap(a.bootFreq, b.bootFreq); addMap(a.reachR32, b.reachR32); addMap(a.groupFirst, b.groupFirst)
   addMap(a.reachR16, b.reachR16); addMap(a.reachQF, b.reachQF); addMap(a.reachSF, b.reachSF); addMap(a.reachFinal, b.reachFinal)
   for (const [num, bp] of b.koPairs) {
     const cur = a.koPairs.get(num)
@@ -1184,6 +1174,9 @@ export interface Row {
   label: string; winPct: number; top3Pct: number; top5Pct: number; avgPts: number
   std: number; ceiling: number; curRank: number; expRank: number; turkey: string
   championHe: string; championTeam: string; championAlive: boolean; scorer: string; reason: string
+  // Model probability the bettor's picked scorer wins or *shares* the golden boot —
+  // the exact condition on the +10 bonus, so the card can explain that reward.
+  scorerBootPct: number
   stages: StageStat[]
 }
 
@@ -1225,6 +1218,7 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
       championTeam: u.predictedChampion ?? '',
       championAlive: !u.predictedChampion || (real.champFreq.get(u.predictedChampion) ?? 0) > 0,
       scorer: u.topGoalscorer || '—',
+      scorerBootPct: u.topGoalscorer ? (real.bootFreq.get(u.topGoalscorer) ?? 0) / n * 100 : 0,
       reason: explain(u, winPct, avgWin, signals),
       stages,
     }

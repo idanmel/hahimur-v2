@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import './RecordsView.css'
-import { buildRecords } from './recordsStats'
-import type { RecordCategory, RecordEntry } from './recordsStats'
+import { buildRecords, buildKnockoutStageRecords } from './recordsStats'
+import type { RecordCategory, RecordEntry, StageRecords } from './recordsStats'
 import { MEDALS } from './medals'
 import { competitionRanks } from './rank'
 import { realPlayedState } from './winprob/realPlayed'
@@ -123,6 +123,41 @@ function Hero({ cat }: { cat: RecordCategory }) {
   )
 }
 
+// Per-knockout-stage records: a stage switcher (defaulting to the deepest stage
+// reached, since that's the freshest race) over the same card grid, so each
+// knockout round gets its own leaderboard alongside the cumulative one above.
+function KnockoutStageRecords({ stages, me }: { stages: StageRecords[]; me?: string }) {
+  const latest = stages[stages.length - 1].key
+  const [active, setActive] = useState<string>(latest)
+  const current = stages.find(s => s.key === active) ?? stages[stages.length - 1]
+
+  return (
+    <section className="rec-stage" dir="rtl">
+      <div className="rec-stage-head">
+        <h3 className="rec-stage-title">🏟️ שיאים לפי שלב נוקאאוט</h3>
+        <p className="rec-stage-sub">מי הוביל בכל שלב בנפרד — נקודות, צליפות, פגיעות והצלבות של אותו שלב בלבד.</p>
+      </div>
+      <div className="rec-stage-tabs" role="tablist" aria-label="שלב נוקאאוט">
+        {stages.map(s => (
+          <button
+            key={s.key}
+            type="button"
+            role="tab"
+            aria-selected={s.key === current.key}
+            className={`rec-stage-tab${s.key === current.key ? ' rec-stage-tab--active' : ''}`}
+            onClick={() => setActive(s.key)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <div className="rec-grid">
+        {current.categories.map(c => <RecordCard key={c.key} cat={c} me={me} />)}
+      </div>
+    </section>
+  )
+}
+
 export default function RecordsView({ users, results, me }: {
   users: User[]
   results: TournamentResults
@@ -136,6 +171,7 @@ export default function RecordsView({ users, results, me }: {
   const probByMatch = status === 'ready' ? crossingProbByMatch : {}
 
   const cats = buildRecords(users, results, me, probByMatch)
+  const stageRecords = buildKnockoutStageRecords(users, results, me, probByMatch)
   const points = cats.find(c => c.key === 'points')
   const cards = cats.filter(c => c.key !== 'points')
   const anyData = cats.some(c => c.entries.length > 0)
@@ -155,6 +191,7 @@ export default function RecordsView({ users, results, me }: {
       <div className="rec-grid">
         {cards.map(c => <RecordCard key={c.key} cat={c} me={me} />)}
       </div>
+      {stageRecords.length > 0 && <KnockoutStageRecords stages={stageRecords} me={me} />}
     </div>
   )
 }

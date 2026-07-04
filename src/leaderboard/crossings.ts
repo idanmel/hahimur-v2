@@ -10,6 +10,29 @@ import type { MatchOutcome } from './points'
 // the bettor called, so it gets a tab like the rest.
 export type RoundKey = 'r32' | 'r16' | 'qf' | 'sf' | 'thirdPlace' | 'final'
 
+// The main-bracket rounds in play order, used to pick the stage the view opens on.
+// The 3rd-place match is a side fixture, so it's left out — it must never steal the
+// default focus from the final.
+const MAIN_ROUND_ORDER: RoundKey[] = ['r32', 'r16', 'qf', 'sf', 'final']
+
+// Which knockout round the crossings view should open on: the earliest stage that
+// still has an undecided match, so once a round is fully played the view moves the
+// viewer forward to the next live stage instead of lingering on settled pairings.
+// Falls back to the round of 32 before any knockout is populated, and to the
+// deepest populated round once every match is played.
+export function defaultCrossingsRound(stages?: KnockoutStages): RoundKey {
+  if (!stages) return 'r32'
+  for (const key of MAIN_ROUND_ORDER) {
+    const matches = stages[key] ?? []
+    if (matches.length === 0) continue
+    if (matches.some(m => !m.scores || isUnpredicted(m.scores))) return key
+  }
+  for (let i = MAIN_ROUND_ORDER.length - 1; i >= 0; i--) {
+    if ((stages[MAIN_ROUND_ORDER[i]] ?? []).length > 0) return MAIN_ROUND_ORDER[i]
+  }
+  return 'r32'
+}
+
 // One side of a crossing: a team the bettor paired into this R32 slot, and
 // whether it has already actually reached it (confirmed) or is still a hope.
 export interface CrossingTeam {

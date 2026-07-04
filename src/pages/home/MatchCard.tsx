@@ -4,6 +4,7 @@ import type { User } from '../../users/index'
 import { singleMatchOutcome, singleMatchPoints, OUTCOME_LABEL, POINTS_PER_GOAL } from '../../leaderboard/points'
 import { isLive } from '../../shared/matchOrder'
 import { topPrediction, type TopPrediction } from './nextMatch'
+import OddsBar from '../../shared/OddsBar'
 import './MatchCard.css'
 
 type Props = {
@@ -27,6 +28,9 @@ type Props = {
   result?: MatchScores
   // player → match ID → goals, so we can credit the user's picked scorer for this match.
   playerMatchGoals?: Record<string, Record<string, number>>
+  // A knockout fixture: the odds strip then quotes each side's chance to advance
+  // (draws split by the ET/penalty rule) rather than a 90' win/draw/win.
+  knockout?: boolean
   // "Now" for deciding whether the match is in progress; injectable for tests.
   now?: Date
   // The live feed's in-progress matches (match id → status). When supplied, it is
@@ -37,7 +41,7 @@ type Props = {
   liveMatches?: Record<string, { clock: string | null; home?: number; away?: number }>
 }
 
-export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date(), liveMatches, heading, consensus: consensusOverride, mine: mineOverride }: Props) {
+export default function MatchCard({ users, match, currentUser, isNext = false, result, playerMatchGoals = {}, now = new Date(), liveMatches, heading, consensus: consensusOverride, mine: mineOverride, knockout = false }: Props) {
   const home = TEAMS[match.homeTeam]
   const away = TEAMS[match.awayTeam]
   const consensus = consensusOverride !== undefined ? consensusOverride : topPrediction(users, { kind: 'group', match })
@@ -104,6 +108,10 @@ export default function MatchCard({ users, match, currentUser, isNext = false, r
           <span className="next-match__name">{away.he}</span>
         </div>
       </div>
+
+      {/* Chance to win (group) / advance (knockout), from the Elo win-model.
+          Only pre-match and live — once the real result is in, odds are moot. */}
+      {!result && <OddsBar home={match.homeTeam} away={match.awayTeam} knockout={knockout} />}
 
       {consensus && (
         <div className="next-match__consensus" data-testid="consensus">

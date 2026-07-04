@@ -1,5 +1,5 @@
-import { biggestClimb, buildRecords } from './recordsStats'
-import type { GroupMatch, Standing, TournamentResults } from '../shared/types'
+import { buildRecords, buildKnockoutStageRecords } from './recordsStats'
+import type { GroupMatch, KnockoutMatch, Standing, TournamentResults } from '../shared/types'
 import type { User } from '../users'
 
 const emptyKO = { r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] }
@@ -38,21 +38,6 @@ const cat = (cats: ReturnType<typeof buildRecords>, key: string) => {
   if (!c) throw new Error(`missing category ${key}`)
   return c
 }
-
-describe('biggestClimb', () => {
-  test('no movement data yields zero', () => {
-    expect(biggestClimb([])).toBe(0)
-    expect(biggestClimb([5])).toBe(0)
-  })
-
-  test('returns the largest single-step rise (rank getting smaller)', () => {
-    expect(biggestClimb([5, 2, 3, 1])).toBe(3) // 5 -> 2 is a 3-place climb
-  })
-
-  test('only drops means no climb', () => {
-    expect(biggestClimb([1, 2, 4])).toBe(0)
-  })
-})
 
 describe('buildRecords', () => {
   // One complete two-team group: T1 beat T2 2-1, both advance, T1 first.
@@ -186,5 +171,57 @@ describe('buildRecords — crossings', () => {
     // With the 100% pairing it counts as a hit.
     expect(cat(buildRecords([sure], res, undefined, certain), 'crossings').entries[0])
       .toMatchObject({ label: 'Sure', value: 1 })
+  })
+})
+
+describe('buildKnockoutStageRecords', () => {
+  // A settled knockout fixture: number, teams and score.
+  const koMatch = (matchNum: number, home: string, away: string, hs: number, as: number): KnockoutMatch =>
+    ({ matchNum, home, away, resolved: true, scores: { home: hs, away: as } })
+
+  function koStageUser(label: string, r32: KnockoutMatch[], r16: KnockoutMatch[] = []): User {
+    return {
+      label, topGoalscorer: 'X',
+      groupMatches: {}, groupTables: {},
+      thirdPlaceQualification: { resolved: false, all: [], tied: [] },
+      knockoutStages: { ...emptyKO, r32, r16 },
+    } as unknown as User
+  }
+
+  test('no stages until a knockout match is played', () => {
+    const res = mkResults({})
+    expect(buildKnockoutStageRecords([koStageUser('A', [])], res)).toEqual([])
+  })
+
+  test('crowns a per-stage leader on exact scores and points, ignoring later empty stages', () => {
+    const res = mkResults({})
+    res.knockoutStages = { ...emptyKO, r32: [koMatch(73, 'Mexico', 'Canada', 2, 1)] }
+
+    const exact = koStageUser('Exact', [koMatch(73, 'Mexico', 'Canada', 2, 1)])   // צליפה
+    const close = koStageUser('Close', [koMatch(73, 'Mexico', 'Canada', 1, 0)])   // פגיעה only
+    const stages = buildKnockoutStageRecords([exact, close], res)
+
+    // Only the round of 32 has a board (r16+ are still empty).
+    expect(stages.map(s => s.key)).toEqual(['r32'])
+    const r32 = stages[0]
+    const tzelifot = r32.categories.find(c => c.key === 'tzelifot')!
+    expect(tzelifot.entries[0]).toMatchObject({ label: 'Exact', value: 1 })
+    expect(tzelifot.entries.map(e => e.label)).not.toContain('Close')
+
+    const pgiot = r32.categories.find(c => c.key === 'pgiot')!
+    expect(pgiot.entries[0]).toMatchObject({ label: 'Close', value: 1 })
+
+    // The exact predictor also tops the stage's points board.
+    const points = r32.categories.find(c => c.key === 'points')!
+    expect(points.entries[0].label).toBe('Exact')
+    expect(points.entries[0].value).toBeGreaterThan(points.entries[1].value)
+  })
+
+  test('marks the viewer with isMe within a stage', () => {
+    const res = mkResults({})
+    res.knockoutStages = { ...emptyKO, r32: [koMatch(73, 'Mexico', 'Canada', 2, 1)] }
+    const mine = buildKnockoutStageRecords([koStageUser('Me', [koMatch(73, 'Mexico', 'Canada', 2, 1)])], res, 'Me')
+    const tzelifot = mine[0].categories.find(c => c.key === 'tzelifot')!
+    expect(tzelifot.entries[0].isMe).toBe(true)
   })
 })

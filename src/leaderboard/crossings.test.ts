@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { computeUserCrossings, crossingBreakdown, computeDeterminedCrossings, computeCrossingsSummary, rankedCrossingsSummary, summaryTotals } from './crossings'
+import { computeUserCrossings, crossingBreakdown, computeDeterminedCrossings, computeCrossingsSummary, rankedCrossingsSummary, summaryTotals, defaultCrossingsRound } from './crossings'
 import type { Crossing, CrossingsBettor } from './crossings'
-import type { KnockoutStages } from '../shared/types'
+import type { KnockoutStages, MatchScores } from '../shared/types'
 import type { KnockoutMatch } from '../shared/types'
 
 // Real teams are TEAMS keys; unresolved slots are Hebrew placeholders.
@@ -10,6 +10,40 @@ const km = (matchNum: number, home: string, away: string): KnockoutMatch => ({
   home,
   away,
   resolved: false,
+})
+
+describe('defaultCrossingsRound', () => {
+  const scored = (matchNum: number, scores: MatchScores): KnockoutMatch => ({ ...km(matchNum, 'A', 'B'), scores })
+  const emptyStages = (): KnockoutStages => ({ r32: [], r16: [], qf: [], sf: [], thirdPlace: [], final: [] })
+
+  it('falls back to the round of 32 before any knockout is populated', () => {
+    expect(defaultCrossingsRound(undefined)).toBe('r32')
+    expect(defaultCrossingsRound(emptyStages())).toBe('r32')
+  })
+
+  it('stays on the round of 32 while it still has an unplayed match', () => {
+    const stages = emptyStages()
+    stages.r32 = [scored(73, { home: 1, away: 0 }), km(74, 'A', 'B')]
+    expect(defaultCrossingsRound(stages)).toBe('r32')
+  })
+
+  it('advances to the round of 16 once every round-of-32 match is played', () => {
+    const stages = emptyStages()
+    stages.r32 = [scored(73, { home: 1, away: 0 }), scored(74, { home: 2, away: 1 })]
+    stages.r16 = [km(89, 'A', 'B')] // populated, not yet played
+    expect(defaultCrossingsRound(stages)).toBe('r16')
+  })
+
+  it('ignores the third-place side match so it never steals focus from the final', () => {
+    const stages = emptyStages()
+    stages.r32 = [scored(73, { home: 1, away: 0 })]
+    stages.r16 = [scored(89, { home: 1, away: 0 })]
+    stages.qf = [scored(97, { home: 1, away: 0 })]
+    stages.sf = [scored(101, { home: 1, away: 0 })]
+    stages.thirdPlace = [km(103, 'A', 'B')]
+    stages.final = [km(104, 'A', 'B')]
+    expect(defaultCrossingsRound(stages)).toBe('final')
+  })
 })
 
 describe('computeUserCrossings', () => {

@@ -34,6 +34,11 @@ export default function MatchLeaderboardTable({ rows, me }: Props) {
 
   return (
     <div className="match-lb" data-testid="match-leaderboard" dir="rtl">
+      {/* Horizontal-scroll wrapper: on a narrow phone the fixed-width numeric
+          columns can push the table past the viewport, and the card's clipped
+          corners would otherwise hide the last column (סה״כ, leftmost in RTL).
+          Scrolling keeps it reachable without changing the look where it fits. */}
+      <div className="match-lb__scroll">
       <table className="match-lb__table">
         <thead>
           <tr>
@@ -71,6 +76,7 @@ export default function MatchLeaderboardTable({ rows, me }: Props) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

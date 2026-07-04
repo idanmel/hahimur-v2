@@ -1938,6 +1938,18 @@
   color: var(--muted);
 }
 
+/* The forward-looking "what needs to happen" line leads the read, so give it a
+   gentle highlight and a gold label to set it apart from the recap lines. */
+.wp-me-line--next {
+  background: linear-gradient(to left, rgba(212, 160, 22, 0.1), transparent 80%);
+  border-inline-start: 3px solid var(--gold);
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-inline-start: -8px;
+}
+
+.wp-me-line--next .wp-me-label { color: var(--gold); }
+
 /* Inline emphasis on the number tokens inside the dense personal-read lines so the
    meaningful figures pop out of the prose. Neutral figures (%, points) darken; a
    signed gap vs the field is tinted green (advantage) or red (deficit). */
@@ -1951,9 +1963,128 @@
 .wp-me-standing .wp-hl--up { color: var(--green); }
 .wp-me-standing .wp-hl--down { color: var(--red); }
 
+/* גזרת התחזית — the per-knockout-round points breakdown under the prose lines. Turns
+   the win-% into concrete per-stage points vs the field, each round drawn as a diverging
+   bar and tagged by phase (settled / live / forecast). */
+.wp-fc {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(11, 34, 68, 0.16);
+}
+
+.wp-fc-head { margin-bottom: 8px; }
+
+.wp-fc-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.wp-fc-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.wp-fc-sub b { color: var(--navy); font-weight: 700; }
+
+.wp-fc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.wp-fc-row {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wp-fc-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.wp-fc-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wp-fc-tag {
+  flex: none;
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+
+.wp-fc-tag--done { color: #15803d; background: rgba(34, 197, 94, 0.16); }
+.wp-fc-tag--live { color: #b45309; background: rgba(245, 158, 11, 0.18); }
+.wp-fc-tag--upcoming { color: var(--muted); background: rgba(11, 34, 68, 0.08); }
+
+.wp-fc-edge { flex: none; font-size: 12px; font-weight: 800; }
+.wp-fc-edge--pos { color: var(--green); }
+.wp-fc-edge--neg { color: var(--red); }
+.wp-fc-edge--mid { color: var(--muted); }
+
+.wp-fc-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(11, 34, 68, 0.08);
+  overflow: hidden;
+}
+
+.wp-fc-fill { height: 100%; border-radius: 999px; }
+.wp-fc-fill--pos { background: var(--green); }
+.wp-fc-fill--neg { background: var(--red); }
+.wp-fc-fill--mid { background: rgba(11, 34, 68, 0.3); }
+
+.wp-fc-val { font-size: 11px; color: var(--muted); }
+.wp-fc-val b { color: var(--navy); font-weight: 800; }
+.wp-fc-field { opacity: 0.85; }
+
+.wp-fc-total {
+  margin-top: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.wp-fc-total b { font-weight: 800; }
+.wp-fc-total--pos b { color: var(--green); }
+.wp-fc-total--neg b { color: var(--red); }
+
+/* Golden-boot slice — a parallel track whose +10 bonus is an absolute race outcome,
+   not a duel with the field, so it sits apart with its own explanatory note. */
+.wp-fc-gb {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(11, 34, 68, 0.16);
+}
+
+.wp-fc-list--single { display: block; }
+
 @media (max-width: 560px) {
   .wp-me-lines li { flex-direction: column; align-items: flex-start; gap: 1px; }
   .wp-me-label { flex: none; }
+  .wp-fc-list { grid-template-columns: 1fr; gap: 7px; }
 }
 
 /* tap-to-open detail (mobile-first; replaces hover tooltips) */

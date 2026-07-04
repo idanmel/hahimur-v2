@@ -1528,9 +1528,17 @@
   z-index: 0;
 }
 
-.match-lb__table {
+/* Sits above the ::before grain and provides the horizontal scroll fallback so a
+   too-wide table (narrow phones) never clips the total column behind the card's
+   rounded, overflow-hidden edge. Where the table fits, this is a no-op. */
+.match-lb__scroll {
   position: relative;
   z-index: 1;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.match-lb__table {
   width: 100%;
   border-collapse: collapse;
 }
@@ -1550,6 +1558,22 @@
 .match-lb__th--rank { width: 1.9rem; }
 .match-lb__th--name { text-align: right; padding-right: 0.4rem; width: 99%; }
 .match-lb__th--total { color: rgba(212, 160, 22, 0.95); padding-left: 1rem; }
+
+/* Narrow phones: trim the horizontal padding and ease the big scoreboard fonts so
+   every column — crucially the total — fits within the viewport without scrolling.
+   Only affects small screens, so it never touches the roomier phones that already
+   render the full table fine. */
+@media (max-width: 400px) {
+  .match-lb__th,
+  .match-lb__row td { padding-left: 0.3rem; padding-right: 0.3rem; }
+  .match-lb__th--total { padding-left: 0.45rem; }
+  .match-lb__total { padding-left: 0.45rem !important; font-size: 1.2rem; }
+  .match-lb__pred,
+  .match-lb__pts,
+  .match-lb__adv { font-size: 1rem; }
+  .match-lb__rank { padding-right: 0.4rem !important; }
+  .match-lb__name { font-size: 0.84rem; }
+}
 
 .match-lb__row {
   opacity: 0;

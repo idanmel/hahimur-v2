@@ -434,6 +434,26 @@ test('reads the bettor predictions for the selected round', () => {
   expect(screen.getByText(/מי יפגע בהכי הרבה מפגשים/)).toBeInTheDocument()
 })
 
+test('a fully-played round reads as a final result, not a projection', () => {
+  // The third-place round is a single slot (103); once it has a real score the whole
+  // round is settled, so the standing should read "who hit" rather than "who will".
+  const actual = [km(103, 'Brazil', 'France')]
+  const user = userOnRound('thirdPlace', [km(103, 'Brazil', 'France', { home: 2, away: 1 })], 'דני')
+  const actualScoreByNum = { 103: { home: 2, away: 1 } }
+  render(
+    <CrossingsList
+      user={user} users={[user]} round={thirdCfg} actualMatches={actual}
+      actualScoreByNum={actualScoreByNum} probByMatch={{}} probStatus="ready"
+    />,
+  )
+  // past-tense headline + a "round finished" chip, and none of the projection wording
+  expect(screen.getByText(/מי פגע בהכי הרבה מפגשים/)).toBeInTheDocument()
+  expect(screen.getByText('השלב הסתיים')).toBeInTheDocument()
+  expect(screen.queryByText(/מי יפגע בהכי הרבה/)).not.toBeInTheDocument()
+  // the value column reads as final hits, not an expected projection
+  expect(screen.getByText('נפגעו')).toBeInTheDocument()
+})
+
 test('offers a third-place tab and reads its predictions with the third-place payouts', () => {
   // the match on 3rd place (103) is its own crossing round, between the final and the semis
   expect(thirdCfg).toBeDefined()

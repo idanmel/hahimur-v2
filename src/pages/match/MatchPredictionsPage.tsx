@@ -18,6 +18,7 @@ import {
 import { calculateStandings, liveGroupScores } from '../../shared/standings'
 import StandingsTable from '../../formView/groupStage/StandingsTable'
 import MatchHeader from './MatchHeader'
+import OddsBar from '../../shared/OddsBar'
 import PredictionSummary from './PredictionSummary'
 import ScoreFrequencyTable from './ScoreFrequencyTable'
 import MatchLeaderboard from './MatchLeaderboard'
@@ -154,6 +155,9 @@ export default function MatchPredictionsPage({ match: groupMatch, home: groupHom
         realScore={realScore} live={live} liveScore={liveScore}
         prevId={prev?.id ?? null} nextId={nextId}
       />
+
+      {/* Each side's chance to win, from the Elo win-model — pre-match and live. */}
+      {!decided && <OddsBar home={match.homeTeam} away={match.awayTeam} />}
 
       <div className="match-predictions">
         {scorers.length > 0 && (
@@ -322,6 +326,10 @@ function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore,
           nextId={nextId}
         />
       </div>
+
+      {/* Each side's chance to advance this tie, from the Elo win-model — shown
+          for a resolved fixture until it's decided (stays up through the live game). */}
+      {match.resolved && !decided && <OddsBar home={match.home} away={match.away} knockout />}
 
       {!match.resolved && <KnockoutSurvivorsList actualMatch={match} users={users} />}
 

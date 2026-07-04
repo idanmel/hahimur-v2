@@ -19,11 +19,31 @@ const users = [
 
 test('shows the next match teams, kickoff and a link to its page', () => {
   render(<NextMatchCard users={users} now={NOW} matches={MATCHES} />)
-  expect(screen.getByText('דרום קוריאה')).toBeInTheDocument()
-  expect(screen.getByText('צ׳כיה')).toBeInTheDocument()
+  // Team name appears both in the teams row and the odds legend — scope to the row.
+  expect(screen.getByText('דרום קוריאה', { selector: '.next-match__name' })).toBeInTheDocument()
+  expect(screen.getByText('צ׳כיה', { selector: '.next-match__name' })).toBeInTheDocument()
   expect(screen.getByText(/12 ביוני/)).toBeInTheDocument()
   expect(screen.getByText(/05:00/)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /לעמוד המשחק/ })).toHaveAttribute('href', '/matches/A2')
+})
+
+test('shows a win-odds strip on an upcoming group match', () => {
+  render(<NextMatchCard users={users} now={NOW} matches={MATCHES} />)
+  const odds = screen.getByTestId('odds-bar')
+  expect(odds).toHaveTextContent('סיכוי לנצח')
+  expect(odds).toHaveTextContent('תיקו') // group match → three-way with a draw leg
+})
+
+test('shows an advance-odds strip (no draw leg) on an upcoming knockout match', () => {
+  const koOpener: KnockoutMatch = {
+    matchNum: 73, home: 'South Korea', away: 'Canada', resolved: true,
+    matchDate: '28 ביוני', kickoffIST: '22:00',
+  }
+  const now = new Date('2026-06-28T18:00:00Z')
+  render(<NextMatchCard users={[]} now={now} matches={[]} koMatches={[koOpener]} />)
+  const odds = screen.getByTestId('odds-bar')
+  expect(odds).toHaveTextContent('סיכוי להעפיל')
+  expect(odds).not.toHaveTextContent('תיקו')
 })
 
 test('home team comes first in DOM so it renders on the right in RTL', () => {
@@ -120,8 +140,8 @@ test('rolls into the knockouts: shows the R32 opener as a card like a group matc
   const now = new Date('2026-06-28T18:00:00Z')
   render(<NextMatchCard users={koUsers} now={now} matches={[]} koMatches={[koOpener]} currentUser={me} />)
 
-  expect(screen.getByText('דרום קוריאה')).toBeInTheDocument()
-  expect(screen.getByText('קנדה')).toBeInTheDocument()
+  expect(screen.getByText('דרום קוריאה', { selector: '.next-match__name' })).toBeInTheDocument()
+  expect(screen.getByText('קנדה', { selector: '.next-match__name' })).toBeInTheDocument()
   expect(screen.getByText(/שלב ה-32/)).toBeInTheDocument() // round label, not "בית"
   expect(screen.getByRole('link', { name: /לעמוד המשחק/ })).toHaveAttribute('href', '/matches/73')
   expect(screen.getByTestId('consensus')).toHaveTextContent('1–2') // away–home, team-matched

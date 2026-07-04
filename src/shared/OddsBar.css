@@ -1,0 +1,75 @@
+.odds {
+  margin: 0.9rem auto 0;
+  max-width: 420px;
+}
+
+.odds__caption {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+
+.odds__src {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* The segmented probability bar: home | (draw) | away, widths = the odds. */
+.odds__bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.odds__seg { height: 100%; }
+.odds__seg--home { background: var(--navy, #1f3a5f); }
+.odds__seg--draw { background: var(--muted, #9aa3b2); opacity: 0.55; }
+.odds__seg--away { background: var(--red, #c0272d); }
+
+.odds__legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.odds__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--ink);
+}
+
+.odds__stat--draw {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.odds__flag {
+  font-size: 1rem;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.odds__team {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 6.5rem;
+}
+
+.odds__pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.odds__stat--home .odds__pct { color: var(--navy, #1f3a5f); }
+.odds__stat--away .odds__pct { color: var(--red, #c0272d); }

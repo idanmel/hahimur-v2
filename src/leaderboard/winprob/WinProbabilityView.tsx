@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
 import type { Row, AdvancementSummary, StageReach } from '../../../sim-core'
-import { realEliminations, effectiveEliminations, advancementSummaryForLabel } from '../../../sim-core'
+import { realEliminations, effectiveEliminations, advancementSummaryForLabel, reachAtRank } from '../../../sim-core'
 import type { User } from '../../users'
 import { TEAMS } from '../../shared/groups'
 import { SCORERS } from '../../../golden-boot'
@@ -10,8 +10,8 @@ import { computeUserCrossings, crossingProbability } from '../crossings'
 import { playedChrono, playedStateUpTo, winProbMatchLabel } from './realPlayed'
 import { playedMatchId } from '../leaderboardRows'
 import { useWinProbabilities } from './useWinProbabilities'
-import { fmtPct, buildBettorHeadline } from './summaryText'
-import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, FragilityDigest } from './summaryText'
+import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge } from './summaryText'
+import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, FragilityDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow } from './summaryText'
 
 const KO_KEYS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
 
@@ -74,23 +74,121 @@ function emphasize(text: string): ReactNode {
   )
 }
 
+const PHASE_TAG: Record<StagePhase, string> = { done: 'סוכם', live: 'בעיצומו', upcoming: 'תחזית' }
+
+const edgeCls = (edge: number) => (edge > 0.5 ? 'pos' : edge < -0.5 ? 'neg' : 'mid')
+// A signed gap, but a rounded-to-zero gap reads as a plain "0" (no misleading "+0").
+const fmtEdge = (edge: number) => (edge > 0 ? `+${edge}` : edge < 0 ? `−${Math.abs(edge)}` : '0')
+
+// The golden-boot slice of the forecast. Unlike the knockout rounds, its +10 bonus is an
+// *absolute* race outcome — the pick topping or tying the scoring chart — not a ranking
+// against the other bettors, so it carries the win/share odds and current goals.
+interface GoldenBootForecast {
+  scorerHe: string
+  goals: number
+  bootPct: number
+  alive: boolean
+  mine: number
+  field: number
+  edge: number
+  phase: StagePhase
+}
+
+interface ForecastData {
+  stages: StageForecastRow[]
+  goldenBoot: GoldenBootForecast | null
+}
+
+// A single edge row (round or slice): the label + phase tag, the signed gap as a
+// diverging bar scaled to the section's largest gap, and the points vs the field.
+// A settled round shows banked points as a flat number; an undecided one shows a
+// probability-weighted average ("כ-6 נק׳ בממוצע") — in any single reality you either
+// score the chunk or nothing, but averaged over the sims it lands on a fraction.
+function ForecastEdgeRow({ label, phase, edge, mine, field, maxAbs, extra }: {
+  label: ReactNode; phase: StagePhase; edge: number; mine: number; field: number; maxAbs: number; extra?: ReactNode
+}) {
+  const cls = edgeCls(edge)
+  const settled = phase === 'done'
+  return (
+    <li className="wp-fc-row">
+      <div className="wp-fc-top">
+        <span className="wp-fc-name">{label}<em className={`wp-fc-tag wp-fc-tag--${phase}`}>{PHASE_TAG[phase]}</em></span>
+        <span className={`wp-fc-edge wp-fc-edge--${cls}`}>{fmtEdge(edge)}</span>
+      </div>
+      <div className="wp-fc-track">
+        <div className={`wp-fc-fill wp-fc-fill--${cls}`} style={{ width: `${((Math.abs(edge) / maxAbs) * 100).toFixed(0)}%` }} />
+      </div>
+      <div className="wp-fc-val">
+        {settled ? <><b>{mine}</b> נק׳</> : <>כ-<b>{mine}</b> נק׳ בממוצע</>}
+        {' '}<span className="wp-fc-field">(שדה {field})</span>{extra}
+      </div>
+    </li>
+  )
+}
+
+// גזרת התחזית — the breakdown that unpacks the win-% and expected place into concrete
+// points, one slice at a time: each knockout round, then the golden boot. For each it
+// shows the bettor's projected (or banked, once decided) points vs the field, the signed
+// gap as a diverging bar, and a phase tag so a finished round reads as a settled summary
+// and a coming one as a live forecast. The golden-boot slice adds its win/share odds and
+// a note that its +10 is an absolute race outcome, not a duel with the other bettors.
+function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenBoot: GoldenBootForecast | null }) {
+  if (!rows.length) return null
+  const maxAbs = Math.max(...rows.map(s => Math.abs(s.edge)), goldenBoot ? Math.abs(goldenBoot.edge) : 0, 1)
+  const total = stageForecastTotalEdge(rows)
+  const totalCls = total > 0 ? 'pos' : total < 0 ? 'neg' : 'mid'
+  return (
+    <div className="wp-fc" dir="rtl">
+      <div className="wp-fc-head">
+        <span className="wp-fc-title">גזרת התחזית — נקודות לפי גזרה</span>
+        <span className="wp-fc-sub">כמה שוות הבחירות שלך בכל גזרה מול ממוצע המהמרים. «סוכם» = כבר נסגר, «תחזית» = צפי שיתעדכן.</span>
+        <span className="wp-fc-sub">בגזרה שטרם הוכרעה המספר הוא <b>ממוצע על פני אלפי סימולציות</b> (משוקלל לפי הסיכוי), לא סכום מובטח — למשל «כ-6 נק׳ בגמר» = ברוב הסימולציות 0, ובאלו שהאלופה שלך זוכה קופצים ל-25+, והממוצע יוצא ~6.</span>
+      </div>
+      <ul className="wp-fc-list">
+        {rows.map(s => (
+          <ForecastEdgeRow key={s.key} label={s.label} phase={s.phase} edge={s.edge} mine={s.mine} field={s.field} maxAbs={maxAbs} />
+        ))}
+      </ul>
+      <div className={`wp-fc-total wp-fc-total--${totalCls}`}>
+        יתרון נוקאאוט מצטבר מול השדה: <b>{total >= 0 ? '+' : '−'}{Math.abs(total)} נק׳</b>
+      </div>
+      {goldenBoot && (
+        <div className="wp-fc-gb">
+          <ul className="wp-fc-list wp-fc-list--single">
+            <ForecastEdgeRow
+              label={<>נעל זהב · {goldenBoot.scorerHe}</>}
+              phase={goldenBoot.phase}
+              edge={goldenBoot.edge}
+              mine={goldenBoot.mine}
+              field={goldenBoot.field}
+              maxAbs={maxAbs}
+              extra={<> · {goldenBoot.goals} שערים עד כה · סיכוי לנעל: <b>{goldenBoot.bootPct}%</b>{!goldenBoot.alive && <> · הקבוצה הודחה</>}</>}
+            />
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // The shared body of a bettor's personal read: the standing paragraph plus the
 // labelled storyline lines. Rendered identically at the top of the page and inside
 // any row's expand-on-tap detail, so the two never drift apart.
-function HeadlineBody({ h }: { h: BettorHeadline }) {
+function HeadlineBody({ h, knockoutsStarted, forecast }: { h: BettorHeadline; knockoutsStarted: boolean; forecast: ForecastData }) {
   return (
     <>
       <p className="wp-me-standing">{emphasize(h.standing)}</p>
       <ul className="wp-me-lines">
+        {h.nextStep && <li className="wp-me-line--next"><span className="wp-me-label">מה צריך לקרות</span><span>{emphasize(h.nextStep)}</span></li>}
         {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{emphasize(h.route.ladder)}</span></li>}
         {h.bigBets && <li><span className="wp-me-label">עוד קלפים גדולים</span><span>{emphasize(h.bigBets)}</span></li>}
         {h.advancers && <li><span className="wp-me-label">עולות</span><span>{emphasize(h.advancers)}</span></li>}
         {h.crossings && <li><span className="wp-me-label">הצלבות R32</span><span>{emphasize(h.crossings)}</span></li>}
         {h.potential && <li><span className="wp-me-label">פוטנציאל מול השדה</span><span>{emphasize(h.potential)}</span></li>}
         {h.fragility && <li><span className="wp-me-label">תלות בתוצאות</span><span>{emphasize(h.fragility)}</span></li>}
-        {h.goldenBoot && <li><span className="wp-me-label">נעל זהב</span><span>{emphasize(h.goldenBoot)}</span></li>}
-        {h.eliminated && <li><span className="wp-me-label">הודחו</span><span className="wp-elim">{h.eliminated}</span></li>}
+        {h.eliminated && <li><span className="wp-me-label">{knockoutsStarted ? 'נפלו בנוקאאוט' : 'הודחו'}</span><span className="wp-elim">{h.eliminated}</span></li>}
       </ul>
+      <StageForecast rows={forecast.stages} goldenBoot={forecast.goldenBoot} />
     </>
   )
 }
@@ -98,17 +196,18 @@ function HeadlineBody({ h }: { h: BettorHeadline }) {
 // Tap-to-open personal read for one bettor — the very same synthesis shown in the
 // featured card up top, just for the clicked row (named, third person; or "אתה"
 // when it's the viewer's own row).
-function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, fragility }: {
+function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, forecast }: {
   row: Row; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number; isMe: boolean
   crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
+  knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
 }) {
   const firstName = row.label.split(' ')[0]
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
-  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, fragility)
+  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, fragility, knockoutsStarted, nextStep)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
-      <HeadlineBody h={h} />
+      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} />
     </div>
   )
 }
@@ -116,16 +215,17 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
 // The featured personal read for the identified bettor, pinned to the top of the
 // page so they don't have to find and expand their own row — identical prose to the
 // row detail. Built entirely from this bettor's own picks (no generic filler).
-function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, fragility }: {
+function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, fragility, knockoutsStarted, nextStep, forecast }: {
   name: string; row: Row; advancement: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number
   crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null; fragility: FragilityDigest | null
+  knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
 }) {
   const firstName = name.split(' ')[0]
-  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility)
+  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, fragility, knockoutsStarted, nextStep)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
-      <HeadlineBody h={h} />
+      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} />
     </section>
   )
 }
@@ -175,6 +275,48 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
   // The R32 bracket as it stands at the viewed point — the reality each bettor's
   // cross-bracket pairings are judged against.
   const actualR32 = trimmed.knockoutStages.r32
+  // Once any R32 match has a real score the group stage is settled history — the
+  // headline then compresses the group lines and looks forward instead.
+  const knockoutsStarted = actualR32.some(m => m.scores && m.scores.home !== null)
+  // The whole round of 32 is played — its crossings read as a settled summary, not a
+  // projection. (Requires the bracket to be fully drawn and every slot scored.)
+  const r32Done = actualR32.length > 0 && actualR32.every(m => m.scores && m.scores.home !== null)
+
+  // Phase of each knockout round at the viewed point, so the per-stage forecast can mark
+  // finished rounds as settled and coming ones as a live projection.
+  const phaseOfRound = (matches?: { scores?: { home: number | null } }[]): StagePhase => {
+    const list = matches ?? []
+    if (!list.length) return 'upcoming'
+    const played = list.filter(m => m.scores && m.scores.home !== null).length
+    if (played === 0) return 'upcoming'
+    return played === list.length ? 'done' : 'live'
+  }
+  const ko = trimmed.knockoutStages
+  const stagePhases: Record<string, StagePhase> = {
+    r32: phaseOfRound(ko.r32), r16: phaseOfRound(ko.r16), qf: phaseOfRound(ko.qf),
+    sf: phaseOfRound(ko.sf), third: phaseOfRound(ko.thirdPlace), final: phaseOfRound(ko.final),
+  }
+  // The golden boot resolves with the final whistle, so it borrows the final's phase.
+  const goldenBootForecastFor = (row: Row): GoldenBootForecast | null => {
+    if (!row.scorer || row.scorer === '—') return null
+    const gb = row.stages.find(s => s.key === 'gb')
+    if (!gb) return null
+    const team = scorerTeam.get(row.scorer)
+    return {
+      scorerHe: row.scorer,
+      goals: playerGoals[row.scorer] ?? 0,
+      bootPct: Math.round(row.scorerBootPct),
+      alive: team ? !eliminationsEff.has(team) : true,
+      mine: Math.round(gb.val),
+      field: Math.round(gb.field),
+      edge: Math.round(gb.edge),
+      phase: stagePhases.final,
+    }
+  }
+  const stageForecastFor = (row: Row): ForecastData => ({
+    stages: buildStageForecast(row, stagePhases),
+    goldenBoot: goldenBootForecastFor(row),
+  })
   const usersByLabel = useMemo(() => new Map(users.map(u => [u.label, u])), [users])
   const scorerTeam = useMemo(() => new Map(SCORERS.map(s => [s.name, s.team])), [])
 
@@ -197,6 +339,7 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
       topLive: top
         ? { a: TEAMS[top.c.teams[0].team]?.he ?? top.c.teams[0].team, b: TEAMS[top.c.teams[1].team]?.he ?? top.c.teams[1].team, pct: Math.round(top.p * 100) }
         : undefined,
+      done: r32Done,
     }
   }
 
@@ -236,6 +379,27 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
     }
     if (!rare.length && !consensus.length) return null
     return { rare: rare.slice(0, 3), consensus: consensus.slice(0, 2) }
+  }
+
+  // The forward-looking "what needs to happen" digest: the bettor's live deep picks
+  // (QF+) that few others backed this deep — where their fate diverges from the field —
+  // each with the model's chance to reach the backed depth. Rarest (highest-leverage)
+  // first, capped to three so the line stays punchy.
+  const nextStepDigestFor = (row: Row): NextStepDigest | null => {
+    const total = rows.length
+    if (!total) return null
+    const adv = advancementSummaryForLabel(row.label, reachByTeam, groupFirstByTeam, eliminationsEff)
+    const picks: NextStepPick[] = []
+    for (const p of (adv?.picks ?? [])) {
+      if (p.stage === 'out' || p.predictedRank < 4) continue
+      const backers = deepBackers.get(p.team) ?? 1
+      if (backers / total > 0.33) continue // consensus pick: low leverage vs the field
+      const pct = Math.round(reachAtRank(stageReachByTeam[p.team], p.predictedRank) * 100)
+      if (pct <= 0) continue
+      picks.push({ teamHe: p.teamHe, predictedRank: p.predictedRank, pct, others: Math.max(0, backers - 1) })
+    }
+    picks.sort((a, b) => a.others - b.others || b.predictedRank - a.predictedRank)
+    return picks.length ? { picks: picks.slice(0, 3) } : null
   }
 
   // The picked scorer's live status for one bettor's row.
@@ -310,6 +474,9 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
             crossings={crossingsDigestFor(me!)}
             goldenBoot={goldenBootDigestFor(meRow)}
             fragility={fragilityDigestFor(meRow)}
+            knockoutsStarted={knockoutsStarted}
+            nextStep={nextStepDigestFor(meRow)}
+            forecast={stageForecastFor(meRow)}
           />
         ) : null
       })()}
@@ -368,6 +535,9 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
                           crossings={crossingsDigestFor(r.label)}
                           goldenBoot={goldenBootDigestFor(r)}
                           fragility={fragilityDigestFor(r)}
+                          knockoutsStarted={knockoutsStarted}
+                          nextStep={nextStepDigestFor(r)}
+                          forecast={stageForecastFor(r)}
                         />
                       </td>
                     </tr>
@@ -381,10 +551,9 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
 
       <p className="lb-prob-note">
         <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «מקום צפוי» = הדירוג הממוצע בסיום,
-        וחץ מראה אם צפויים לעלות או לרדת. <b>לחצו על שם</b> לסיכום אישי מלא — מצב ומגמה, מסלול הקבוצה
-        שנבחרה הכי עמוק, הקלפים הגדולים, העולות וההצלבות מול ממוצע המהמרים, הפוטנציאל הכולל שמסביר
-        את אחוז הזכייה, אילו בחירות עומק ייחודיות לך מול קונצנזוס (מה באמת מזיז את הסיכוי),
-        מצב נעל הזהב, וקבוצות שהודחו.
+        וחץ מראה אם צפויים לעלות או לרדת. <b>לחצו על שם</b> לסיכום אישי — ובראשו «מה צריך לקרות»: הבחירות
+        שעוד צריכות להצליח כדי לטפס מול השדה, ולמטה «גזרת התחזית» מפרקת את הסיכוי לנקודות בכל שלב נוקאאוט ובנעל הזהב.
+        {knockoutsStarted && <> אנחנו כבר בנוקאאוט — עם פחות משחקים שנותרו נסגרים תרחישים, אז המספרים כאן מדויקים יותר מאי־פעם.</>}
         {!isLatest && <> בחרתם נקודת זמן קודמת — אפשר לחזור ל«המשחק האחרון» בבורר למעלה.</>}
       </p>
       </>

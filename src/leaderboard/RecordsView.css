@@ -368,6 +368,61 @@
   line-height: 1.5;
 }
 
+/* ── Per-knockout-stage records ─────────────────────────────── */
+.rec-stage {
+  margin-top: 1.6rem;
+  padding-top: 1.3rem;
+  border-top: 1px solid var(--border);
+}
+
+.rec-stage-head {
+  margin-bottom: 0.85rem;
+}
+
+.rec-stage-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.rec-stage-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.rec-stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.rec-stage-tab {
+  padding: 0.35rem 0.8rem;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.rec-stage-tab:hover {
+  border-color: var(--gold);
+}
+
+.rec-stage-tab--active {
+  background: var(--navy);
+  color: var(--cream);
+  border-color: var(--navy);
+}
+
 @media (max-width: 639px) {
   .rec-grid { grid-template-columns: 1fr; }
 }

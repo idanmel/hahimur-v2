@@ -6,7 +6,7 @@ import { buildKnockoutBracket } from '../formView/knockout/knockout'
 import { realPlayedState } from './winprob/realPlayed'
 import { useWinProbabilities } from './winprob/useWinProbabilities'
 import type { WinProbStatus } from './winprob/useWinProbabilities'
-import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings, computeCrossingsSummary, rankedCrossingsSummary, summaryTotals } from './crossings'
+import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings, computeCrossingsSummary, rankedCrossingsSummary, summaryTotals, defaultCrossingsRound } from './crossings'
 import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing, CrossingSummaryStanding, CrossingSummaryStage, CrossingBuckets } from './crossings'
 import { OUTCOME_LABEL, ROUND_POINTS } from './points'
 import { buildLiveStages } from '../pages/forms/survivorsStats'
@@ -471,13 +471,16 @@ function StandingDetail({ detail, status, probByMatch }: { detail: StandingDetai
 // crossings correctly. Ranked by expected hits (locked = certain, open ones
 // weighted by their simulated chance), with a bar, medals and the viewer pinned.
 // Tapping a row opens that bettor's exact pairs and per-pair chances.
-function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun, probByMatch }: {
+function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun, probByMatch, settled = false }: {
   standings: CrossingStanding[]
   detailByLabel: Map<string, StandingDetailData>
   me?: string
   status: WinProbStatus
   noun: string
   probByMatch: Record<number, Record<string, number>>
+  // The round is fully played: every pairing is decided, so the board reads as a
+  // final result ("who hit the most") rather than a projection ("who will").
+  settled?: boolean
 }) {
   const [openLabel, setOpenLabel] = useState<string | null>(null)
   if (standings.length === 0) return null
@@ -487,10 +490,14 @@ function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun, prob
   return (
     <section className="cx-board" dir="rtl" aria-label={`דירוג ${noun}`}>
       <div className="cx-board-head">
-        <h3 className="cx-board-title">🎯 מי יפגע בהכי הרבה {noun}?</h3>
+        <h3 className="cx-board-title">
+          🎯 {settled ? `מי פגע בהכי הרבה ${noun}?` : `מי יפגע בהכי הרבה ${noun}?`}
+          {settled && <span className="cx-board-settled">השלב הסתיים</span>}
+        </h3>
         <p className="cx-board-sub">
-          דירוג לפי מספר ה{noun} הצפוי — נעולות נספרות במלואן, והפתוחות משוקללות לפי הסיכוי שייצאו.
-          לחצו על שם כדי לראות אילו זוגות, וכמה סיכוי לכל אחד.
+          {settled
+            ? `הדירוג הסופי לפי מספר ה${noun} שנפגעו בשלב הזה. לחצו על שם כדי לראות אילו זוגות.`
+            : `דירוג לפי מספר ה${noun} הצפוי — נעולות נספרות במלואן, והפתוחות משוקללות לפי הסיכוי שייצאו. לחצו על שם כדי לראות אילו זוגות, וכמה סיכוי לכל אחד.`}
         </p>
       </div>
       <ol className="cx-board-list">
@@ -518,8 +525,8 @@ function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun, prob
                   <span className="cx-board-breakdown">{s.locked} נעולות · {s.potential} פתוחות · {s.gone} אזלו</span>
                 </span>
                 <span className="cx-board-exp">
-                  {ready ? <b>{s.expected.toFixed(1)}</b> : <b>{s.locked}</b>}
-                  <span className="cx-board-exp-label">{ready ? 'צפויות' : 'נעולות'}</span>
+                  {settled || !ready ? <b>{s.locked}</b> : <b>{s.expected.toFixed(1)}</b>}
+                  <span className="cx-board-exp-label">{settled ? 'נפגעו' : ready ? 'צפויות' : 'נעולות'}</span>
                 </span>
               </button>
               {isOpen && detail && <StandingDetail detail={detail} status={status} probByMatch={probByMatch} />}
@@ -527,7 +534,7 @@ function CrossingsLeaderboard({ standings, detailByLabel, me, status, noun, prob
           )
         })}
       </ol>
-      {!ready && status !== 'unsupported' && (
+      {!settled && !ready && status !== 'unsupported' && (
         <p className="cx-board-loading">מריצים סימולציות כדי לשקלל את ה{noun} הפתוחות…</p>
       )}
     </section>
@@ -1018,6 +1025,13 @@ export function CrossingsList({ user, users, round = ROUNDS[0], activeKey, onRou
   // locked + live + gone accounts for every match in the round.
   const hasCrossings = locked.length + potential.length + missed.length > 0
 
+  // The round is fully played when every one of its slots has a real scoreline —
+  // then the standing reads as a final result, not a projection.
+  const roundTotal = round.hi - round.lo + 1
+  const playedInRound = Object.keys(actualScoreByNum)
+    .filter(n => Number(n) >= round.lo && Number(n) <= round.hi).length
+  const roundSettled = playedInRound === roundTotal
+
   return (
     <div className="cx-view" dir="rtl">
       {tabs}
@@ -1137,7 +1151,7 @@ export function CrossingsList({ user, users, round = ROUNDS[0], activeKey, onRou
         </div>
       )}
 
-      <CrossingsLeaderboard standings={standings} detailByLabel={detailByLabel} me={user?.label} status={probStatus} noun={round.noun} probByMatch={probByMatch} />
+      <CrossingsLeaderboard standings={standings} detailByLabel={detailByLabel} me={user?.label} status={probStatus} noun={round.noun} probByMatch={probByMatch} settled={roundSettled} />
     </div>
   )
 }
@@ -1149,7 +1163,10 @@ export function CrossingsList({ user, users, round = ROUNDS[0], activeKey, onRou
 // continue from the round of 32 all the way to the final. Each player sees their
 // own — driven by the name picker.
 export default function CrossingsView({ user, users, results }: { user?: User; users: User[]; results: TournamentResults }) {
-  const [roundKey, setRoundKey] = useState('r32')
+  // Open on the earliest stage still in play (round of 32 while it's live, the
+  // round of 16 once it's done, and so on) so the view tracks the tournament's
+  // progress rather than parking on the settled round of 32.
+  const [roundKey, setRoundKey] = useState<string>(() => defaultCrossingsRound(results.knockoutStages))
   const round = ROUNDS.find(r => r.key === roundKey) ?? ROUNDS[0]
   const played = useMemo(() => realPlayedState(results), [results])
   const bracket = useMemo(() => buildKnockoutBracket(played), [played])

@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import type { Row, AdvancementSummary, PickStatus, StageReach, StageStat } from '../../../sim-core'
-import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, potentialClause, fragilityClause } from './summaryText'
+import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, potentialClause, fragilityClause, nextStepClause, buildStageForecast, stageForecastTotalEdge } from './summaryText'
 
 function pick(over: Partial<PickStatus> & { team: string; predictedRank: number; stage: PickStatus['stage'] }): PickStatus {
   return { teamHe: over.team, reach: 0, groupFirst: 0, topsGroup: false, ...over }
@@ -14,7 +14,7 @@ function stage(key: string, label: string, edge: number, val = 0, field = 0): St
   return { key: key as StageStat['key'], label, val, field, edge }
 }
 function row(over: Partial<Row>): Row {
-  return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', reason: '', stages: [], ...over }
+  return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', scorerBootPct: 0, reason: '', stages: [], ...over }
 }
 
 describe('deepPicksClause', () => {
@@ -79,6 +79,26 @@ describe('advancersClause', () => {
   })
 })
 
+describe('nextStepClause', () => {
+  test('names each rare live deep pick with its depth, chance, and how lonely the call is', () => {
+    expect(nextStepClause({ picks: [
+      { teamHe: 'ספרד', predictedRank: 5, pct: 43, others: 0 },
+      { teamHe: 'צרפת', predictedRank: 6, pct: 21, others: 2 },
+    ] })).toBe('ספרד לחצי הגמר 43% (רק אתה עליה) · צרפת לגמר 21% (עוד 2 עליה)')
+  })
+  test('returns null when there is nothing differentiating to chase', () => {
+    expect(nextStepClause({ picks: [] })).toBeNull()
+  })
+})
+
+describe('advancersClause — compact once knockouts start', () => {
+  test('drops the field-average tail and keeps only the banked-points note', () => {
+    const adv = summary([pick({ team: 'ספרד', predictedRank: 1, stage: 'secured', reach: 1 })])
+    const r = row({ stages: [stage('group', 'שלב הבתים', 18, 70, 52)] })
+    expect(advancersClause(adv, r, true)).toBe('1 מתוך 1 שבחרת עלו מהבתים — 4 נק׳ עלייה כבר בכיס')
+  })
+})
+
 describe('crossingsClause', () => {
   test('joins locked, still-possible (with the likeliest named), and broken', () => {
     expect(crossingsClause({ locked: 3, liveCount: 2, broken: 1, topLive: { a: 'ספרד', b: 'גרמניה', pct: 41 } }))
@@ -92,6 +112,46 @@ describe('crossingsClause', () => {
     r.stages[0] = { ...r.stages[0], val: 24, field: 33 }
     expect(crossingsClause({ locked: 2, liveCount: 0, broken: 1 }, r))
       .toBe('2 כבר נעולות — המפגש מובטח · 1 כבר נשברו · בשלב ה-32 24 נק׳ צפויות מול 33 בממוצע (−9)')
+  })
+  test('once the round is done it reads as a settled summary — no future tense', () => {
+    const r = row({ stages: [stage('r32', 'שלב 32', -9)] })
+    r.stages[0] = { ...r.stages[0], val: 24, field: 33 }
+    expect(crossingsClause({ locked: 2, liveCount: 0, broken: 1, done: true }, r))
+      .toBe('2 מתוך 3 מפגשים שחזית התקיימו · בשלב ה-32 24 נק׳ מול 33 בממוצע (−9)')
+  })
+})
+
+describe('buildStageForecast', () => {
+  const r = row({ stages: [
+    stage('group', 'שלב הבתים', 22, 80, 58),
+    stage('r32', 'שלב 32', -9, 24, 33),
+    stage('r16', 'שמינית גמר', 4.4, 18.2, 13.8),
+    stage('qf', 'רבע גמר', 6, 12, 6),
+    stage('sf', 'חצי גמר', -2, 5, 7),
+    stage('third', 'מקום שלישי', 3, 5, 2),
+    stage('final', 'גמר', 8, 14, 6),
+    stage('gb', 'נעל זהב', 3, 10, 7),
+  ] })
+
+  test('keeps only the knockout ladder, in bracket order (third place included), rounded', () => {
+    const fc = buildStageForecast(r)
+    expect(fc.map(s => s.key)).toEqual(['r32', 'r16', 'qf', 'sf', 'third', 'final'])
+    // group and golden boot are shown elsewhere, so they're excluded here
+    expect(fc.some(s => s.key === 'group' || s.key === 'gb')).toBe(false)
+    // values are rounded for display
+    expect(fc[1]).toMatchObject({ label: 'שמינית גמר', mine: 18, field: 14, edge: 4 })
+  })
+
+  test('marks each round with the phase it is given, defaulting to upcoming', () => {
+    const fc = buildStageForecast(r, { r32: 'done', r16: 'live' })
+    expect(fc.find(s => s.key === 'r32')!.phase).toBe('done')
+    expect(fc.find(s => s.key === 'r16')!.phase).toBe('live')
+    expect(fc.find(s => s.key === 'qf')!.phase).toBe('upcoming')
+  })
+
+  test('total edge sums the rounded knockout gaps for the takeaway line', () => {
+    // −9 + 4 + 6 + (−2) + 3 + 8 = 10
+    expect(stageForecastTotalEdge(buildStageForecast(r))).toBe(10)
   })
 })
 
@@ -208,5 +268,27 @@ describe('buildBettorHeadline', () => {
     const h = buildBettorHeadline(row({}), adv, reach, 27, ME)
     expect(h.route).toEqual({ teamHe: 'ספרד', ladder: 'שמינית 80% ← רבע 60% ← חצי 43%' })
     expect(h.bigBets).toBeUndefined()
+  })
+
+  test('once knockouts start: compresses advancers, keeps only knockout losses in eliminated, and leads with the forward line', () => {
+    const adv = summary([
+      pick({ team: 'ספרד', predictedRank: 5, stage: 'likely', reach: 1 }),    // deep, alive
+      pick({ team: 'ברזיל', predictedRank: 7, stage: 'out', reach: 1 }),       // reached R32 then fell → a knockout loss
+      pick({ team: 'ארגנטינה', predictedRank: 6, stage: 'out', reach: 0 }),    // deep pick that never left the group → not a KO loss
+      pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 }),      // shallow group bust → dropped
+    ])
+    const r = row({ stages: [stage('group', 'שלב הבתים', 18, 70, 52)] })
+    const nextStep = { picks: [{ teamHe: 'ספרד', predictedRank: 5, pct: 43, others: 0 }] }
+    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, null, true, nextStep)
+    expect(h.nextStep).toBe('ספרד לחצי הגמר 43% (רק אתה עליה)')
+    // advancers has no field-average tail once the group is history
+    expect(h.advancers).toBe('2 מתוך 4 שבחרת עלו מהבתים — 8 נק׳ עלייה כבר בכיס')
+    // only teams that reached the bracket and then lost remain; group flops (deep or not) are gone
+    expect(h.eliminated).toBe('ברזיל')
+  })
+
+  test('a leader the model expects to slip gets a blunt "leading now, but" verdict', () => {
+    const h = buildBettorHeadline(row({ curRank: 1, expRank: 4, avgPts: 402 }), null, {}, 27, ME)
+    expect(h.standing).toContain('מוביל כעת אך המודל צופה נסיגה למקום 4')
   })
 })
