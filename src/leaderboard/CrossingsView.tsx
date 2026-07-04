@@ -7,7 +7,7 @@ import { realPlayedState } from './winprob/realPlayed'
 import { useWinProbabilities } from './winprob/useWinProbabilities'
 import type { WinProbStatus } from './winprob/useWinProbabilities'
 import { computeUserCrossings, crossingProbability, crossingBreakdown, crossingParticipants, computeCrossingsLeaderboard, computeDeterminedCrossings, computeCrossingsSummary } from './crossings'
-import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing, CrossingSummaryStanding } from './crossings'
+import type { Crossing, CrossingStanding, CrossingBreakdown, RoundKey, DeterminedCrossing, CrossingSummaryStanding, CrossingSummaryStage } from './crossings'
 import { OUTCOME_LABEL } from './points'
 import { buildLiveStages } from '../pages/forms/survivorsStats'
 import type { LiveTeamsStanding, LiveStage, LiveStageKey, Collision } from '../pages/forms/survivorsStats'
@@ -732,11 +732,52 @@ function RoundTabs({ activeKey, onRoundChange }: { activeKey: string; onRoundCha
   )
 }
 
+// Short Hebrew name for each knockout stage in the summary detail, taken from the
+// round tabs so the two never drift. (Every SUMMARY_ROUNDS key has a ROUNDS entry.)
+const STAGE_TAB_BY_KEY: Record<string, string> = Object.fromEntries(ROUNDS.map(r => [r.key, r.tab]))
+
+// The three participation buckets, as a compact inline strip. Shared by a summary
+// row (the totals) and each stage line inside its expanded detail.
+function SummaryBuckets({ participated, willParticipate, mayParticipate, labelled = false }: {
+  participated: number
+  willParticipate: number
+  mayParticipate: number
+  labelled?: boolean
+}) {
+  return (
+    <span className="cx-sum-stats">
+      <span className="cx-sum-stat cx-sum-stat--done"><b>{participated}</b>{labelled ? ' כבר שוחקו' : ''}</span>
+      <span className="cx-sum-stat cx-sum-stat--sure"><b>{willParticipate}</b>{labelled ? ' מובטחות' : ''}</span>
+      <span className="cx-sum-stat cx-sum-stat--maybe"><b>{mayParticipate}</b>{labelled ? ' עוד אפשריות' : ''}</span>
+    </span>
+  )
+}
+
+// The per-stage split a summary row expands to: one line per knockout stage the
+// bettor is involved in, in bracket order, each with the same three buckets.
+function SummaryStageDetail({ byStage }: { byStage: CrossingSummaryStage[] }) {
+  if (byStage.length === 0) {
+    return <div className="cx-board-detail cx-board-detail--empty">אין לשחקן הזה הצלבות כרגע.</div>
+  }
+  return (
+    <div className="cx-board-detail cx-sum-detail">
+      {byStage.map(st => (
+        <div key={st.key} className="cx-sum-detail-row">
+          <span className="cx-sum-detail-stage">{STAGE_TAB_BY_KEY[st.key] ?? st.key}</span>
+          <SummaryBuckets participated={st.participated} willParticipate={st.willParticipate} mayParticipate={st.mayParticipate} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // The field-wide involvement board: every bettor's crossings summed across all
 // knockout rounds, split into already-played, still-guaranteed, and still-possible.
 // Answers "how deep is each player's bet riding on the bracket" in one glance —
-// something the per-round tabs can't show. Ranked by guaranteed involvement.
+// something the per-round tabs can't show. Ranked by guaranteed involvement; tap a
+// row to break the same three numbers down by stage.
 function SummaryBoard({ standings, me }: { standings: CrossingSummaryStanding[]; me?: string }) {
+  const [openLabel, setOpenLabel] = useState<string | null>(null)
   if (standings.length === 0) return null
   return (
     <section className="cx-board" dir="rtl" aria-label="סיכום השתתפות בהצלבות">
@@ -744,25 +785,30 @@ function SummaryBoard({ standings, me }: { standings: CrossingSummaryStanding[];
         <h3 className="cx-board-title">📊 השתתפות בהצלבות</h3>
         <p className="cx-board-sub">
           כמה משחקי הצלבה כל שחקן כבר שיחק, בכמה עוד ישחק בוודאות, ובכמה עוד עשוי — לאורך כל שלבי הנוקאאוט.
+          לחצו על שם כדי לפרק לפי שלב.
         </p>
       </div>
       <ol className="cx-board-list">
         {standings.map((s, i) => {
           const isMe = s.label === me
+          const isOpen = openLabel === s.label
           return (
-            <li key={s.label} className="cx-board-item">
-              <div className={`cx-board-row cx-sum-row${isMe ? ' cx-board-row--me' : ''}${i < 3 ? ` cx-board-row--rank-${i + 1}` : ''}`}>
+            <li key={s.label} className={`cx-board-item${isOpen ? ' cx-board-item--open' : ''}`}>
+              <button
+                type="button"
+                className={`cx-board-row cx-sum-row${isMe ? ' cx-board-row--me' : ''}${i < 3 ? ` cx-board-row--rank-${i + 1}` : ''}`}
+                onClick={() => setOpenLabel(isOpen ? null : s.label)}
+                aria-expanded={isOpen}
+              >
                 <span className="cx-board-rank">{i < 3 ? MEDALS[i] : i + 1}</span>
                 <span className="cx-board-name">
                   {s.label}
                   {isMe && <span className="cx-board-mebadge">אתה</span>}
+                  <span className="cx-board-chevron" aria-hidden="true">{isOpen ? '⌃' : '⌄'}</span>
                 </span>
-                <span className="cx-sum-stats">
-                  <span className="cx-sum-stat cx-sum-stat--done"><b>{s.participated}</b> כבר שוחקו</span>
-                  <span className="cx-sum-stat cx-sum-stat--sure"><b>{s.willParticipate}</b> מובטחות</span>
-                  <span className="cx-sum-stat cx-sum-stat--maybe"><b>{s.mayParticipate}</b> עוד אפשריות</span>
-                </span>
-              </div>
+                <SummaryBuckets participated={s.participated} willParticipate={s.willParticipate} mayParticipate={s.mayParticipate} labelled />
+              </button>
+              {isOpen && <SummaryStageDetail byStage={s.byStage} />}
             </li>
           )
         })}

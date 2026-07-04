@@ -42,13 +42,10 @@
 .cx-round-tab--summary { margin-inline-start: 0.35rem; }
 .cx-round-tab--summary::before { content: "📊 "; }
 
-/* --- summary board: three participation buckets per player --- */
+/* --- summary board: three participation buckets per player, tap to split by stage --- */
 .cx-sum-row {
   grid-template-columns: 1.8rem minmax(5.5rem, auto) 1fr;
-  cursor: default;
 }
-.cx-sum-row:hover { background: none; }
-.cx-sum-row.cx-board-row--me:hover { background: rgba(37, 99, 235, 0.1); }
 
 .cx-sum-stats {
   display: flex;
@@ -74,6 +71,22 @@
 .cx-sum-stat--done b { color: #16a34a; }
 .cx-sum-stat--sure b { color: #2563eb; }
 .cx-sum-stat--maybe b { color: #d97706; }
+
+/* per-stage detail revealed on tap */
+.cx-sum-detail { gap: 0.4rem; }
+
+.cx-sum-detail-row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cx-sum-detail-stage {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text, #1a1d27);
+}
 
 /* view switch — your own crossings vs. the shared "who predicted what" board */
 .cx-modes {

@@ -351,16 +351,28 @@ export function computeCrossingsLeaderboard(
 // explicit, stable list rather than whatever order the object happens to expose.)
 const SUMMARY_ROUNDS: (keyof KnockoutStages)[] = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final']
 
+// The same three buckets for a single knockout stage, tagged with its round key —
+// the per-stage breakdown a summary row expands to show. Only stages the bettor has
+// any involvement in are emitted, in bracket order.
+export interface CrossingSummaryStage {
+  key: keyof KnockoutStages
+  participated: number
+  willParticipate: number
+  mayParticipate: number
+}
+
 // One bettor's tournament-wide crossings involvement, summed across every knockout
 // round: how many of their predicted pairings have already been played out
 // (participated), how many are locked in and still to come (willParticipate), and
 // how many are merely still possible (mayParticipate). The "how deep is my bet
-// riding" headline the per-round tabs can't give on their own.
+// riding" headline the per-round tabs can't give on their own. `byStage` carries the
+// same split per stage, for the expand-on-tap detail.
 export interface CrossingSummaryStanding {
   label: string
   participated: number
   willParticipate: number
   mayParticipate: number
+  byStage: CrossingSummaryStage[]
 }
 
 // The field-wide participation board: for every bettor, classify their crossings in
@@ -389,19 +401,26 @@ export function computeCrossingsSummary(
       let participated = 0
       let willParticipate = 0
       let mayParticipate = 0
+      const byStage: CrossingSummaryStage[] = []
       for (const key of SUMMARY_ROUNDS) {
         const actual = matchesByRound.get(key) ?? []
         const userMatches = u.knockoutStages?.[key] ?? []
         const { locked, potential } = computeUserCrossings(userMatches, actual, crossingProbByMatch, actualScoreByNum)
-        participated += locked.filter(c => c.result).length
-        willParticipate += locked.filter(c => !c.result).length
+        const played = locked.filter(c => c.result).length
+        const guaranteed = locked.filter(c => !c.result).length
         // A simulated 0% is effectively ruled out, so it isn't "still possible".
-        mayParticipate += potential.filter(c => {
+        const possible = potential.filter(c => {
           const p = crossingProbability(c, crossingProbByMatch)
           return p === null || p > 0
         }).length
+        participated += played
+        willParticipate += guaranteed
+        mayParticipate += possible
+        if (played + guaranteed + possible > 0) {
+          byStage.push({ key, participated: played, willParticipate: guaranteed, mayParticipate: possible })
+        }
       }
-      return { label: u.label, participated, willParticipate, mayParticipate }
+      return { label: u.label, participated, willParticipate, mayParticipate, byStage }
     })
     .sort((a, b) =>
       (b.participated + b.willParticipate) - (a.participated + a.willParticipate) ||

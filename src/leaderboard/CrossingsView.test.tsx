@@ -459,15 +459,22 @@ test('offers a summary tab that switches to the summary board on click', () => {
   expect(onRoundChange).toHaveBeenCalledWith('summary')
 })
 
+const summaryStub = [
+  {
+    label: 'אני שחקן', participated: 2, willParticipate: 3, mayParticipate: 4,
+    byStage: [
+      { key: 'r32' as const, participated: 2, willParticipate: 1, mayParticipate: 0 },
+      { key: 'sf' as const, participated: 0, willParticipate: 2, mayParticipate: 4 },
+    ],
+  },
+]
+
 test('the summary board shows each player played / guaranteed / possible crossings', () => {
   const user = userWith([km(73, 'Mexico', 'Canada')])
-  const summaryStandings = [
-    { label: 'אני שחקן', participated: 2, willParticipate: 3, mayParticipate: 4 },
-  ]
   render(
     <CrossingsList
       user={user} users={[user]} actualMatches={[]} probByMatch={{}} probStatus="ready"
-      onRoundChange={vi.fn()} activeKey="summary" summaryStandings={summaryStandings}
+      onRoundChange={vi.fn()} activeKey="summary" summaryStandings={summaryStub}
     />,
   )
   const board = within(screen.getByRole('region', { name: /סיכום/ }))
@@ -479,6 +486,24 @@ test('the summary board shows each player played / guaranteed / possible crossin
   expect(board.getByText('4')).toBeInTheDocument()
   // the per-round content is not shown in summary mode
   expect(screen.queryByText(/מי יפגע בהכי הרבה/)).not.toBeInTheDocument()
+})
+
+test('clicking a summary row reveals the per-stage breakdown', () => {
+  const user = userWith([km(73, 'Mexico', 'Canada')])
+  render(
+    <CrossingsList
+      user={user} users={[user]} actualMatches={[]} probByMatch={{}} probStatus="ready"
+      onRoundChange={vi.fn()} activeKey="summary" summaryStandings={summaryStub}
+    />,
+  )
+  // scope to the board — the stage names double as round-tab labels outside it
+  const board = within(screen.getByRole('region', { name: /סיכום/ }))
+  // the stage split is hidden until the row is tapped
+  expect(board.queryByText('שלב 32')).not.toBeInTheDocument()
+  fireEvent.click(board.getByRole('button', { name: /אני שחקן/ }))
+  // both stages the player is involved in show up, named
+  expect(board.getByText('שלב 32')).toBeInTheDocument()
+  expect(board.getByText('חצי גמר')).toBeInTheDocument()
 })
 
 test('standing row accounts for every match: locked + open + gone', () => {

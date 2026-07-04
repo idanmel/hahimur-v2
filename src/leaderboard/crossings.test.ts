@@ -396,6 +396,11 @@ describe('computeCrossingsSummary', () => {
 
     const [row] = computeCrossingsSummary([bettor], bracket, {}, actualScoreByNum)
     expect(row).toMatchObject({ label: 'דני', participated: 1, willParticipate: 1, mayParticipate: 1 })
+    // and the same split is available per stage, only for stages with involvement
+    expect(row.byStage).toEqual([
+      { key: 'r32', participated: 1, willParticipate: 1, mayParticipate: 0 },
+      { key: 'r16', participated: 0, willParticipate: 0, mayParticipate: 1 },
+    ])
   })
 
   it('ranks bettors by their guaranteed involvement (played + locked) first', () => {
