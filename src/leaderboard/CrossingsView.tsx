@@ -737,27 +737,74 @@ function RoundTabs({ activeKey, onRoundChange }: { activeKey: string; onRoundCha
 // round tabs so the two never drift. (Every SUMMARY_ROUNDS key has a ROUNDS entry.)
 const STAGE_TAB_BY_KEY: Record<string, string> = Object.fromEntries(ROUNDS.map(r => [r.key, r.tab]))
 
-// The three participation buckets, as a compact inline strip. Shared by a summary
-// row (the totals) and each stage line inside its expanded detail. `labelled` names
-// each bucket (for the row headline); the stage lines omit the words to stay tight.
+// The three participation buckets, in bracket order of certainty: a crossing is
+// first played, else guaranteed to be played, else merely possible. Each carries a
+// fixed icon + color so it reads without decoding the palette, and a machine field
+// so the aligned columns below can pull them by name.
+const BUCKETS = [
+  { field: 'played',     icon: '⚽', label: 'כבר שוחקו',   short: 'שוחקו',   cls: 'done' },
+  { field: 'guaranteed', icon: '🔒', label: 'מובטחות',     short: 'מובטחות', cls: 'sure' },
+  { field: 'possible',   icon: '⏳', label: 'עוד אפשריות', short: 'אפשריות', cls: 'maybe' },
+] as const
+
+// The color legend, shown once atop the board so the icons/colors used in every row
+// and stage line are decoded in one place.
+function SummaryLegend() {
+  return (
+    <div className="cx-sum-legend" aria-hidden="true">
+      {BUCKETS.map(b => (
+        <span key={b.field} className={`cx-sum-legend-item cx-sum-stat--${b.cls}`}>
+          <span className="cx-sum-dot" />
+          {b.icon} {b.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// The three participation buckets as an aligned, icon-tagged trio — one fixed cell
+// per bucket so counts line up column-for-column between the headline totals and
+// every stage line beneath. `labelled` prints the bucket word (the row headline,
+// which also feeds the legend text); the stage lines drop the word since the shared
+// header row above them names the columns. A zero is dimmed so real counts stand out.
 function SummaryBuckets({ buckets, labelled = false }: { buckets: CrossingBuckets; labelled?: boolean }) {
   return (
-    <span className="cx-sum-stats">
-      <span className="cx-sum-stat cx-sum-stat--done"><b>{buckets.played}</b>{labelled ? ' כבר שוחקו' : ''}</span>
-      <span className="cx-sum-stat cx-sum-stat--sure"><b>{buckets.guaranteed}</b>{labelled ? ' מובטחות' : ''}</span>
-      <span className="cx-sum-stat cx-sum-stat--maybe"><b>{buckets.possible}</b>{labelled ? ' עוד אפשריות' : ''}</span>
+    <span className={`cx-sum-stats${labelled ? ' cx-sum-stats--labelled' : ''}`}>
+      {BUCKETS.map(b => {
+        const n = buckets[b.field]
+        return (
+          <span key={b.field} className={`cx-sum-stat cx-sum-stat--${b.cls}${n === 0 ? ' cx-sum-stat--zero' : ''}`}>
+            <span className="cx-sum-ico" aria-hidden="true">{b.icon}</span>
+            <b>{n}</b>
+            {labelled && <span className="cx-sum-word"> {b.label}</span>}
+          </span>
+        )
+      })}
     </span>
   )
 }
 
-// The per-stage split a summary row expands to: one line per knockout stage the
-// bettor is involved in, in bracket order, each with the same three buckets.
+// The per-stage split a summary row expands to: a labeled column header, then one
+// aligned line per knockout stage the bettor is involved in, in bracket order. The
+// header + the shared column grid mean every number sits directly under the bucket
+// it belongs to, so no count is ever ambiguous.
 function SummaryStageDetail({ byStage }: { byStage: CrossingSummaryStage[] }) {
   if (byStage.length === 0) {
     return <div className="cx-board-detail cx-board-detail--empty">אין לשחקן הזה הצלבות כרגע.</div>
   }
   return (
     <div className="cx-board-detail cx-sum-detail">
+      <div className="cx-sum-detail-row cx-sum-detail-head">
+        <span className="cx-sum-detail-stage">שלב</span>
+        <span className="cx-sum-stats">
+          {BUCKETS.map(b => (
+            <span key={b.field} className={`cx-sum-colhead cx-sum-stat--${b.cls}`}>
+              <span className="cx-sum-ico" aria-hidden="true">{b.icon}</span>
+              {b.short}
+            </span>
+          ))}
+        </span>
+      </div>
       {byStage.map(st => (
         <div key={st.key} className="cx-sum-detail-row">
           <span className="cx-sum-detail-stage">{STAGE_TAB_BY_KEY[st.key] ?? st.key}</span>
@@ -784,6 +831,7 @@ function SummaryBoard({ standings, me }: { standings: CrossingSummaryStanding[];
           כמה משחקי הצלבה כל שחקן כבר שיחק, בכמה עוד ישחק בוודאות, ובכמה עוד עשוי — לאורך כל שלבי הנוקאאוט.
           לחצו על שם כדי לפרק לפי שלב.
         </p>
+        <SummaryLegend />
       </div>
       <ol className="cx-board-list">
         {standings.map((s, i) => {

@@ -479,9 +479,10 @@ test('the summary board shows each player played / guaranteed / possible crossin
     />,
   )
   const board = within(screen.getByRole('region', { name: /סיכום/ }))
-  expect(board.getByText(/כבר שוחקו/)).toBeInTheDocument()
-  expect(board.getByText(/מובטחות/)).toBeInTheDocument()
-  expect(board.getByText(/עוד אפשריות/)).toBeInTheDocument()
+  // the three bucket labels appear (headline word + the legend that decodes it)
+  expect(board.getAllByText(/כבר שוחקו/).length).toBeGreaterThan(0)
+  expect(board.getAllByText(/מובטחות/).length).toBeGreaterThan(0)
+  expect(board.getAllByText(/עוד אפשריות/).length).toBeGreaterThan(0)
   expect(board.getByText('2')).toBeInTheDocument()
   expect(board.getByText('3')).toBeInTheDocument()
   expect(board.getByText('4')).toBeInTheDocument()

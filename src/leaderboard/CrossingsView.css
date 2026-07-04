@@ -47,39 +47,126 @@
   grid-template-columns: 1.8rem minmax(5.5rem, auto) 1fr;
 }
 
-.cx-sum-stats {
+/* one-time legend that decodes the icon + color of the three buckets */
+.cx-sum-legend {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.3rem 0.65rem;
+  gap: 0.35rem 0.9rem;
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed color-mix(in srgb, var(--text-muted, #6b7385) 30%, transparent);
+}
+
+.cx-sum-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7385);
+}
+
+.cx-sum-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* the three buckets: fixed, equal columns so counts align down the board and under
+   the stage-detail header — the alignment is what makes each number unambiguous */
+.cx-sum-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(2.6rem, 1fr));
+  gap: 0.35rem;
+  align-items: center;
+}
+
+/* the headline totals sit in the row's flexible third column; give the labeled
+   version room to breathe and keep it right-aligned within that column */
+.cx-sum-stats--labelled {
+  grid-template-columns: repeat(3, minmax(3.5rem, max-content));
+  justify-content: end;
 }
 
 .cx-sum-stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.25rem;
+  gap: 0.28rem;
   font-size: 0.75rem;
   color: var(--text-muted, #6b7385);
   white-space: nowrap;
 }
 
+.cx-sum-ico {
+  font-size: 0.7rem;
+  align-self: center;
+  line-height: 1;
+}
+
 .cx-sum-stat b {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* a zero is real but rarely the point — fade it so the counts that matter jump out */
+.cx-sum-stat--zero {
+  opacity: 0.32;
+}
+.cx-sum-stat--zero b { color: var(--text-muted, #6b7385); }
 
 .cx-sum-stat--done b { color: #16a34a; }
 .cx-sum-stat--sure b { color: #2563eb; }
 .cx-sum-stat--maybe b { color: #d97706; }
 
+/* the legend dot and the stage-detail column headers take the full bucket color
+   (two-class specificity beats the muted default on the legend item) */
+.cx-sum-legend-item.cx-sum-stat--done,
+.cx-sum-colhead.cx-sum-stat--done { color: #16a34a; }
+.cx-sum-legend-item.cx-sum-stat--sure,
+.cx-sum-colhead.cx-sum-stat--sure { color: #2563eb; }
+.cx-sum-legend-item.cx-sum-stat--maybe,
+.cx-sum-colhead.cx-sum-stat--maybe { color: #d97706; }
+
 /* per-stage detail revealed on tap */
-.cx-sum-detail { gap: 0.4rem; }
+.cx-sum-detail { gap: 0.3rem; }
 
 .cx-sum-detail-row {
   display: grid;
-  grid-template-columns: minmax(4.5rem, auto) 1fr;
+  grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+}
+
+/* the column header naming the three buckets, so every stage line below reads
+   under a label — dividing it from the data with a hairline */
+.cx-sum-detail-head {
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-muted, #6b7385) 18%, transparent);
+}
+
+.cx-sum-detail-head .cx-sum-detail-stage {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted, #6b7385);
+}
+
+.cx-sum-colhead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.cx-sum-colhead .cx-sum-ico { font-size: 0.68rem; }
+
+/* stage lines: center each count under its column header */
+.cx-sum-detail-row:not(.cx-sum-detail-head) .cx-sum-stat {
+  justify-content: center;
 }
 
 .cx-sum-detail-stage {
@@ -1024,5 +1111,21 @@
     flex-direction: row;
     align-items: baseline;
     gap: 0.3rem;
+  }
+
+  /* the summary row carries three labeled buckets instead of a bar — on a phone the
+     name + buckets can't share one line without clipping the name, so keep rank +
+     name on top and drop the buckets to their own full-width line, spread across it */
+  .cx-sum-row {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    grid-template-areas:
+      "rank name"
+      "stats stats";
+    gap: 0.35rem 0.5rem;
+  }
+  .cx-sum-row .cx-sum-stats {
+    grid-area: stats;
+    grid-template-columns: repeat(3, max-content);
+    justify-content: space-between;
   }
 }
