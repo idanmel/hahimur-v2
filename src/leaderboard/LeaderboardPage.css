@@ -1890,6 +1890,9 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--navy);
+  /* The builder joins the standing's ideas with newlines; render them as stacked lines so
+     the block reads cleanly on phones instead of one long run-on paragraph. */
+  white-space: pre-line;
 }
 
 .wp-me-lines {
@@ -2249,17 +2252,6 @@
 .wp-best-row--miss .wp-best-mark { color: var(--red); }
 .wp-best-row--miss .wp-best-need { color: var(--muted); }
 .wp-best-row--miss .wp-best-need b { color: var(--muted); }
-
-.wp-best-payoff {
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px dashed rgba(200, 184, 122, 0.55);
-  font-size: 12.5px;
-  color: var(--ink);
-  line-height: 1.55;
-}
-
-.wp-best-payoff b { color: var(--navy); font-weight: 800; }
 
 @media (max-width: 639px) {
   .lb-prob { padding: 0 0.5rem; }

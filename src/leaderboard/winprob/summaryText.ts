@@ -346,38 +346,41 @@ function standingText(row: Row, totalPlayers: number, subject: HeadlineSubject):
   const exp = Math.round(row.expRank)
   const subj = subject.self ? 'אתה' : subject.name
   const avg = Math.round(row.avgPts)
-  const place = `${subj} במקום ${row.curRank} מתוך ${totalPlayers}.`
-  const chance = `${fmtPct(row.winPct)} לזכייה, ${fmtPct(row.top5Pct)} לטופ 5.`
-  const proj = `צפי סיום: מקום ${exp}, כ-${avg} נק׳.`
-  // The ceiling is only worth stating when the realistic best is above where they sit
-  // now — otherwise it just echoes the current place.
-  let ceiling = ''
-  if (row.bestPlace < row.curRank) {
-    const ptsStr = row.bestScenario ? `כ-${Math.round(row.bestScenario.pts)} נק׳` : ''
-    if (row.bestPlace === 1) {
-      // Finishing 1st is exactly the title chance already stated above (winPct), so we
-      // don't restate a second, tie-rounded number for it — just the scenario's point
-      // ceiling, which is the only genuinely new figure here.
-      if (ptsStr) ceiling = ` המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 1 (${ptsStr}).`
-    } else {
-      // The cumulative chance to finish *at that place or better* — this is what makes the
-      // place "realistic" (it clears REALISTIC_PLACE_P). The exact single-place chance is
-      // always tiny in a big field and would make the ceiling look un-realistic.
-      const chanceStr = `סיכוי כ-${fmtPct(row.bestPlacePct)} לסיים שם או מעליו`
-      const inner = ptsStr ? `${ptsStr}, ${chanceStr}` : chanceStr
-      ceiling = ` המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום ${row.bestPlace} (${inner}).`
-      // A strictly higher place seen in the sims is the theoretical peak — a long shot,
-      // labelled אפסי/קלוש by how tiny its chance is.
-      if (row.peakPlace < row.bestPlace) {
-        // Finishing 1st *is* the title chance already stated up top (winPct). Reuse it so the
-        // two numbers can never disagree by a rounding tick; any deeper peak keeps its own pct.
-        const peakPct = row.peakPlace === 1 ? row.winPct : row.peakPlacePct
-        const odds = peakPct < 1 ? 'אפסי' : 'קלוש'
-        ceiling += ` לטפס גבוה מזה, עד מקום ${row.peakPlace}, בסיכוי ${odds} (${fmtPct(peakPct)}).`
-      }
+  // One line per idea, joined with newlines — the card is read on phones, so this renders
+  // as a tidy stacked block (see .wp-me-standing { white-space: pre-line }) rather than one
+  // long run-on paragraph. Every bettor gets the same four-line shape, no special-casing.
+  const lines = [
+    `${subj} במקום ${row.curRank} מתוך ${totalPlayers}.`,
+    `${fmtPct(row.winPct)} לזכייה, ${fmtPct(row.top5Pct)} לטופ 5.`,
+    `צפי סיום: מקום ${exp}, כ-${avg} נק׳.`,
+  ]
+  // The realistic best *finish* — the highest place they can still finish at with a
+  // non-trivial chance. Shown for everyone (even when it's not a climb above where they sit
+  // now) so the block reads identically for all bettors.
+  const ptsStr = row.bestScenario ? `כ-${Math.round(row.bestScenario.pts)} נק׳` : ''
+  const lead = 'המקום הריאלי הגבוה ביותר שאפשר לסיים בו'
+  if (row.bestPlace === 1) {
+    // Finishing 1st is exactly the title chance already stated above (winPct), so we don't
+    // restate a second, tie-rounded number for it — just the scenario's point ceiling.
+    lines.push(ptsStr ? `${lead}: מקום 1 (${ptsStr}).` : `${lead}: מקום 1.`)
+  } else {
+    // The cumulative chance to finish *at that place or better* — this is what makes the
+    // place "realistic" (it clears REALISTIC_PLACE_P). The exact single-place chance is
+    // always tiny in a big field and would make the ceiling look un-realistic.
+    const chanceStr = `סיכוי כ-${fmtPct(row.bestPlacePct)} לסיים שם או מעליו`
+    const inner = ptsStr ? `${ptsStr}, ${chanceStr}` : chanceStr
+    lines.push(`${lead}: מקום ${row.bestPlace} (${inner}).`)
+    // A strictly higher place seen in the sims is the theoretical peak — a long shot,
+    // labelled אפסי/קלוש by how tiny its chance is, on its own line.
+    if (row.peakPlace < row.bestPlace) {
+      // Finishing 1st *is* the title chance already stated up top (winPct). Reuse it so the
+      // two numbers can never disagree by a rounding tick; any deeper peak keeps its own pct.
+      const peakPct = row.peakPlace === 1 ? row.winPct : row.peakPlacePct
+      const odds = peakPct < 1 ? 'אפסי' : 'קלוש'
+      lines.push(`לטפס גבוה מזה, עד מקום ${row.peakPlace}, בסיכוי ${odds} (${fmtPct(peakPct)}).`)
     }
   }
-  return `${place} ${chance} ${proj}${ceiling}`
+  return lines.join('\n')
 }
 
 // A synthesised read of one bettor's bet, used both for the viewer's featured card

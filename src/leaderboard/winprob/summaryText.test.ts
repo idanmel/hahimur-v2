@@ -376,8 +376,19 @@ describe('buildBettorHeadline', () => {
     expect(h.standing).toContain('המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 20 (סיכוי כ-13.2% לסיים שם או מעליו)')
   })
 
-  test('omits the realistic ceiling when it only echoes the current place', () => {
-    const h = buildBettorHeadline(row({ curRank: 3, expRank: 8, bestPlace: 5 }), null, {}, 26, ME)
-    expect(h.standing).not.toContain('המקום הריאלי הגבוה ביותר')
+  test('states the realistic best finish for everyone — even when it is not a climb above the current place', () => {
+    // Sits 3rd but the model expects a slip: the best realistic *finish* (5th) is still worth
+    // stating, so the block reads the same shape as every other bettor's.
+    const h = buildBettorHeadline(row({ curRank: 3, expRank: 8, bestPlace: 5, bestPlacePct: 21 }), null, {}, 26, ME)
+    expect(h.standing).toContain('המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 5 (סיכוי כ-21.0% לסיים שם או מעליו)')
+  })
+
+  test('renders the standing as newline-separated lines for a tidy mobile block', () => {
+    const h = buildBettorHeadline(row({ curRank: 3, expRank: 8, bestPlace: 5, bestPlacePct: 21 }), null, {}, 26, ME)
+    const parts = h.standing.split('\n')
+    expect(parts.length).toBeGreaterThanOrEqual(4)
+    expect(parts[0]).toContain('במקום 3 מתוך 26')
+    expect(parts[1]).toContain('לזכייה')
+    expect(parts[2]).toContain('צפי סיום')
   })
 })
