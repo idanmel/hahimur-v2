@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
 import type { Row } from '../../../sim-core'
 import type { User } from '../../users'
@@ -114,95 +114,94 @@ export default function WhatIfChampionView({ results, me }: { results: Tournamen
             </section>
           )}
 
-          <div className="lb-prob-scroll">
-            <table className="wp-table">
-              <thead>
-                <tr>
-                  <th className="wp-th wp-th--rank">#</th>
-                  <th className="wp-th wp-th--name">מהמר</th>
-                  <th className="wp-th wp-th--champ">אלופה</th>
-                  <th className="wp-th wp-th--champp">סיכוי האלופה</th>
-                  <th className="wp-th wp-th--now">זכייה עכשיו</th>
-                  <th className="wp-th wp-th--if">אם האלופה תנצח</th>
-                  <th className="wp-th wp-th--delta">שינוי</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((r: Row, i) => {
-                  const isMe = r.label === me
-                  const out = !!r.championTeam && r.condWinPct === null
-                  const rankBadge = r.condWinPct !== null && i < 3 ? MEDALS[i] : i + 1
-                  const isOpen = openLabel === r.label
-                  return (
-                    <Fragment key={r.label}>
-                      <tr
-                        className={`wp-row${isMe ? ' wp-row--me' : ''}${r.condWinPct !== null && i < 3 ? ` wp-row--rank-${i + 1}` : ''}${isOpen ? ' wp-row--open' : ''}`}
-                        onClick={() => setOpenLabel(isOpen ? null : r.label)}
-                        aria-expanded={isOpen}
-                      >
-                        <td className="wp-td wp-td--rank">{rankBadge}</td>
-                        <td className="wp-td wp-td--name">
-                          <span className="wp-name">{r.label}</span>
-                          {isMe && <span className="lb-me-badge">אני</span>}
-                          {out && <span className="wp-flag">האלופה הודחה</span>}
-                          <span className="wp-chevron" aria-hidden="true">⌄</span>
-                        </td>
-                        <td className="wp-td wp-td--champ">
-                          <ChampionCell team={r.championTeam} he={r.championHe} />
-                        </td>
-                        <td className="wp-td wp-td--champp"><span className="wp-pct">{r.championTeam ? fmtPct(r.championWinPct) : '—'}</span></td>
-                        <td className="wp-td wp-td--now"><span className="wp-pct">{fmtPct(r.winPct)}</span></td>
-                        <td className="wp-td wp-td--if">
-                          <span className="wp-pct wp-pct--hero">{r.condWinPct === null ? '—' : fmtPct(r.condWinPct)}</span>
-                        </td>
-                        <td className="wp-td wp-td--delta">
-                          {r.condWinPct === null ? <span className="wp-delta wp-delta--flat">—</span> : <Delta from={r.winPct} to={r.condWinPct} />}
-                        </td>
-                      </tr>
-                      {isOpen && (
-                        <tr className="wp-detail-row">
-                          <td className="wp-detail-cell" colSpan={7}>
-                            <div className="wif-detail" dir="rtl">
-                              {r.condWinPct === null ? (
-                                <p>
-                                  {r.championTeam
-                                    ? (r.championWinPct > 0
-                                        ? <>{r.championHe} כמעט ולא זוכה בסימולציות, אז אי אפשר לגזור סיכוי זכייה מותנה אמין.</>
-                                        : <><b>{r.championHe} הודחה</b> — התרחיש הזה כבר לא אפשרי.</>)
-                                    : <>אין ל{r.label} ניחוש אלופה.</>}
-                                </p>
-                              ) : (
-                                <>
-                                  <p>
-                                    מבין הסימולציות שבהן <b>{r.championHe}</b> זוכה בתואר (<b>{fmtPct(r.championWinPct)}</b> מהתרחישים),
-                                    {' '}<b>{r.label}</b> מסיים ראשון בקבוצה ב-<b>{fmtPct(r.condWinPct)}</b> מהמקרים —
-                                    {' '}לעומת <b>{fmtPct(r.winPct)}</b> בלי התנאי הזה.
-                                  </p>
-                                  {r.condTop3Pct !== null && (
-                                    <p>
-                                      הסיכוי ל<b>טופ 3</b> קופץ מ-<b>{fmtPct(r.top3Pct)}</b> ל-<b>{fmtPct(r.condTop3Pct)}</b>,
-                                      {' '}ול<b>טופ 5</b> מ-<b>{fmtPct(r.top5Pct)}</b> ל-<b>{fmtPct(r.condTop5Pct!)}</b>.
-                                    </p>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+          <ul className="wif-list">
+            {sorted.map((r: Row, i) => {
+              const isMe = r.label === me
+              const out = !!r.championTeam && r.condWinPct === null
+              const ranked = r.condWinPct !== null
+              const rankBadge = ranked && i < 3 ? MEDALS[i] : i + 1
+              const isOpen = openLabel === r.label
+              return (
+                <li key={r.label} className={`wif-card${isMe ? ' wif-card--me' : ''}${ranked && i < 3 ? ` wif-card--rank-${i + 1}` : ''}${isOpen ? ' wif-card--open' : ''}`}>
+                  <button
+                    type="button"
+                    className="wif-card__bar"
+                    onClick={() => setOpenLabel(isOpen ? null : r.label)}
+                    aria-expanded={isOpen}
+                  >
+                    <span className="wif-card__rank">{rankBadge}</span>
+                    <span className="wif-card__id">
+                      <span className="wif-card__name">
+                        {r.label}
+                        {isMe && <span className="lb-me-badge">אני</span>}
+                      </span>
+                      <span className="wif-card__champ">
+                        <ChampionCell team={r.championTeam} he={r.championHe} />
+                        {out && <span className="wp-flag">הודחה</span>}
+                      </span>
+                    </span>
+                    <span className="wif-card__headline">
+                      <span className="wif-card__big">{r.condWinPct === null ? '—' : fmtPct(r.condWinPct)}</span>
+                      <span className="wif-card__cap">אם האלופה תנצח</span>
+                    </span>
+                    <span className="wp-chevron" aria-hidden="true">⌄</span>
+                  </button>
+
+                  <div className="wif-card__stats">
+                    <span className="wif-stat">
+                      <span className="wif-stat__label">סיכוי האלופה</span>
+                      <span className="wif-stat__val">{r.championTeam ? fmtPct(r.championWinPct) : '—'}</span>
+                    </span>
+                    <span className="wif-stat">
+                      <span className="wif-stat__label">זכייה עכשיו</span>
+                      <span className="wif-stat__val">{fmtPct(r.winPct)}</span>
+                    </span>
+                    <span className="wif-stat">
+                      <span className="wif-stat__label">שינוי</span>
+                      <span className="wif-stat__val">
+                        {r.condWinPct === null ? <span className="wp-delta wp-delta--flat">—</span> : <Delta from={r.winPct} to={r.condWinPct} />}
+                      </span>
+                    </span>
+                  </div>
+
+                  {isOpen && (
+                    <div className="wif-detail" dir="rtl">
+                      {r.condWinPct === null ? (
+                        <p>
+                          {r.championTeam
+                            ? (r.championWinPct > 0
+                                ? <>{r.championHe} כמעט ולא זוכה בסימולציות, אז אי אפשר לגזור סיכוי זכייה מותנה אמין.</>
+                                : <><b>{r.championHe} הודחה</b> — התרחיש הזה כבר לא אפשרי.</>)
+                            : <>אין ל{r.label} ניחוש אלופה.</>}
+                        </p>
+                      ) : (
+                        <>
+                          <p>
+                            מבין הסימולציות שבהן <b>{r.championHe}</b> זוכה בתואר (<b>{fmtPct(r.championWinPct)}</b> מהתרחישים),
+                            {' '}<b>{r.label}</b> מסיים ראשון בקבוצה ב-<b>{fmtPct(r.condWinPct)}</b> מהמקרים —
+                            {' '}לעומת <b>{fmtPct(r.winPct)}</b> בלי התנאי הזה.
+                          </p>
+                          {r.condTop3Pct !== null && (
+                            <p>
+                              הסיכוי ל<b>טופ 3</b> קופץ מ-<b>{fmtPct(r.top3Pct)}</b> ל-<b>{fmtPct(r.condTop3Pct)}</b>,
+                              {' '}ול<b>טופ 5</b> מ-<b>{fmtPct(r.top5Pct)}</b> ל-<b>{fmtPct(r.condTop5Pct!)}</b>.
+                            </p>
+                          )}
+                        </>
                       )}
-                    </Fragment>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
 
           <p className="lb-prob-note">
-            <b>איך לקרוא:</b> כל מהמר בחר אלופת עולם — ניחוש ששווה הרבה נקודות. הטבלה מראה, לפי
-            {' '}<b>מודל מונטה קרלו</b> (אלפי סימולציות של יתרת הטורניר), מה קורה <b>אם האלופה שבחר באמת תזכה</b>.
-            «סיכוי האלופה» = הסיכוי שהאלופה שנבחרה תרים את הגביע. «זכייה עכשיו» = סיכוי הזכייה בקבוצה ללא תנאי.
-            «אם האלופה תנצח» = סיכוי הזכייה <b>מבין התרחישים שבהם האלופה שנבחרה זוכה</b>. «שינוי» = הקפיצה בין השניים.
-            מהמר שהאלופה שלו כבר הודחה יורד לתחתית — התרחיש שלו כבר לא אפשרי.
+            <b>איך לקרוא:</b> כל מהמר בחר אלופת עולם — ניחוש ששווה הרבה נקודות. לפי
+            {' '}<b>מודל מונטה קרלו</b> (אלפי סימולציות של יתרת הטורניר), הכרטיס מראה מה קורה <b>אם האלופה שבחר באמת תזכה</b>.
+            «אם האלופה תנצח» = סיכוי הזכייה <b>מבין התרחישים שבהם האלופה שנבחרה זוכה</b>.
+            «סיכוי האלופה» = הסיכוי שהאלופה שנבחרה תרים את הגביע. «זכייה עכשיו» = סיכוי הזכייה בקבוצה ללא תנאי. «שינוי» = הקפיצה בין השניים.
+            {' '}הקישו על כרטיס לפירוט טופ 3 וטופ 5. מהמר שהאלופה שלו כבר הודחה יורד לתחתית — התרחיש שלו כבר לא אפשרי.
           </p>
         </>
       )}

@@ -1909,14 +1909,84 @@
 .wp-delta--down { color: var(--red); }
 .wp-delta--flat { color: var(--muted); opacity: 0.55; }
 
-/* ── "מה אם" — champion-conditioned win odds ── */
-.wp-th--champ, .wp-td--champ { text-align: right; }
-.wp-th--champp, .wp-td--champp,
-.wp-th--now, .wp-td--now,
-.wp-th--if, .wp-td--if { text-align: center; white-space: nowrap; }
-.wp-th--champp, .wp-td--champp { width: 84px; }
-.wp-th--now, .wp-td--now { width: 76px; }
-.wp-th--if, .wp-td--if { width: 96px; }
+/* ── "מה אם" — champion-conditioned win odds, as a card list ── */
+.wif-me .wp-me-standing { margin: 0; }
+.wif-me .wif-me-line { margin-top: 6px; }
+
+.wif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wif-card {
+  border: 1px solid rgba(200, 184, 122, 0.42);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgba(11, 34, 68, 0.05);
+  overflow: hidden;
+}
+
+.wif-card--me {
+  border-color: rgba(11, 34, 68, 0.35);
+  background: linear-gradient(to left, rgba(11, 34, 68, 0.05), transparent 70%), var(--paper);
+}
+
+.wif-card--rank-1 { border-color: rgba(212, 160, 22, 0.65); }
+
+/* tap bar: rank · identity (name + champion) · headline % · chevron */
+.wif-card__bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: right;
+  font: inherit;
+}
+
+.wif-card__rank {
+  flex: none;
+  min-width: 22px;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px;
+  color: var(--muted);
+}
+
+.wif-card--rank-1 .wif-card__rank,
+.wif-card--rank-2 .wif-card__rank,
+.wif-card--rank-3 .wif-card__rank { font-size: 19px; }
+
+.wif-card__id {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wif-card__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 14.5px;
+  color: var(--navy);
+}
+
+.wif-card__champ {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 
 .wif-champ {
   display: inline-flex;
@@ -1934,31 +2004,96 @@
 }
 
 .wif-champ-name {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.wif-me .wp-me-standing { margin: 0; }
-.wif-me .wif-me-line { margin-top: 6px; }
+/* the hero: conditional win % + its caption, right-aligned before the chevron */
+.wif-card__headline {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.05;
+}
+
+.wif-card__big {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.wif-card--rank-1 .wif-card__big { color: var(--medal-gold, var(--gold)); }
+
+.wif-card__cap {
+  font-family: 'Heebo', sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.wif-card__bar .wp-chevron {
+  flex: none;
+  transition: transform 0.18s ease;
+  color: var(--muted);
+}
+
+.wif-card--open .wp-chevron { transform: rotate(180deg); }
+
+/* three supporting stats, evenly split under the bar */
+.wif-card__stats {
+  display: flex;
+  border-top: 1px solid rgba(200, 184, 122, 0.3);
+  background: rgba(200, 184, 122, 0.06);
+}
+
+.wif-stat {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px;
+}
+
+.wif-stat + .wif-stat { border-inline-start: 1px solid rgba(200, 184, 122, 0.3); }
+
+.wif-stat__label {
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.wif-stat__val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.wif-detail {
+  padding: 4px 12px 12px;
+  border-top: 1px dashed rgba(200, 184, 122, 0.4);
+}
 
 .wif-detail p {
   font-size: 12.5px;
   color: var(--muted);
   line-height: 1.6;
-  margin: 4px 2px;
+  margin: 8px 0 0;
 }
 
 .wif-detail b { color: var(--navy); font-weight: 700; }
 
-@media (max-width: 640px) {
-  .wif-champ-name { font-size: 12px; }
-  .wp-th--champp, .wp-td--champp { width: 62px; }
-  .wp-th--now, .wp-td--now { width: 58px; }
-  .wp-th--if, .wp-td--if { width: 72px; }
+/* roomier bar on wider screens — headline gets its own fixed slot */
+@media (min-width: 640px) {
+  .wif-card__id { flex-direction: row; align-items: center; gap: 12px; }
+  .wif-card__big { font-size: 26px; }
 }
 
 .lb-prob-note {
