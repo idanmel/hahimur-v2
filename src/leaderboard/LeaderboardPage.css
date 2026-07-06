@@ -1909,6 +1909,58 @@
 .wp-delta--down { color: var(--red); }
 .wp-delta--flat { color: var(--muted); opacity: 0.55; }
 
+/* ── "מה אם" — champion-conditioned win odds ── */
+.wp-th--champ, .wp-td--champ { text-align: right; }
+.wp-th--champp, .wp-td--champp,
+.wp-th--now, .wp-td--now,
+.wp-th--if, .wp-td--if { text-align: center; white-space: nowrap; }
+.wp-th--champp, .wp-td--champp { width: 84px; }
+.wp-th--now, .wp-td--now { width: 76px; }
+.wp-th--if, .wp-td--if { width: 96px; }
+
+.wif-champ {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wif-champ-flag {
+  flex: none;
+  width: 20px;
+  height: 14px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(11, 34, 68, 0.15);
+}
+
+.wif-champ-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wif-me .wp-me-standing { margin: 0; }
+.wif-me .wif-me-line { margin-top: 6px; }
+
+.wif-detail p {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 4px 2px;
+}
+
+.wif-detail b { color: var(--navy); font-weight: 700; }
+
+@media (max-width: 640px) {
+  .wif-champ-name { font-size: 12px; }
+  .wp-th--champp, .wp-td--champp { width: 62px; }
+  .wp-th--now, .wp-td--now { width: 58px; }
+  .wp-th--if, .wp-td--if { width: 72px; }
+}
+
 .lb-prob-note {
   margin: 16px 2px 0;
   font-size: 12px;

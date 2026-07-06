@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { KnockoutMatch, PredictionsState, Standing, TournamentResults } from './src/shared/types'
 import { makeUser } from './src/leaderboard/testFixtures'
 import { USERS } from './src/users'
-import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, mergeSimAgg, podiumByAdvancer, pivotalMatches } from './sim-core'
+import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, buildRows, mergeSimAgg, podiumByAdvancer, pivotalMatches } from './sim-core'
 import { tournamentResults } from './src/tournament-results'
 import { realPlayedState } from './src/leaderboard/winprob/realPlayed'
 import { buildKnockoutBracket } from './src/formView/knockout/knockout'
@@ -390,6 +390,79 @@ describe('runSims knockout pairings', () => {
     for (const num of [73, 90, 104]) {
       const total = [...merged.koPairs.get(num)!.values()].reduce((x, y) => x + y, 0)
       expect(total).toBe(80)
+    }
+  })
+})
+
+describe('runSims champion-conditioned win tally', () => {
+  const played: PredictionsState = { A1: { home: 1, away: 0 } }
+
+  test('condWinByChamp is collected only under the collect flag', () => {
+    expect(runSims(played, 30, 3, false).condWinByChamp).toBeUndefined()
+    expect(runSims(played, 30, 3, true).condWinByChamp).toBeDefined()
+  })
+
+  test('per champion, the summed win-share never exceeds that champion frequency', () => {
+    const agg = runSims(played, 300, 12345, true)
+    for (const [team, byBettor] of agg.condWinByChamp!) {
+      const champCount = agg.champFreq.get(team) ?? 0
+      const winShareTotal = [...byBettor.values()].reduce((a, b) => a + b, 0)
+      // exactly one pool win is shared out per sim, so summed over the sims where
+      // this team was champion the total win-share equals that champion count.
+      expect(winShareTotal).toBeCloseTo(champCount, 6)
+    }
+  })
+
+  test('summing the champion buckets recovers the flat win/top3/top5 tallies', () => {
+    const agg = runSims(played, 300, 12345, true)
+    const fold = (m: Map<string, Map<string, number>>) => {
+      const perBettor = new Map<string, number>()
+      for (const byBettor of m.values())
+        for (const [label, v] of byBettor) perBettor.set(label, (perBettor.get(label) ?? 0) + v)
+      return perBettor
+    }
+    // champions cover every sim (a tournament always crowns one), so the champion-
+    // partitioned tallies add back up to each bettor's overall tally.
+    const foldedWin = fold(agg.condWinByChamp!)
+    for (const [label, total] of agg.win) expect(foldedWin.get(label) ?? 0).toBeCloseTo(total, 6)
+    const foldedT3 = fold(agg.condTop3ByChamp!)
+    for (const [label, total] of agg.top3) expect(foldedT3.get(label) ?? 0).toBe(total)
+    const foldedT5 = fold(agg.condTop5ByChamp!)
+    for (const [label, total] of agg.top5) expect(foldedT5.get(label) ?? 0).toBe(total)
+  })
+
+  test('merging batches sums the champion-conditioned buckets', () => {
+    const a = runSims(played, 60, 7, true)
+    const b = runSims(played, 60, 8, true)
+    const team = [...a.condWinByChamp!.keys()][0]
+    const label = [...a.condWinByChamp!.get(team)!.keys()][0]
+    const expected = (a.condWinByChamp!.get(team)!.get(label) ?? 0) + (b.condWinByChamp!.get(team)!.get(label) ?? 0)
+    const merged = mergeSimAgg(a, b)
+    expect(merged.condWinByChamp!.get(team)!.get(label)).toBeCloseTo(expected, 6)
+  })
+})
+
+describe('buildRows champion-conditioned fields', () => {
+  const played: PredictionsState = { A1: { home: 1, away: 0 } }
+
+  test('condWinPct equals the champion bucket win-share over that champion frequency', () => {
+    const n = 400
+    const agg = runSims(played, n, 12345, true)
+    const rows = buildRows(agg, n, played)
+    for (const r of rows) {
+      if (!r.championTeam) { expect(r.condWinPct).toBeNull(); continue }
+      const champCount = agg.champFreq.get(r.championTeam) ?? 0
+      expect(r.championWinPct).toBeCloseTo((champCount / n) * 100, 6)
+      if (champCount === 0) { expect(r.condWinPct).toBeNull(); expect(r.condTop3Pct).toBeNull(); expect(r.condTop5Pct).toBeNull(); continue }
+      const share = agg.condWinByChamp!.get(r.championTeam)?.get(r.label) ?? 0
+      expect(r.condWinPct!).toBeCloseTo((share / champCount) * 100, 6)
+      const t3 = agg.condTop3ByChamp!.get(r.championTeam)?.get(r.label) ?? 0
+      expect(r.condTop3Pct!).toBeCloseTo((t3 / champCount) * 100, 6)
+      const t5 = agg.condTop5ByChamp!.get(r.championTeam)?.get(r.label) ?? 0
+      expect(r.condTop5Pct!).toBeCloseTo((t5 / champCount) * 100, 6)
+      // conditioning is monotone: top-5 ≥ top-3 ≥ win, same as the unconditional finish odds.
+      expect(r.condTop5Pct!).toBeGreaterThanOrEqual(r.condTop3Pct! - 1e-9)
+      expect(r.condTop3Pct!).toBeGreaterThanOrEqual(r.condWinPct! - 1e-9)
     }
   })
 })

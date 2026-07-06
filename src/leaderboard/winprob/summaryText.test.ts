@@ -15,7 +15,7 @@ function stage(key: string, label: string, edge: number, val = 0, field = 0): St
   return { key: key as StageStat['key'], label, val, field, edge }
 }
 function row(over: Partial<Row>): Row {
-  return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, bestPlace: 1, bestPlacePct: 0, peakPlace: 1, peakPlacePct: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', scorerBootPct: 0, reason: '', stages: [], ...over }
+  return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, bestPlace: 1, bestPlacePct: 0, peakPlace: 1, peakPlacePct: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', scorerBootPct: 0, championWinPct: 0, condWinPct: null, condTop3Pct: null, condTop5Pct: null, reason: '', stages: [], ...over }
 }
 
 describe('deepPicksClause', () => {

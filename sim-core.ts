@@ -659,6 +659,15 @@ export interface SimAgg {
   // only the winner went on), so buildRows can surface a coherent "optimal scenario" for
   // the bettor's realistic ceiling place — never a physically impossible wish-list.
   bestByRank?: Map<string, (BestScenarioSlot | null)[]>
+  // Joint champion×finish tallies: keyed by the *simulated* champion team, then by bettor
+  // label. `condWinByChamp` holds the summed pool-win share, `condTop3`/`condTop5` the raw
+  // count of top-3 / top-5 finishes — all restricted to the sims where that team lifted the
+  // trophy. Divided by champFreq[team] each gives P(bettor finishes first / top-3 / top-5 |
+  // that team is champion) — the conditional read behind the "מה אם" view ("if your champion
+  // really wins, what are your odds?"). Collected under the same flag as series/rankCounts.
+  condWinByChamp?: Map<string, Map<string, number>>
+  condTop3ByChamp?: Map<string, Map<string, number>>
+  condTop5ByChamp?: Map<string, Map<string, number>>
 }
 
 // One captured best-case tournament for a bettor at a given finishing place: the points
@@ -725,6 +734,9 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   const series = collect ? new Map<string, number[]>() : undefined
   const rankCounts = collect ? new Map<string, number[]>() : undefined
   const bestByRank = collect ? new Map<string, (BestScenarioSlot | null)[]>() : undefined
+  const condWinByChamp = collect ? new Map<string, Map<string, number>>() : undefined
+  const condTop3ByChamp = collect ? new Map<string, Map<string, number>>() : undefined
+  const condTop5ByChamp = collect ? new Map<string, Map<string, number>>() : undefined
   // Precomputed per-bettor deep-pick lists + a label→user lookup, so the hot loop can
   // snapshot each bettor's picks' depths without recomputing predictedAdvancers per sim.
   const deepPicksByLabel = collect ? new Map<string, ReturnType<typeof deepScenarioPicks>>() : undefined
@@ -800,6 +812,22 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
     const winners = scored.filter(s => s.pts === top)
     const share = 1 / winners.length
     for (const w of winners) win.set(w.label, win.get(w.label)! + share)
+    // Joint champion×finish tally: credit each pool winner's share (and the top-3 / top-5
+    // finishers) to the bucket of the team that was champion in this very sim, so we can
+    // later condition finish-odds on a given champion actually lifting the trophy.
+    if (condWinByChamp && condTop3ByChamp && condTop5ByChamp && results.champion) {
+      const bucket = (m: Map<string, Map<string, number>>) => {
+        let b = m.get(results.champion!)
+        if (!b) { b = new Map(); m.set(results.champion!, b) }
+        return b
+      }
+      const winB = bucket(condWinByChamp)
+      for (const w of winners) winB.set(w.label, (winB.get(w.label) ?? 0) + share)
+      const t3 = bucket(condTop3ByChamp)
+      for (let r = 0; r < scored.length && r < 3; r++) t3.set(scored[r].label, (t3.get(scored[r].label) ?? 0) + 1)
+      const t5 = bucket(condTop5ByChamp)
+      for (let r = 0; r < scored.length && r < 5; r++) t5.set(scored[r].label, (t5.get(scored[r].label) ?? 0) + 1)
+    }
     for (let r = 0; r < scored.length && r < 3; r++) top3.set(scored[r].label, top3.get(scored[r].label)! + 1)
     for (let r = 0; r < scored.length && r < 5; r++) top5.set(scored[r].label, top5.get(scored[r].label)! + 1)
     // standard competition ranking (ties share the higher rank: 1,2,2,4…)
@@ -835,7 +863,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       series?.get(s.label)!.push(s.pts)
     }
   }
-  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts, bestByRank }
+  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts, bestByRank, condWinByChamp, condTop3ByChamp, condTop5ByChamp }
 }
 
 // Add every tally of `b` into `a` (in place) and return `a`. All aggregate
@@ -875,6 +903,19 @@ export function mergeSimAgg(a: SimAgg, b: SimAgg): SimAgg {
       else a.rankCounts.set(label, [...arr])
     }
   }
+  // Champion×finish buckets sum additively, chunk by chunk, exactly like the flat
+  // tallies — just nested one level under the simulated champion.
+  const mergeNested = (a2?: Map<string, Map<string, number>>, b2?: Map<string, Map<string, number>>) => {
+    if (!a2 || !b2) return
+    for (const [team, byBettor] of b2) {
+      const cur = a2.get(team)
+      if (!cur) { a2.set(team, new Map(byBettor)); continue }
+      for (const [label, v] of byBettor) cur.set(label, (cur.get(label) ?? 0) + v)
+    }
+  }
+  mergeNested(a.condWinByChamp, b.condWinByChamp)
+  mergeNested(a.condTop3ByChamp, b.condTop3ByChamp)
+  mergeNested(a.condTop5ByChamp, b.condTop5ByChamp)
   // Best-case scenarios don't sum — per place we keep the higher-scoring of the two
   // chunks' captured tournaments, so the merged result matches a single n-run.
   if (a.bestByRank && b.bestByRank) {
@@ -1392,7 +1433,39 @@ export interface Row {
   // Model probability the bettor's picked scorer wins or *shares* the golden boot —
   // the exact condition on the +10 bonus, so the card can explain that reward.
   scorerBootPct: number
+  // "מה אם" — the conditional read on the champion pick. `championWinPct` is the model's
+  // chance the bettor's predicted champion actually lifts the trophy; `condWinPct` /
+  // `condTop3Pct` / `condTop5Pct` are their chances to finish first / top-3 / top-5 in the
+  // pool *given* that champion comes through (all null when they backed no champion, or the
+  // sim never crowned it — an impossible condition).
+  championWinPct: number
+  condWinPct: number | null
+  condTop3Pct: number | null
+  condTop5Pct: number | null
   stages: StageStat[]
+}
+
+// The champion-conditioned finish read for one bettor: how likely their predicted champion
+// is to actually win, and — restricted to exactly those simulated tournaments — their
+// chances to finish first / top-3 / top-5 in the pool. The conditional fields are null when
+// the bet is moot: no champion picked, or the model never crowned it (so the condition can't
+// occur).
+function condChampion(real: SimAgg, u: User, n: number): {
+  championWinPct: number; condWinPct: number | null; condTop3Pct: number | null; condTop5Pct: number | null
+} {
+  const champ = u.predictedChampion
+  const none = { condWinPct: null, condTop3Pct: null, condTop5Pct: null }
+  if (!champ) return { championWinPct: 0, ...none }
+  const champCount = real.champFreq.get(champ) ?? 0
+  const championWinPct = (champCount / n) * 100
+  if (champCount === 0) return { championWinPct, ...none }
+  const cond = (m?: Map<string, Map<string, number>>) => ((m?.get(champ)?.get(u.label) ?? 0) / champCount) * 100
+  return {
+    championWinPct,
+    condWinPct: cond(real.condWinByChamp),
+    condTop3Pct: cond(real.condTop3ByChamp),
+    condTop5Pct: cond(real.condTop5ByChamp),
+  }
 }
 
 export function buildRows(real: SimAgg, n: number, played: PredictionsState, playerGoals?: Record<string, number>): Row[] {
@@ -1504,6 +1577,7 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
       championAlive: !u.predictedChampion || (real.champFreq.get(u.predictedChampion) ?? 0) > 0,
       scorer: u.topGoalscorer || '—',
       scorerBootPct: u.topGoalscorer ? (real.bootFreq.get(u.topGoalscorer) ?? 0) / n * 100 : 0,
+      ...condChampion(real, u, n),
       reason: explain(u, winPct, avgWin, signals),
       stages,
     }

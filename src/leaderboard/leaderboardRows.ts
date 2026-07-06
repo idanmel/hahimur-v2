@@ -10,7 +10,7 @@ import { competitionRanks } from './rank'
 import { knockoutParticipantScore } from '../pages/match/koParticipants'
 import type { User } from '../users'
 
-export type Scope = 'all' | GroupLetter | 'range' | 'prob' | 'summary' | 'oleh' | 'crossings' | 'timelapse' | 'records'
+export type Scope = 'all' | GroupLetter | 'range' | 'prob' | 'whatif' | 'summary' | 'oleh' | 'crossings' | 'timelapse' | 'records'
 
 // One bettor's group-stage עולות/מיקומים story, team by team, for the dedicated
 // breakdown tab: which qualifiers they tipped right (4 pts each) and which exact
