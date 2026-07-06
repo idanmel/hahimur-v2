@@ -12,8 +12,8 @@ import { playedMatchId } from '../leaderboardRows'
 import { useWinProbabilities } from './useWinProbabilities'
 import { usePivotalMatches } from './usePivotalMatches'
 import { pickPivotal, type PivotalCard, type PivotalMetric, type PivotalOutcome } from './pivotalPick'
-import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge } from './summaryText'
-import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow } from './summaryText'
+import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge, buildBestCase } from './summaryText'
+import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow, BestCaseDigest, BestCasePlace } from './summaryText'
 
 const KO_KEYS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
 
@@ -172,13 +172,60 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
   )
 }
 
-// The shared body of a bettor's personal read: the standing paragraph plus the
-// labelled storyline lines. Rendered identically at the top of the page and inside
-// any row's expand-on-tap detail, so the two never drift apart.
-function HeadlineBody({ h, knockoutsStarted, forecast, pivotal }: { h: BettorHeadline; knockoutsStarted: boolean; forecast: ForecastData; pivotal?: ReactNode }) {
+// התרחיש האופטימלי — the tap-to-open best-case route: every bet that can still pay
+// off (title/finalist/semis calls, the golden boot, live group escapes), each with the
+// model's chance for that exact outcome, capped off with the ceiling points and win
+// odds it all adds up to. Answers "what has to break my way to finish as high as I can".
+// The optimal finish this best case actually yields — a concrete, field-relative place
+// (the highest with a real shot), plus a parenthetical near-zero-odds note for the
+// theoretical peak. Never claims a place the sims didn't realistically deliver, so the
+// payoff can't contradict a 0% win column.
+function BestCasePlaceLine({ place }: { place: BestCasePlace }) {
+  return (
+    <>
+      המקום הכי גבוה שריאלי לך לסיים בו: <b>מקום {place.realistic}</b> (סיכוי <b>{fmtPct(place.realisticPct)}</b>)
+      {place.peak < place.realistic && (
+        <> · בשיא התיאורטי אפשר עד <b>מקום {place.peak}</b>, אך בסיכוי אפסי ({fmtPct(place.peakPct)})</>
+      )}
+    </>
+  )
+}
+
+function BestCase({ bc }: { bc: BestCaseDigest }) {
+  const maxPct = Math.max(...bc.steps.map(s => s.pct), 1)
+  return (
+    <div className="wp-best" dir="rtl">
+      <div className="wp-best-head">
+        <span className="wp-best-title">התרחיש למקום האופטימלי שלך</span>
+        <span className="wp-best-sub">מה צריך לקרות כדי לטפס גבוה ככל האפשר — לכל תרחיש, הסיכוי שלו לפי המודל:</span>
+      </div>
+      <ul className="wp-best-list">
+        {bc.steps.map((s, i) => (
+          <li key={i} className="wp-best-row">
+            <span className="wp-best-need"><b>{s.teamHe}</b> {s.need}</span>
+            <span className="wp-best-track"><span className="wp-best-fill" style={{ width: `${((s.pct / maxPct) * 100).toFixed(0)}%` }} /></span>
+            <span className="wp-best-pct">{s.pct}%</span>
+          </li>
+        ))}
+      </ul>
+      <div className="wp-best-payoff">
+        אם כל אלה ייפלו לטובתך — כ-<b>{Math.round(bc.ceiling)}</b> נק׳. <BestCasePlaceLine place={bc.place} />
+      </div>
+      {bc.gone.length > 0 && (
+        <div className="wp-best-gone">כבר נסגר לרעתך ומוריד את התקרה: {bc.gone.join(', ')}</div>
+      )}
+    </div>
+  )
+}
+
+// The shared body of a bettor's personal read: the standing paragraph, the best-case
+// route, then the labelled storyline lines. Rendered identically at the top of the page
+// and inside any row's expand-on-tap detail, so the two never drift apart.
+function HeadlineBody({ h, knockoutsStarted, forecast, bestCase, pivotal }: { h: BettorHeadline; knockoutsStarted: boolean; forecast: ForecastData; bestCase: BestCaseDigest | null; pivotal?: ReactNode }) {
   return (
     <>
       <p className="wp-me-standing">{emphasize(h.standing)}</p>
+      {bestCase && <BestCase bc={bestCase} />}
       <ul className="wp-me-lines">
         {h.nextStep && <li className="wp-me-line--next"><span className="wp-me-label">מה צריך לקרות</span><span>{emphasize(h.nextStep)}</span></li>}
         {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{emphasize(h.route.ladder)}</span></li>}
@@ -248,10 +295,11 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
   const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, knockoutsStarted, nextStep, stagePhases)
+  const bestCase = buildBestCase(row, advancement ?? null, stageReach, goldenBoot)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
-      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} />
+      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} bestCase={bestCase} />
     </div>
   )
 }
@@ -268,10 +316,11 @@ function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossing
   const firstName = name.split(' ')[0]
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
   const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, knockoutsStarted, nextStep, stagePhases)
+  const bestCase = buildBestCase(row, advancement, stageReach, goldenBoot)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
-      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} pivotal={<WhatIf cards={pivotalCards} metric={pivotalMetric} />} />
+      <HeadlineBody h={h} knockoutsStarted={knockoutsStarted} forecast={forecast} bestCase={bestCase} pivotal={<WhatIf cards={pivotalCards} metric={pivotalMetric} />} />
     </section>
   )
 }
@@ -447,7 +496,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
   }
 
   const loading = status === 'loading' || rows.length === 0
-  const maxWin = loading ? 1 : Math.max(...rows.map(r => r.winPct), 1)
 
   // newest match first in the picker
   const pickerOptions = chrono.slice().reverse()
@@ -519,14 +567,15 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
             <tr>
               <th className="wp-th wp-th--rank">#</th>
               <th className="wp-th wp-th--name">מהמר</th>
-              <th className="wp-th wp-th--win">סיכוי זכייה</th>
+              <th className="wp-th wp-th--p1">ראשון</th>
+              <th className="wp-th wp-th--p3">טופ 3</th>
+              <th className="wp-th wp-th--p5">טופ 5</th>
               <th className="wp-th wp-th--exp">מקום צפוי</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => {
               const isMe = r.label === me
-              const barW = (r.winPct / maxWin) * 100
               // "אלופה הודחה" keys off the *same* elimination set as the survival
               // line, so the flag can never contradict "still in the tournament".
               const championOut = !!r.championTeam && eliminationsEff.has(r.championTeam)
@@ -545,20 +594,16 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
                       {championOut && <span className="wp-flag">אלופה הודחה</span>}
                       <span className="wp-chevron" aria-hidden="true">⌄</span>
                     </td>
-                    <td className="wp-td wp-td--win">
-                      <div className="wp-bar-wrap">
-                        <div className="wp-bar" style={{ width: `${barW.toFixed(1)}%` }} />
-                        <span className="wp-bar-pct">{fmtPct(r.winPct)}</span>
-                        <span className="wp-bar-top5">טופ 5: {fmtPct(r.top5Pct)}</span>
-                      </div>
-                    </td>
+                    <td className="wp-td wp-td--p1"><span className="wp-pct wp-pct--hero">{fmtPct(r.winPct)}</span></td>
+                    <td className="wp-td wp-td--p3"><span className="wp-pct">{fmtPct(r.top3Pct)}</span></td>
+                    <td className="wp-td wp-td--p5"><span className="wp-pct">{fmtPct(r.top5Pct)}</span></td>
                     <td className="wp-td wp-td--exp">
                       <ExpectedPlace curRank={r.curRank} expRank={r.expRank} />
                     </td>
                   </tr>
                   {isOpen && (
                     <tr className="wp-detail-row">
-                      <td className="wp-detail-cell" colSpan={4}>
+                      <td className="wp-detail-cell" colSpan={6}>
                         <RowDetail
                           row={r}
                           advancement={advancementSummaryForLabel(r.label, reachByTeam, groupFirstByTeam, eliminationsEff)}
@@ -582,9 +627,10 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
       </div>
 
       <p className="lb-prob-note">
-        <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «מקום צפוי» = הדירוג הממוצע בסיום,
-        וחץ מראה אם צפויים לעלות או לרדת. <b>לחצו על שם</b> לסיכום אישי — ובראשו «מה צריך לקרות»: הבחירות
-        שעוד צריכות להצליח כדי לטפס מול השדה, ולמטה «גזרת התחזית» מפרקת את הסיכוי לנקודות בכל שלב נוקאאוט ובנעל הזהב.
+        <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «ראשון / טופ 3 / טופ 5» = הסיכוי
+        לסיים במקום הזה או טוב יותר. «מקום צפוי» = הדירוג הממוצע בסיום, וחץ מראה אם צפויים לעלות או לרדת.
+        <b>לחצו על שורה</b> לסיכום אישי — ובראשו «התרחיש למקום האופטימלי שלך»: מה צריך לקרות כדי לטפס גבוה ככל האפשר,
+        עם הסיכוי לכל תרחיש, ולמטה «גזרת התחזית» מפרקת את הסיכוי לנקודות בכל שלב נוקאאוט ובנעל הזהב.
         {knockoutsStarted && <> אנחנו כבר בנוקאאוט — עם פחות משחקים שנותרו נסגרים תרחישים, אז המספרים כאן מדויקים יותר מאי־פעם.</>}
         {!isLatest && <> בחרתם נקודת זמן קודמת — אפשר לחזור ל«המשחק האחרון» בבורר למעלה.</>}
       </p>

@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import type { Row, AdvancementSummary, PickStatus, StageReach, StageStat } from '../../../sim-core'
-import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, nextStepClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause } from './summaryText'
+import { placeStats } from '../../../sim-core'
+import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, nextStepClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause, buildBestCase } from './summaryText'
 
 function pick(over: Partial<PickStatus> & { team: string; predictedRank: number; stage: PickStatus['stage'] }): PickStatus {
   return { teamHe: over.team, reach: 0, groupFirst: 0, topsGroup: false, ...over }
@@ -14,7 +15,7 @@ function stage(key: string, label: string, edge: number, val = 0, field = 0): St
   return { key: key as StageStat['key'], label, val, field, edge }
 }
 function row(over: Partial<Row>): Row {
-  return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', scorerBootPct: 0, reason: '', stages: [], ...over }
+  return { label: 'מי', winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 0, std: 0, ceiling: 0, bestPlace: 1, bestPlacePct: 0, peakPlace: 1, peakPlacePct: 0, curRank: 1, expRank: 1, turkey: '', championHe: '', championTeam: '', championAlive: true, scorer: '', scorerBootPct: 0, reason: '', stages: [], ...over }
 }
 
 describe('deepPicksClause', () => {
@@ -196,6 +197,63 @@ describe('remainingPotentialClause', () => {
     expect(remainingPotentialClause(done, { r16: 'done' })).toBeNull()
     const empty = row({ stages: [stage('r16', 'שמינית', 0, 0, 0)] })
     expect(remainingPotentialClause(empty, { r16: 'live' })).toBeNull()
+  })
+})
+
+describe('buildBestCase', () => {
+  test('lists deep picks (deepest first) then golden boot then live group picks, with the payoff', () => {
+    const adv = summary([
+      pick({ team: 'ספרד', predictedRank: 7, stage: 'likely', reach: 1 }),
+      pick({ team: 'אנגליה', predictedRank: 5, stage: 'likely', reach: 1 }),
+      pick({ team: 'טורקיה', predictedRank: 2, stage: 'bubble', reach: 0.4 }),
+      pick({ team: 'גרמניה', predictedRank: 1, stage: 'secured', reach: 0.95 }), // already ~locked → excluded
+      pick({ team: 'ברזיל', predictedRank: 6, stage: 'out', reach: 1 }),          // deep bust → caps the ceiling
+    ])
+    const reach = { ספרד: sr({ champion: 0.18 }), אנגליה: sr({ sf: 0.31 }) }
+    const r = row({ ceiling: 410, bestPlace: 4, bestPlacePct: 12.5, peakPlace: 1, peakPlacePct: 0.3, scorer: 'הארי קיין', scorerBootPct: 22 })
+    const gb = { scorerHe: 'הארי קיין', goalsSoFar: 4, alive: true, edge: 8 }
+    const bc = buildBestCase(r, adv, reach, gb)!
+    expect(bc.steps).toEqual([
+      { teamHe: 'ספרד', need: 'לזכות באליפות', pct: 18 },
+      { teamHe: 'אנגליה', need: 'להגיע לחצי הגמר', pct: 31 },
+      { teamHe: 'הארי קיין', need: 'לזכות בנעל הזהב', pct: 22 },
+      { teamHe: 'טורקיה', need: 'לעלות מהבית', pct: 40 },
+    ])
+    expect(bc.gone).toEqual(['ברזיל'])
+    expect(bc.ceiling).toBe(410)
+    // the optimal place is a concrete, field-relative finish read off the row's rank
+    // histogram — the realistic best, plus the theoretical peak as a footnote
+    expect(bc.place).toEqual({ realistic: 4, realisticPct: 12.5, peak: 1, peakPct: 0.3 })
+  })
+
+  test('returns null when there is nothing left to chase (all picks locked or busted shallow)', () => {
+    const adv = summary([
+      pick({ team: 'ספרד', predictedRank: 1, stage: 'secured', reach: 0.95 }),
+      pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 }),
+    ])
+    expect(buildBestCase(row({}), adv, {})).toBeNull()
+  })
+
+  test('skips a dead golden boot and deep picks the model gives no path', () => {
+    const adv = summary([pick({ team: 'ספרד', predictedRank: 5, stage: 'longshot', reach: 0.3 })])
+    const reach = { ספרד: sr({ sf: 0 }) } // 0% to reach the semis → dropped
+    const r = row({ scorer: 'X', scorerBootPct: 5 })
+    const gb = { scorerHe: 'X', goalsSoFar: 0, alive: false, edge: 0 } // team out → boot dropped
+    expect(buildBestCase(r, adv, reach, gb)).toBeNull()
+  })
+})
+
+describe('placeStats', () => {
+  test('realistic best is the highest place with a non-trivial cumulative chance; peak is the best ever seen', () => {
+    // 100 sims: place 1 once, place 2 four times, place 3 fifteen times, rest at 8th.
+    const counts = new Array(24).fill(0)
+    counts[0] = 1; counts[1] = 4; counts[2] = 15; counts[7] = 80
+    // cumulative crosses 10% at place 3 (1+4+15 = 20 → 20%); peak is place 1 at 1%
+    expect(placeStats(counts, 100, 7)).toEqual({ bestPlace: 3, bestPlacePct: 20, peakPlace: 1, peakPlacePct: 1 })
+  })
+
+  test('falls back to the rounded expected finish with no histogram', () => {
+    expect(placeStats(undefined, 0, 12.4)).toEqual({ bestPlace: 12, bestPlacePct: 0, peakPlace: 12, peakPlacePct: 0 })
   })
 })
 

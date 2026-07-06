@@ -646,6 +646,12 @@ export interface SimAgg {
   // matchup actually happens) for any bettor, at any knockout stage.
   koPairs: Map<number, Map<string, number>>
   series?: Map<string, number[]>
+  // Per bettor, the full finishing-rank histogram: index r holds how many simulated
+  // tournaments they finished in place r+1 (standard competition ranking). Collected
+  // under the same flag as `series`. Lets the card quote a *realistic* best finish (the
+  // best place with a non-trivial cumulative chance) and the theoretical peak (the very
+  // best place they ever reached, however unlikely) — field-relative, not a tier bucket.
+  rankCounts?: Map<string, number[]>
 }
 
 // Side-agnostic key for a knockout pairing, so a bettor who stored the two teams
@@ -704,7 +710,8 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   const reachR16 = new Map<string, number>(), reachQF = new Map<string, number>(), reachSF = new Map<string, number>(), reachFinal = new Map<string, number>()
   const koPairs = new Map<number, Map<string, number>>()
   const series = collect ? new Map<string, number[]>() : undefined
-  for (const u of USERS) { win.set(u.label, 0); top3.set(u.label, 0); top5.set(u.label, 0); sumPts.set(u.label, 0); sumSq.set(u.label, 0); sumRank.set(u.label, 0); stages.set(u.label, zeroStages()); series?.set(u.label, []) }
+  const rankCounts = collect ? new Map<string, number[]>() : undefined
+  for (const u of USERS) { win.set(u.label, 0); top3.set(u.label, 0); top5.set(u.label, 0); sumPts.set(u.label, 0); sumSq.set(u.label, 0); sumRank.set(u.label, 0); stages.set(u.label, zeroStages()); series?.set(u.label, []); rankCounts?.set(u.label, new Array(USERS.length).fill(0)) }
   // Seed every group team at 0 so a team that *never* reaches the knockouts still
   // gets an explicit 0 (a missing key would otherwise hide it from the survival
   // verdict — exactly the case for a side that's already mathematically doomed).
@@ -762,6 +769,8 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
     for (let r = 0; r < scored.length; r++) {
       if (r > 0 && scored[r].pts !== scored[r - 1].pts) rank = r + 1
       sumRank.set(scored[r].label, sumRank.get(scored[r].label)! + rank)
+      const rc = rankCounts?.get(scored[r].label)
+      if (rc) rc[rank - 1]++
     }
     for (const s of scored) {
       sumPts.set(s.label, sumPts.get(s.label)! + s.pts)
@@ -769,7 +778,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       series?.get(s.label)!.push(s.pts)
     }
   }
-  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series }
+  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts }
 }
 
 // Add every tally of `b` into `a` (in place) and return `a`. All aggregate
@@ -800,6 +809,13 @@ export function mergeSimAgg(a: SimAgg, b: SimAgg): SimAgg {
     for (const [label, arr] of b.series) {
       const cur = a.series.get(label)
       if (cur) cur.push(...arr); else a.series.set(label, [...arr])
+    }
+  }
+  if (a.rankCounts && b.rankCounts) {
+    for (const [label, arr] of b.rankCounts) {
+      const cur = a.rankCounts.get(label)
+      if (cur) for (let i = 0; i < arr.length; i++) cur[i] += arr[i]
+      else a.rankCounts.set(label, [...arr])
     }
   }
   return a
@@ -1230,9 +1246,37 @@ export function reachAtRank(sr: StageReach | undefined, rank: number): number {
 
 // ---- build ranked rows -----------------------------------------------------
 export interface StageStat { key: StageKey; label: string; val: number; field: number; edge: number }
+// A bettor's finish-place ceiling, read off the simulated rank histogram:
+//  - bestPlace: the *realistic* best finish — the highest place (lowest number) they
+//    reach with at least a non-trivial cumulative chance (REALISTIC_PLACE_P), so it's
+//    not a one-in-a-thousand fluke. bestPlacePct is that cumulative chance.
+//  - peakPlace: the theoretical best — the very best place seen in *any* sim, however
+//    unlikely. peakPlacePct is its (typically near-zero) cumulative chance.
+// Both are field-relative (they come from ranking every bettor each sim), which is what
+// makes "the highest place you can realistically reach" a concrete number, not a bucket.
+export const REALISTIC_PLACE_P = 0.10
+export interface PlaceStats { bestPlace: number; bestPlacePct: number; peakPlace: number; peakPlacePct: number }
+export function placeStats(counts: number[] | undefined, n: number, expRank: number): PlaceStats {
+  const fallback = Math.max(1, Math.round(expRank))
+  if (!counts || !n) return { bestPlace: fallback, bestPlacePct: 0, peakPlace: fallback, peakPlacePct: 0 }
+  const round1 = (x: number) => Math.round(x * 10) / 10
+  let cum = 0, peakPlace = 0, peakPlacePct = 0, bestPlace = 0, bestPlacePct = 0
+  for (let i = 0; i < counts.length; i++) {
+    const c = counts[i]
+    cum += c
+    if (c > 0 && peakPlace === 0) { peakPlace = i + 1; peakPlacePct = round1((cum / n) * 100) }
+    if (bestPlace === 0 && cum / n >= REALISTIC_PLACE_P) { bestPlace = i + 1; bestPlacePct = round1((cum / n) * 100) }
+  }
+  if (peakPlace === 0) return { bestPlace: fallback, bestPlacePct: 0, peakPlace: fallback, peakPlacePct: 0 }
+  if (bestPlace === 0) { bestPlace = peakPlace; bestPlacePct = peakPlacePct }
+  return { bestPlace, bestPlacePct, peakPlace, peakPlacePct }
+}
+
 export interface Row {
   label: string; winPct: number; top3Pct: number; top5Pct: number; avgPts: number
   std: number; ceiling: number; curRank: number; expRank: number; turkey: string
+  // The realistic best finish + the theoretical peak, from the simulated rank histogram.
+  bestPlace: number; bestPlacePct: number; peakPlace: number; peakPlacePct: number
   championHe: string; championTeam: string; championAlive: boolean; scorer: string; reason: string
   // Model probability the bettor's picked scorer wins or *shares* the golden boot —
   // the exact condition on the +10 bonus, so the card can explain that reward.
@@ -1261,6 +1305,8 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
     const mean = real.sumPts.get(u.label)! / n
     const std = Math.sqrt(Math.max(0, real.sumSq.get(u.label)! / n - mean * mean))
     const ceiling = real.series ? percentile(real.series.get(u.label)!, 0.95) : 0
+    const expRankVal = real.sumRank.get(u.label)! / n
+    const places = placeStats(real.rankCounts?.get(u.label), n, expRankVal)
     const st = real.stages.get(u.label)!
     const stages: StageStat[] = STAGE_KEYS.map(k => {
       const val = st[k] / n
@@ -1271,8 +1317,10 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
       top3Pct: (real.top3.get(u.label)! / n) * 100,
       top5Pct: (real.top5.get(u.label)! / n) * 100,
       avgPts: mean, std, ceiling,
+      bestPlace: places.bestPlace, bestPlacePct: places.bestPlacePct,
+      peakPlace: places.peakPlace, peakPlacePct: places.peakPlacePct,
       curRank: curRank.get(u.label)!,
-      expRank: real.sumRank.get(u.label)! / n,
+      expRank: expRankVal,
       turkey: turkeyDepth(u),
       championHe: u.predictedChampion ? he(u.predictedChampion) : '—',
       championTeam: u.predictedChampion ?? '',

@@ -1811,48 +1811,26 @@
   vertical-align: middle;
 }
 
-/* win% bar — the glanceable hero column */
-.wp-td--win { width: 48%; min-width: 150px; }
+/* finish-odds columns — first place (the hero), then top-3 and top-5 */
+.wp-th--p1, .wp-th--p3, .wp-th--p5 { text-align: center; }
+.wp-td--p1, .wp-td--p3, .wp-td--p5 { text-align: center; white-space: nowrap; }
+.wp-th--p1, .wp-td--p1 { width: 78px; }
+.wp-th--p3, .wp-td--p3 { width: 66px; }
+.wp-th--p5, .wp-td--p5 { width: 66px; }
 
-.wp-bar-wrap {
-  position: relative;
-  height: 22px;
-  background: rgba(11, 34, 68, 0.06);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.wp-bar {
-  position: absolute;
-  inset: 0 0 0 auto;
-  height: 100%;
-  background: linear-gradient(to left, var(--gold), var(--medal-gold));
-  border-radius: 4px;
-  min-width: 2px;
-}
-
-.wp-bar-pct {
-  position: absolute;
-  inset: 0 9px 0 auto;
-  display: flex;
-  align-items: center;
+.wp-pct {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 13px;
-  color: var(--ink);
+  font-size: 15px;
+  color: var(--muted);
 }
 
-/* secondary "top 5" reading on the opposite end of the same bar (stays legible
-   over both the light track and the gold fill, which can reach this end) */
-.wp-bar-top5 {
-  position: absolute;
-  inset: 0 auto 0 9px;
-  display: flex;
-  align-items: center;
-  font-size: 10.5px;
+.wp-pct--hero {
+  font-size: 19px;
   font-weight: 700;
   color: var(--navy);
-  white-space: nowrap;
 }
+
+.wp-row--rank-1 .wp-pct--hero { color: var(--medal-gold, var(--gold)); }
 
 /* expected place */
 .wp-td--exp { width: 64px; text-align: center; white-space: nowrap; }
@@ -2237,6 +2215,78 @@
   line-height: 1.5;
 }
 
+/* התרחיש למקום האופטימלי — the tap-to-open best-case route */
+.wp-best {
+  margin: 10px 0 12px;
+  padding: 11px 13px;
+  background: linear-gradient(135deg, rgba(212, 160, 22, 0.12), rgba(11, 34, 68, 0.05));
+  border: 1px solid rgba(200, 184, 122, 0.6);
+  border-radius: 10px;
+}
+
+.wp-best-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 9px;
+}
+
+.wp-best-title { font-weight: 800; color: var(--navy); font-size: 13.5px; }
+.wp-best-sub { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+.wp-best-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.wp-best-row { display: flex; align-items: center; gap: 9px; }
+
+.wp-best-need { flex: 1 1 auto; font-size: 12.5px; color: var(--ink); line-height: 1.35; }
+.wp-best-need b { color: var(--navy); font-weight: 700; }
+
+.wp-best-track {
+  position: relative;
+  flex: 0 0 84px;
+  height: 8px;
+  background: rgba(11, 34, 68, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.wp-best-fill {
+  position: absolute;
+  inset: 0 0 0 auto;
+  height: 100%;
+  min-width: 2px;
+  background: linear-gradient(to left, var(--gold), var(--medal-gold));
+  border-radius: 999px;
+}
+
+.wp-best-pct {
+  flex: 0 0 40px;
+  text-align: left;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  color: var(--navy);
+}
+
+.wp-best-payoff {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(200, 184, 122, 0.55);
+  font-size: 12.5px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.wp-best-payoff b { color: var(--navy); font-weight: 800; }
+
+.wp-best-gone { margin-top: 6px; font-size: 11.5px; color: var(--red); line-height: 1.4; }
+
 @media (max-width: 639px) {
   .lb-prob { padding: 0 0.5rem; }
 
@@ -2264,13 +2314,17 @@
   .wp-flag { display: inline-block; margin-top: 2px; }
   .wp-chevron { margin-inline-start: 3px; }
 
-  .wp-th--win,
-  .wp-td--win { width: auto; min-width: 0; }
-  .wp-bar-wrap { height: 19px; }
-  .wp-bar-pct { font-size: 12px; }
+  .wp-th--p1, .wp-td--p1 { width: 52px; }
+  .wp-th--p3, .wp-td--p3,
+  .wp-th--p5, .wp-td--p5 { width: 44px; }
+  .wp-pct { font-size: 13px; }
+  .wp-pct--hero { font-size: 15px; }
 
   .wp-th--exp,
   .wp-td--exp { width: 42px; }
+
+  .wp-best { padding: 10px 11px; }
+  .wp-best-track { flex-basis: 60px; }
   .wp-exp { font-size: 15px; }
   .wp-exp-arrow { margin-inline-start: 1px; }
 

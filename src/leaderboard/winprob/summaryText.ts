@@ -301,6 +301,94 @@ export function goldenBootClause(d: GoldenBootDigest): string | null {
   return s
 }
 
+// התרחיש הטוב ביותר — the concrete route to a bettor's optimal finish: every bet that
+// still *can* pay off, and what has to happen for it to. Unlike the field-relative
+// "מה צריך לקרות" (which shows only the rare, differentiating deep picks), this is the
+// full best-case wish-list — champion/finalist/semis calls, the golden boot, and any
+// group escapes still in the balance — each with the model's chance for that exact
+// outcome. Paired with `ceiling` (the ~95th-percentile points if it all breaks right)
+// and the win odds, it answers "what's the dream, and how likely is each piece of it".
+export interface BestCaseStep {
+  teamHe: string // the team (or scorer) the outcome hangs on
+  need: string   // what has to happen — "לזכות באליפות", "לעלות מהבית"…
+  pct: number    // the model's chance for that exact outcome, ×100 and rounded
+}
+
+// The optimal finish the scenario yields — a concrete, field-relative place, not a tier
+// bucket. `realistic` is the highest place the bettor can plausibly reach (the best
+// finish with a non-trivial cumulative chance, from the sim rank histogram); `peak` is
+// the theoretical best they ever reached, shown as a near-zero-odds footnote. This keeps
+// the payoff honest and specific: never "you could finish 1st" off a fluke.
+export interface BestCasePlace {
+  realistic: number    // highest place with a real (non-trivial) shot
+  realisticPct: number // % to finish at that place or better
+  peak: number         // best place seen in any sim (theoretical ceiling)
+  peakPct: number      // its (near-zero) cumulative chance
+}
+
+export interface BestCaseDigest {
+  steps: BestCaseStep[] // the wish-list, biggest prizes first
+  ceiling: number       // ~points if every step lands (95th-percentile of the sims)
+  place: BestCasePlace  // the optimal finish that best case realistically yields
+  gone: string[]        // deep picks already busted, which cap the ceiling
+}
+
+// The destination phrasing for the best-case wish-list — "France to win it all".
+const DEPTH_NEED: Record<number, string> = { 7: 'לזכות באליפות', 6: 'להגיע לגמר', 5: 'להגיע לחצי הגמר', 4: 'להגיע לרבע הגמר' }
+
+export function buildBestCase(
+  row: Row,
+  advancement: AdvancementSummary | null,
+  stageReach: Record<string, StageReach>,
+  goldenBoot: GoldenBootDigest | null = null,
+): BestCaseDigest | null {
+  const steps: BestCaseStep[] = []
+  const gone: string[] = []
+
+  // Marquee depth calls first, deepest bet listed at the top — a title bid outranks a
+  // quarter-final one. A pick with no simulated path to its depth is dropped (a 0% wish
+  // is noise, not a scenario).
+  if (advancement) {
+    const deep = advancement.picks
+      .filter(p => p.stage !== 'out' && p.predictedRank >= 4)
+      .sort((a, b) => b.predictedRank - a.predictedRank || b.reach - a.reach)
+    for (const p of deep) {
+      const pct = Math.round(reachAtRank(stageReach[p.team], p.predictedRank) * 100)
+      if (pct > 0) steps.push({ teamHe: p.teamHe, need: DEPTH_NEED[p.predictedRank] ?? DEPTH_NEED[4], pct })
+    }
+  }
+
+  // The golden boot sits between the deep calls and the group escapes — a heavy +10
+  // bonus, but only live while the scorer's team is still in.
+  if (goldenBoot && goldenBoot.alive && goldenBoot.scorerHe && goldenBoot.scorerHe !== '—') {
+    const pct = Math.round(row.scorerBootPct)
+    if (pct > 0) steps.push({ teamHe: goldenBoot.scorerHe, need: 'לזכות בנעל הזהב', pct })
+  }
+
+  if (advancement) {
+    // Group escapes still genuinely in play (not already ~locked, not busted), hardest
+    // first — the calls whose success is least assured are the ones to sweat.
+    const grp = advancement.picks
+      .filter(p => p.stage !== 'out' && p.predictedRank <= 3 && p.reach < 0.85)
+      .sort((a, b) => a.reach - b.reach)
+    for (const p of grp) {
+      const pct = Math.round(p.reach * 100)
+      if (pct > 0) steps.push({ teamHe: p.teamHe, need: 'לעלות מהבית', pct })
+    }
+    for (const p of advancement.picks) {
+      if (p.stage === 'out' && p.predictedRank >= 4) gone.push(p.teamHe)
+    }
+  }
+
+  // Nothing left that can still be chased → no best-case to show.
+  if (!steps.length) return null
+  const place: BestCasePlace = {
+    realistic: row.bestPlace, realisticPct: row.bestPlacePct,
+    peak: row.peakPlace, peakPct: row.peakPlacePct,
+  }
+  return { steps, ceiling: row.ceiling, place, gone }
+}
+
 // Who we're writing about — second person ("אתה") for the viewer's own featured
 // card, or the bettor's name in the row detail. Keeps the prose identical bar the
 // subject, so the expand-on-tap read matches the headline at the top of the page.
