@@ -181,11 +181,15 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
 // theoretical peak. Never claims a place the sims didn't realistically deliver, so the
 // payoff can't contradict a 0% win column.
 function BestCasePlaceLine({ place }: { place: BestCasePlace }) {
+  // The peak is always below the realistic bar (cumulative < the realistic threshold),
+  // so its odds are low by construction — but "אפסי" only fits a truly tiny chance;
+  // a 6–9% peak reads as "קלוש" so the wording never contradicts the number shown.
+  const peakOdds = place.peakPct < 1 ? 'בסיכוי אפסי' : 'בסיכוי קלוש'
   return (
     <>
       המקום הכי גבוה שריאלי לך לסיים בו: <b>מקום {place.realistic}</b> (סיכוי <b>{fmtPct(place.realisticPct)}</b>)
       {place.peak < place.realistic && (
-        <> · בשיא התיאורטי אפשר עד <b>מקום {place.peak}</b>, אך בסיכוי אפסי ({fmtPct(place.peakPct)})</>
+        <> · בשיא התיאורטי אפשר עד <b>מקום {place.peak}</b>, אך {peakOdds} ({fmtPct(place.peakPct)})</>
       )}
     </>
   )
@@ -209,7 +213,7 @@ function BestCase({ bc }: { bc: BestCaseDigest }) {
         ))}
       </ul>
       <div className="wp-best-payoff">
-        אם כל אלה ייפלו לטובתך — כ-<b>{Math.round(bc.ceiling)}</b> נק׳. <BestCasePlaceLine place={bc.place} />
+        בתרחיש הטוב ביותר (5% התרחישים הגבוהים) — כ-<b>{Math.round(bc.ceiling)}</b> נק׳. <BestCasePlaceLine place={bc.place} />
       </div>
       {bc.gone.length > 0 && (
         <div className="wp-best-gone">כבר נסגר לרעתך ומוריד את התקרה: {bc.gone.join(', ')}</div>

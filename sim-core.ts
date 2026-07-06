@@ -1259,13 +1259,16 @@ export interface PlaceStats { bestPlace: number; bestPlacePct: number; peakPlace
 export function placeStats(counts: number[] | undefined, n: number, expRank: number): PlaceStats {
   const fallback = Math.max(1, Math.round(expRank))
   if (!counts || !n) return { bestPlace: fallback, bestPlacePct: 0, peakPlace: fallback, peakPlacePct: 0 }
-  const round1 = (x: number) => Math.round(x * 10) / 10
+  // Raw percentages (multiply before dividing to keep clean integers where possible) —
+  // the display layer (fmtPct) rounds and, crucially, renders a tiny-but-nonzero peak as
+  // "<0.1%" rather than a misleading "0.0%".
+  const pct = (count: number) => (count * 100) / n
   let cum = 0, peakPlace = 0, peakPlacePct = 0, bestPlace = 0, bestPlacePct = 0
   for (let i = 0; i < counts.length; i++) {
     const c = counts[i]
     cum += c
-    if (c > 0 && peakPlace === 0) { peakPlace = i + 1; peakPlacePct = round1((cum / n) * 100) }
-    if (bestPlace === 0 && cum / n >= REALISTIC_PLACE_P) { bestPlace = i + 1; bestPlacePct = round1((cum / n) * 100) }
+    if (c > 0 && peakPlace === 0) { peakPlace = i + 1; peakPlacePct = pct(cum) }
+    if (bestPlace === 0 && cum / n >= REALISTIC_PLACE_P) { bestPlace = i + 1; bestPlacePct = pct(cum) }
   }
   if (peakPlace === 0) return { bestPlace: fallback, bestPlacePct: 0, peakPlace: fallback, peakPlacePct: 0 }
   if (bestPlace === 0) { bestPlace = peakPlace; bestPlacePct = peakPlacePct }
