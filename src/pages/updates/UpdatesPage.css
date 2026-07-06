@@ -67,6 +67,47 @@
   border-bottom: 2px solid var(--red);
 }
 
+/* ── Collapsed / toggle ───────────────────────────────────── */
+
+.update-card--collapsed .update-card__content {
+  padding-bottom: 1.75rem;
+}
+
+.update-card__subject--toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--red);
+  text-align: inherit;
+  font: inherit;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(32px, 6.5vw, 50px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--navy);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.update-card--collapsed .update-card__subject--toggle {
+  margin-bottom: 0;
+}
+
+.update-card__subject--toggle:hover {
+  color: var(--red);
+}
+
+.update-card__chevron {
+  flex-shrink: 0;
+  font-size: 0.42em;
+  color: var(--red);
+  line-height: 1;
+}
+
 /* ── Body text ────────────────────────────────────────────── */
 
 .update-card__body {
