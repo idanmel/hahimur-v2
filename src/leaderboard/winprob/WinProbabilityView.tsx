@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PredictionsState, TournamentResults } from '../../shared/types'
 import type { Row, AdvancementSummary, StageReach } from '../../../sim-core'
-import { realEliminations, effectiveEliminations, advancementSummaryForLabel, reachAtRank } from '../../../sim-core'
+import { realEliminations, effectiveEliminations, advancementSummaryForLabel } from '../../../sim-core'
 import type { User } from '../../users'
 import { TEAMS } from '../../shared/groups'
 import { SCORERS } from '../../../golden-boot'
@@ -13,7 +13,7 @@ import { useWinProbabilities } from './useWinProbabilities'
 import { usePivotalMatches } from './usePivotalMatches'
 import { pickPivotal, type PivotalCard, type PivotalMetric, type PivotalOutcome } from './pivotalPick'
 import { fmtPct, buildBettorHeadline, buildStageForecast, stageForecastTotalEdge, buildBestCase } from './summaryText'
-import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, NextStepDigest, NextStepPick, StagePhase, StageForecastRow, BestCaseDigest, BestCasePlace } from './summaryText'
+import type { BettorHeadline, HeadlineSubject, CrossingsDigest, GoldenBootDigest, StagePhase, StageForecastRow, BestCaseDigest } from './summaryText'
 
 const KO_KEYS = ['r32', 'r16', 'qf', 'sf', 'thirdPlace', 'final'] as const
 
@@ -172,56 +172,51 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
   )
 }
 
-// כמה גבוה אתה יכול לסיים — the tap-to-open upside breakdown: every bet that can still
-// pay off (title/finalist/semis calls, the golden boot, live group escapes), each with
-// the model's MARGINAL chance for that exact outcome. These are per-pick, independent
-// odds — NOT a single joint scenario: two of your teams can be drawn against each other,
-// so the winner knocks the other out and their deep runs are mutually exclusive. That's
-// why we never say "if they all happen together". The consistent bottom line (ceiling
-// points + realistic place) comes straight from the sim, which already resolves those
-// head-to-heads, so it — not the sum of the rows — is the honest combined payoff.
-// The optimal finish this best case actually yields — a concrete, field-relative place
-// (the highest with a real shot), plus a parenthetical near-zero-odds note for the
-// theoretical peak. Never claims a place the sims didn't realistically deliver, so the
-// payoff can't contradict a 0% win column.
-function BestCasePlaceLine({ place }: { place: BestCasePlace }) {
-  // The peak is always below the realistic bar (cumulative < the realistic threshold),
-  // so its odds are low by construction — but "אפסי" only fits a truly tiny chance;
-  // a 6–9% peak reads as "קלוש" so the wording never contradicts the number shown.
-  const peakOdds = place.peakPct < 1 ? 'בסיכוי אפסי' : 'בסיכוי קלוש'
-  return (
-    <>
-      המקום הכי גבוה שריאלי לך לסיים בו: <b>מקום {place.realistic}</b> (סיכוי <b>{fmtPct(place.realisticPct)}</b>)
-      {place.peak < place.realistic && (
-        <> · בשיא התיאורטי אפשר עד <b>מקום {place.peak}</b>, אך {peakOdds} ({fmtPct(place.peakPct)})</>
-      )}
-    </>
-  )
-}
-
+// התרחיש האופטימלי — one *coherent*, forward-looking dream run, lifted straight from the
+// sim: the single highest-scoring simulated bracket in which the bettor landed at their
+// realistic ceiling place, restricted to picks still in play (settled ones — already out
+// or already at their backed depth — are filtered out in buildRows, so the scenario
+// shrinks as the tournament progresses). Because it's one real tournament, the picks'
+// fates can't contradict each other — if two of the bettor's teams meet, only the winner
+// advances, so the list can never show "Spain to the semis AND Portugal to the quarters"
+// when the draw pits them in the round of 16. Each row is what happens to that pick in the
+// remaining games (✓ reaches its backed depth, ✕ stopped earlier — often by another of the
+// bettor's own teams); the payoff is that same tournament's place + points.
 function BestCase({ bc }: { bc: BestCaseDigest }) {
-  const maxPct = Math.max(...bc.steps.map(s => s.pct), 1)
+  // "אפסי" only fits a truly tiny chance; a mid-single-digit peak reads as "קלוש".
+  const peakOdds = bc.peakPct < 1 ? 'בסיכוי אפסי' : 'בסיכוי קלוש'
   return (
     <div className="wp-best" dir="rtl">
       <div className="wp-best-head">
-        <span className="wp-best-title">כמה גבוה אתה יכול לסיים</span>
-        <span className="wp-best-sub">הפוטנציאל של כל בחירה בנפרד — הסיכוי שתגיע לעומק שחזית לה (לא בהכרח כולן יחד):</span>
+        <span className="wp-best-title">התרחיש האופטימלי שלך</span>
+        <span className="wp-best-sub">מה עוד צריך לקרות במשחקים שנותרו כדי שתטפס הכי גבוה — גורל אחד קוהרנטי מתוך הסימולציות (מתעדכן ככל שהטורניר מתקדם):</span>
       </div>
       <ul className="wp-best-list">
-        {bc.steps.map((s, i) => (
-          <li key={i} className="wp-best-row">
-            <span className="wp-best-need"><b>{s.teamHe}</b> {s.need}</span>
-            <span className="wp-best-track"><span className="wp-best-fill" style={{ width: `${((s.pct / maxPct) * 100).toFixed(0)}%` }} /></span>
-            <span className="wp-best-pct">{s.pct}%</span>
+        {bc.lines.map((line, i) => (
+          <li key={i} className={`wp-best-row${line.hit ? '' : ' wp-best-row--miss'}`}>
+            <span className="wp-best-mark">{line.hit ? '✓' : '✕'}</span>
+            <span className="wp-best-need"><b>{line.teamHe}</b> {line.reachedLabel}</span>
           </li>
         ))}
+        {bc.third && (
+          <li className={`wp-best-row${bc.third.won ? '' : ' wp-best-row--miss'}`}>
+            <span className="wp-best-mark">{bc.third.won ? '✓' : '✕'}</span>
+            <span className="wp-best-need"><b>{bc.third.teamHe}</b> {bc.third.won ? 'תזכה במשחק המקום השלישי' : 'לא תזכה במשחק המקום השלישי'}</span>
+          </li>
+        )}
+        {bc.boot && (
+          <li className={`wp-best-row${bc.boot.won ? '' : ' wp-best-row--miss'}`}>
+            <span className="wp-best-mark">{bc.boot.won ? '✓' : '✕'}</span>
+            <span className="wp-best-need"><b>{bc.boot.scorerHe}</b> {bc.boot.won ? 'יזכה בנעל הזהב' : 'לא יזכה בנעל הזהב'}</span>
+          </li>
+        )}
       </ul>
       <div className="wp-best-payoff">
-        בסימולציות הטובות ביותר שלך (5% העליונים) — כ-<b>{Math.round(bc.ceiling)}</b> נק׳ (המודל כבר לוקח בחשבון שחלק מהקבוצות שלך ייפגשו ביניהן, כך שלא כל הבחירות יכולות להיפרע יחד). <BestCasePlaceLine place={bc.place} />
+        בתרחיש הזה אתה מסיים <b>מקום {bc.rank}</b> עם כ-<b>{bc.pts}</b> נק׳ — תרחיש כזה או טוב יותר קורה בכ-<b>{fmtPct(bc.rankPct)}</b> מהסימולציות.
+        {bc.peak < bc.rank && (
+          <> · בשיא התיאורטי אפשר עד <b>מקום {bc.peak}</b>, אך {peakOdds} ({fmtPct(bc.peakPct)}).</>
+        )}
       </div>
-      {bc.gone.length > 0 && (
-        <div className="wp-best-gone">כבר נסגר לרעתך ומוריד את התקרה: {bc.gone.join(', ')}</div>
-      )}
     </div>
   )
 }
@@ -235,7 +230,6 @@ function HeadlineBody({ h, knockoutsStarted, forecast, bestCase, pivotal }: { h:
       <p className="wp-me-standing">{emphasize(h.standing)}</p>
       {bestCase && <BestCase bc={bestCase} />}
       <ul className="wp-me-lines">
-        {h.nextStep && <li className="wp-me-line--next"><span className="wp-me-label">מה צריך לקרות</span><span>{emphasize(h.nextStep)}</span></li>}
         {h.route && <li><span className="wp-me-label">המסלול של {h.route.teamHe}</span><span>{emphasize(h.route.ladder)}</span></li>}
         {h.bigBets && <li><span className="wp-me-label">עוד קלפים גדולים</span><span>{emphasize(h.bigBets)}</span></li>}
         {h.remaining && <li><span className="wp-me-label">פוטנציאל בהמשך</span><span>{emphasize(h.remaining)}</span></li>}
@@ -294,16 +288,16 @@ function WhatIf({ cards, metric }: { cards: PivotalCard[]; metric: PivotalMetric
 // Tap-to-open personal read for one bettor — the very same synthesis shown in the
 // featured card up top, just for the clicked row (named, third person; or "אתה"
 // when it's the viewer's own row).
-function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, knockoutsStarted, nextStep, forecast }: {
+function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings, goldenBoot, knockoutsStarted, forecast }: {
   row: Row; advancement?: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number; isMe: boolean
   crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null
-  knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
+  knockoutsStarted: boolean; forecast: ForecastData
 }) {
   const firstName = row.label.split(' ')[0]
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
-  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, knockoutsStarted, nextStep, stagePhases)
-  const bestCase = buildBestCase(row, advancement ?? null, stageReach, goldenBoot)
+  const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, knockoutsStarted, stagePhases)
+  const bestCase = buildBestCase(row)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
@@ -315,16 +309,16 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
 // The featured personal read for the identified bettor, pinned to the top of the
 // page so they don't have to find and expand their own row — identical prose to the
 // row detail. Built entirely from this bettor's own picks (no generic filler).
-function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, knockoutsStarted, nextStep, forecast, pivotalCards, pivotalMetric }: {
+function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossings, goldenBoot, knockoutsStarted, forecast, pivotalCards, pivotalMetric }: {
   name: string; row: Row; advancement: AdvancementSummary | null; stageReach: Record<string, StageReach>; totalPlayers: number
   crossings: CrossingsDigest | null; goldenBoot: GoldenBootDigest | null
-  knockoutsStarted: boolean; nextStep: NextStepDigest | null; forecast: ForecastData
+  knockoutsStarted: boolean; forecast: ForecastData
   pivotalCards: PivotalCard[]; pivotalMetric: PivotalMetric
 }) {
   const firstName = name.split(' ')[0]
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
-  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, knockoutsStarted, nextStep, stagePhases)
-  const bestCase = buildBestCase(row, advancement, stageReach, goldenBoot)
+  const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, knockoutsStarted, stagePhases)
+  const bestCase = buildBestCase(row)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>
@@ -450,42 +444,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
     }
   }
 
-  // How many bettors back each team as a *deep* pick (QF+). The same team in many
-  // brackets is a consensus call; in few, a differentiator — the basis for judging how
-  // much a given team's fate actually swings one bettor's standing vs the field.
-  const deepBackers = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const r of rows) {
-      const adv = advancementSummaryForLabel(r.label, reachByTeam, groupFirstByTeam, eliminationsEff)
-      for (const p of adv?.picks ?? []) {
-        if (p.predictedRank >= 4) m.set(p.team, (m.get(p.team) ?? 0) + 1)
-      }
-    }
-    return m
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, reachByTeam, groupFirstByTeam, eliminationsEff])
-
-  // The forward-looking "what needs to happen" digest: the bettor's live deep picks
-  // (QF+) that few others backed this deep — where their fate diverges from the field —
-  // each with the model's chance to reach the backed depth. Rarest (highest-leverage)
-  // first, capped to three so the line stays punchy.
-  const nextStepDigestFor = (row: Row): NextStepDigest | null => {
-    const total = rows.length
-    if (!total) return null
-    const adv = advancementSummaryForLabel(row.label, reachByTeam, groupFirstByTeam, eliminationsEff)
-    const picks: NextStepPick[] = []
-    for (const p of (adv?.picks ?? [])) {
-      if (p.stage === 'out' || p.predictedRank < 4) continue
-      const backers = deepBackers.get(p.team) ?? 1
-      if (backers / total > 0.33) continue // consensus pick: low leverage vs the field
-      const pct = Math.round(reachAtRank(stageReachByTeam[p.team], p.predictedRank) * 100)
-      if (pct <= 0) continue
-      picks.push({ teamHe: p.teamHe, predictedRank: p.predictedRank, pct, others: Math.max(0, backers - 1) })
-    }
-    picks.sort((a, b) => a.others - b.others || b.predictedRank - a.predictedRank)
-    return picks.length ? { picks: picks.slice(0, 3) } : null
-  }
-
   // The picked scorer's live status for one bettor's row.
   const goldenBootDigestFor = (row: Row): GoldenBootDigest | null => {
     if (!row.scorer || row.scorer === '—') return null
@@ -562,7 +520,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
             crossings={crossingsDigestFor(me!)}
             goldenBoot={goldenBootDigestFor(meRow)}
             knockoutsStarted={knockoutsStarted}
-            nextStep={nextStepDigestFor(meRow)}
             forecast={stageForecastFor(meRow)}
             pivotalCards={pivotalCards}
             pivotalMetric={pivotalMetric}
@@ -621,7 +578,6 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
                           crossings={crossingsDigestFor(r.label)}
                           goldenBoot={goldenBootDigestFor(r)}
                           knockoutsStarted={knockoutsStarted}
-                          nextStep={nextStepDigestFor(r)}
                           forecast={stageForecastFor(r)}
                         />
                       </td>
@@ -637,7 +593,7 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
       <p className="lb-prob-note">
         <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «ראשון / טופ 3 / טופ 5» = הסיכוי
         לסיים במקום הזה או טוב יותר. «מקום צפוי» = הדירוג הממוצע בסיום, וחץ מראה אם צפויים לעלות או לרדת.
-        <b>לחצו על שורה</b> לסיכום אישי — ובראשו «כמה גבוה אתה יכול לסיים»: הפוטנציאל של כל בחירה בנפרד (לא בהכרח כולן יחד),
+        <b>לחצו על שורה</b> לסיכום אישי — ובראשו «התרחיש האופטימלי שלך»: מה עוד צריך לקרות במשחקים שנותרו כדי שתטפס הכי גבוה,
         ולמטה «גזרת התחזית» מפרקת את הסיכוי לנקודות בכל שלב נוקאאוט ובנעל הזהב.
         {knockoutsStarted && <> אנחנו כבר בנוקאאוט — עם פחות משחקים שנותרו נסגרים תרחישים, אז המספרים כאן מדויקים יותר מאי־פעם.</>}
         {!isLatest && <> בחרתם נקודת זמן קודמת — אפשר לחזור ל«המשחק האחרון» בבורר למעלה.</>}

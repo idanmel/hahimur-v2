@@ -1916,18 +1916,6 @@
   color: var(--muted);
 }
 
-/* The forward-looking "what needs to happen" line leads the read, so give it a
-   gentle highlight and a gold label to set it apart from the recap lines. */
-.wp-me-line--next {
-  background: linear-gradient(to left, rgba(212, 160, 22, 0.1), transparent 80%);
-  border-inline-start: 3px solid var(--gold);
-  padding: 4px 8px;
-  border-radius: 4px;
-  margin-inline-start: -8px;
-}
-
-.wp-me-line--next .wp-me-label { color: var(--gold); }
-
 /* Inline emphasis on the number tokens inside the dense personal-read lines so the
    meaningful figures pop out of the prose. Neutral figures (%, points) darken; a
    signed gap vs the field is tinted green (advantage) or red (deficit). */
@@ -2243,36 +2231,24 @@
   gap: 7px;
 }
 
-.wp-best-row { display: flex; align-items: center; gap: 9px; }
+.wp-best-row { display: flex; align-items: baseline; gap: 8px; }
+
+.wp-best-mark {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #1f8a4c;
+}
 
 .wp-best-need { flex: 1 1 auto; font-size: 12.5px; color: var(--ink); line-height: 1.35; }
 .wp-best-need b { color: var(--navy); font-weight: 700; }
 
-.wp-best-track {
-  position: relative;
-  flex: 0 0 84px;
-  height: 8px;
-  background: rgba(11, 34, 68, 0.08);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.wp-best-fill {
-  position: absolute;
-  inset: 0 0 0 auto;
-  height: 100%;
-  min-width: 2px;
-  background: linear-gradient(to left, var(--gold), var(--medal-gold));
-  border-radius: 999px;
-}
-
-.wp-best-pct {
-  flex: 0 0 40px;
-  text-align: left;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 13px;
-  color: var(--navy);
-}
+/* A pick that fell short in the scenario (often knocked out by another of the bettor's
+   own teams) — muted, with a red mark, so the coherent "collision" reads at a glance. */
+.wp-best-row--miss .wp-best-mark { color: var(--red); }
+.wp-best-row--miss .wp-best-need { color: var(--muted); }
+.wp-best-row--miss .wp-best-need b { color: var(--muted); }
 
 .wp-best-payoff {
   margin-top: 10px;
@@ -2284,8 +2260,6 @@
 }
 
 .wp-best-payoff b { color: var(--navy); font-weight: 800; }
-
-.wp-best-gone { margin-top: 6px; font-size: 11.5px; color: var(--red); line-height: 1.4; }
 
 @media (max-width: 639px) {
   .lb-prob { padding: 0 0.5rem; }
@@ -2324,7 +2298,6 @@
   .wp-td--exp { width: 42px; }
 
   .wp-best { padding: 10px 11px; }
-  .wp-best-track { flex-basis: 60px; }
   .wp-exp { font-size: 15px; }
   .wp-exp-arrow { margin-inline-start: 1px; }
 

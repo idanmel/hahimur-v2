@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import type { Row, AdvancementSummary, PickStatus, StageReach, StageStat } from '../../../sim-core'
 import { placeStats } from '../../../sim-core'
-import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, nextStepClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause, buildBestCase } from './summaryText'
+import { deepPicksClause, groupPicksClause, edgeClause, buildBettorHeadline, advancersClause, crossingsClause, goldenBootClause, buildStageForecast, stageForecastTotalEdge, remainingPotentialClause, buildBestCase } from './summaryText'
 
 function pick(over: Partial<PickStatus> & { team: string; predictedRank: number; stage: PickStatus['stage'] }): PickStatus {
   return { teamHe: over.team, reach: 0, groupFirst: 0, topsGroup: false, ...over }
@@ -77,18 +77,6 @@ describe('advancersClause', () => {
     const r = row({ stages: [stage('group', 'שלב הבתים', 18)] })
     r.stages[0] = { ...r.stages[0], val: 70, field: 52 }
     expect(advancersClause(adv, r)).toBe('1 מתוך 1 שבחרת עלו מהבתים — 4 נק׳ עלייה כבר בכיס · בשלב הבתים 70 נק׳ מול 52 בממוצע (+18)')
-  })
-})
-
-describe('nextStepClause', () => {
-  test('names each rare live deep pick with its depth, chance, and how lonely the call is', () => {
-    expect(nextStepClause({ picks: [
-      { teamHe: 'ספרד', predictedRank: 5, pct: 43, others: 0 },
-      { teamHe: 'צרפת', predictedRank: 6, pct: 21, others: 2 },
-    ] })).toBe('ספרד לחצי הגמר 43% (רק אתה עליה) · צרפת לגמר 21% (עוד 2 עליה)')
-  })
-  test('returns null when there is nothing differentiating to chase', () => {
-    expect(nextStepClause({ picks: [] })).toBeNull()
   })
 })
 
@@ -201,45 +189,46 @@ describe('remainingPotentialClause', () => {
 })
 
 describe('buildBestCase', () => {
-  test('lists deep picks (deepest first) then golden boot then live group picks, with the payoff', () => {
-    const adv = summary([
-      pick({ team: 'ספרד', predictedRank: 7, stage: 'likely', reach: 1 }),
-      pick({ team: 'אנגליה', predictedRank: 5, stage: 'likely', reach: 1 }),
-      pick({ team: 'טורקיה', predictedRank: 2, stage: 'bubble', reach: 0.4 }),
-      pick({ team: 'גרמניה', predictedRank: 1, stage: 'secured', reach: 0.95 }), // already ~locked → excluded
-      pick({ team: 'ברזיל', predictedRank: 6, stage: 'out', reach: 1 }),          // deep bust → caps the ceiling
+  test('narrates one coherent sim: picks by deepest actual run, misses (collisions) flagged, boot, and the place/points payoff', () => {
+    // A single captured tournament. ספרד reached the semis it was backed to (hit);
+    // פורטוגל was backed to the quarters but ran into ספרד and was stopped in the round of
+    // 16 (miss — the bracket resolving the collision, never a contradictory wish-list);
+    // ארגנטינה reached its backed quarters (hit). The scorer took the boot.
+    const r = row({
+      bestPlace: 4, bestPlacePct: 12.5, peakPlace: 1, peakPlacePct: 0.3,
+      bestScenario: {
+        rank: 4, pts: 512,
+        picks: [
+          { teamHe: 'ספרד', predictedRank: 5, reached: 5 },
+          { teamHe: 'פורטוגל', predictedRank: 4, reached: 3 },
+          { teamHe: 'ארגנטינה', predictedRank: 4, reached: 4 },
+        ],
+        boot: true, bootScorerHe: 'הארי קיין',
+        third: true, thirdTeamHe: 'קרואטיה',
+      },
+    })
+    const bc = buildBestCase(r)!
+    expect(bc.lines).toEqual([
+      { teamHe: 'ספרד', reachedLabel: 'תגיע לחצי הגמר', hit: true },
+      { teamHe: 'ארגנטינה', reachedLabel: 'תגיע לרבע הגמר', hit: true },
+      { teamHe: 'פורטוגל', reachedLabel: 'תיעצר בשמינית', hit: false },
     ])
-    const reach = { ספרד: sr({ champion: 0.18 }), אנגליה: sr({ sf: 0.31 }) }
-    const r = row({ ceiling: 410, bestPlace: 4, bestPlacePct: 12.5, peakPlace: 1, peakPlacePct: 0.3, scorer: 'הארי קיין', scorerBootPct: 22 })
-    const gb = { scorerHe: 'הארי קיין', goalsSoFar: 4, alive: true, edge: 8 }
-    const bc = buildBestCase(r, adv, reach, gb)!
-    expect(bc.steps).toEqual([
-      { teamHe: 'ספרד', need: 'לזכות באליפות', pct: 18 },
-      { teamHe: 'אנגליה', need: 'להגיע לחצי הגמר', pct: 31 },
-      { teamHe: 'הארי קיין', need: 'לזכות בנעל הזהב', pct: 22 },
-      { teamHe: 'טורקיה', need: 'לעלות מהבית', pct: 40 },
-    ])
-    expect(bc.gone).toEqual(['ברזיל'])
-    expect(bc.ceiling).toBe(410)
-    // the optimal place is a concrete, field-relative finish read off the row's rank
-    // histogram — the realistic best, plus the theoretical peak as a footnote
-    expect(bc.place).toEqual({ realistic: 4, realisticPct: 12.5, peak: 1, peakPct: 0.3 })
+    expect(bc.third).toEqual({ teamHe: 'קרואטיה', won: true })
+    expect(bc.boot).toEqual({ scorerHe: 'הארי קיין', won: true })
+    expect(bc.rank).toBe(4)
+    expect(bc.rankPct).toBe(12.5)
+    expect(bc.pts).toBe(512)
+    expect(bc.peak).toBe(1)
+    expect(bc.peakPct).toBe(0.3)
   })
 
-  test('returns null when there is nothing left to chase (all picks locked or busted shallow)', () => {
-    const adv = summary([
-      pick({ team: 'ספרד', predictedRank: 1, stage: 'secured', reach: 0.95 }),
-      pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 }),
-    ])
-    expect(buildBestCase(row({}), adv, {})).toBeNull()
+  test('returns null when the sim captured no best-case scenario for the bettor', () => {
+    expect(buildBestCase(row({}))).toBeNull()
   })
 
-  test('skips a dead golden boot and deep picks the model gives no path', () => {
-    const adv = summary([pick({ team: 'ספרד', predictedRank: 5, stage: 'longshot', reach: 0.3 })])
-    const reach = { ספרד: sr({ sf: 0 }) } // 0% to reach the semis → dropped
-    const r = row({ scorer: 'X', scorerBootPct: 5 })
-    const gb = { scorerHe: 'X', goalsSoFar: 0, alive: false, edge: 0 } // team out → boot dropped
-    expect(buildBestCase(r, adv, reach, gb)).toBeNull()
+  test('returns null when the scenario has no deep picks, no third-place bet and no scorer to show', () => {
+    const r = row({ bestScenario: { rank: 8, pts: 100, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeamHe: '' } })
+    expect(buildBestCase(r)).toBeNull()
   })
 })
 
@@ -333,9 +322,7 @@ describe('buildBettorHeadline', () => {
       pick({ team: 'טורקיה', predictedRank: 2, stage: 'out', reach: 0 }),      // shallow group bust → dropped
     ])
     const r = row({ stages: [stage('group', 'שלב הבתים', 18, 70, 52)] })
-    const nextStep = { picks: [{ teamHe: 'ספרד', predictedRank: 5, pct: 43, others: 0 }] }
-    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, true, nextStep)
-    expect(h.nextStep).toBe('ספרד לחצי הגמר 43% (רק אתה עליה)')
+    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, true)
     // the group is settled history now — its advancers recap is gone
     expect(h.advancers).toBeUndefined()
     // only teams that reached the bracket and then lost remain; group flops (deep or not) are gone
@@ -351,7 +338,7 @@ describe('buildBettorHeadline', () => {
       stage('qf', 'רבע', -2, 10, 12),      // upcoming → counted (mine 10)
     ] })
     const phases = { r32: 'done', r16: 'live', qf: 'upcoming' } as const
-    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, true, null, phases)
+    const h = buildBettorHeadline(r, adv, {}, 27, ME, null, null, true, phases)
     // 24 + 10 = 34 expected points across the rounds left; R32 (settled) is excluded
     expect(h.remaining).toBe('עוד כ-34 נק׳ צפויות לך מהשלבים שנותרו — עיקר ההזדמנות: שמינית +6 נק׳ מול השדה')
     expect(h.crossings).toBeUndefined()

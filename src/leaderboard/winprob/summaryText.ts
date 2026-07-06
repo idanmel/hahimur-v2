@@ -106,7 +106,6 @@ function routeLadder(team: string, predictedRank: number, stageReach: Record<str
 
 export interface BettorHeadline {
   standing: string
-  nextStep?: string   // forward-looking: the rare deep picks that must come through to climb
   route?: { teamHe: string; ladder: string } // deepest live pick's simulated path
   bigBets?: string    // the other marquee depth calls (finalist/SF), with odds
   advancers?: string  // how many backed teams escaped the group + points banked, vs field
@@ -137,33 +136,6 @@ export interface GoldenBootDigest {
   goalsSoFar: number
   alive: boolean
   edge: number
-}
-
-// The forward-looking "what has to happen to climb" digest: the bettor's live deep
-// picks (QF+) that *few others backed this deep*, so their advancing is exactly where
-// this bettor gains ground on the field. Each carries the depth it was bet at, the
-// model's current chance of reaching it, and how many *other* bettors share the pick.
-export interface NextStepPick {
-  teamHe: string
-  predictedRank: number // depth backed (7=title … 4=QF); names the milestone
-  pct: number           // model chance to reach that depth, already ×100 and rounded
-  others: number        // other bettors who also backed it this deep (0 = unique)
-}
-export interface NextStepDigest {
-  picks: NextStepPick[]
-}
-
-// מה צריך לקרות — the punchy, pool-relative to-do list: which of the bettor's rare
-// deep picks need to come through to gain on the field, each with its live chance and
-// how lonely the call is. Forward-looking by design — it replaces dwelling on the
-// settled group stage. Null when the bettor has no differentiating live deep pick.
-export function nextStepClause(d: NextStepDigest): string | null {
-  if (!d.picks.length) return null
-  const items = d.picks.map(p => {
-    const who = p.others === 0 ? 'רק אתה עליה' : `עוד ${p.others} עליה`
-    return `${p.teamHe} ${DEPTH_TO[p.predictedRank]} ${p.pct}% (${who})`
-  })
-  return items.join(' · ')
 }
 
 // The expected points the bettor banks at one stage and how it compares to the field
@@ -301,92 +273,66 @@ export function goldenBootClause(d: GoldenBootDigest): string | null {
   return s
 }
 
-// התרחיש הטוב ביותר — the concrete route to a bettor's optimal finish: every bet that
-// still *can* pay off, and what has to happen for it to. Unlike the field-relative
-// "מה צריך לקרות" (which shows only the rare, differentiating deep picks), this is the
-// full best-case wish-list — champion/finalist/semis calls, the golden boot, and any
-// group escapes still in the balance — each with the model's chance for that exact
-// outcome. Paired with `ceiling` (the ~95th-percentile points if it all breaks right)
-// and the win odds, it answers "what's the dream, and how likely is each piece of it".
-export interface BestCaseStep {
-  teamHe: string // the team (or scorer) the outcome hangs on
-  need: string   // what has to happen — "לזכות באליפות", "לעלות מהבית"…
-  pct: number    // the model's chance for that exact outcome, ×100 and rounded
-}
-
-// The optimal finish the scenario yields — a concrete, field-relative place, not a tier
-// bucket. `realistic` is the highest place the bettor can plausibly reach (the best
-// finish with a non-trivial cumulative chance, from the sim rank histogram); `peak` is
-// the theoretical best they ever reached, shown as a near-zero-odds footnote. This keeps
-// the payoff honest and specific: never "you could finish 1st" off a fluke.
-export interface BestCasePlace {
-  realistic: number    // highest place with a real (non-trivial) shot
-  realisticPct: number // % to finish at that place or better
-  peak: number         // best place seen in any sim (theoretical ceiling)
-  peakPct: number      // its (near-zero) cumulative chance
+// התרחיש האופטימלי — one *coherent* dream tournament for the bettor, taken straight from
+// the sim: the single highest-scoring simulated tournament in which they landed at their
+// realistic ceiling place. Because it's one real bracket run, the picks' fates can't
+// contradict each other — if two of their teams met, only the winner went on, so you'll
+// never see "Spain to the semis AND Portugal to the quarters" when the draw pits them in
+// the round of 16. Each line is what actually happened to that pick in this one scenario;
+// the payoff (place + points) is that same tournament's outcome.
+export interface BestScenarioLine {
+  teamHe: string       // the picked team
+  reachedLabel: string // where it got to in this scenario ("הגיעה לחצי הגמר", "נעצרה בשמינית"…)
+  hit: boolean         // reached the depth it was backed to (or deeper)
 }
 
 export interface BestCaseDigest {
-  steps: BestCaseStep[] // the wish-list, biggest prizes first
-  ceiling: number       // ~points if every step lands (95th-percentile of the sims)
-  place: BestCasePlace  // the optimal finish that best case realistically yields
-  gone: string[]        // deep picks already busted, which cap the ceiling
+  lines: BestScenarioLine[]        // each deep pick's fate in the scenario, deepest run first
+  third?: { teamHe: string; won: boolean } // the predicted third-place winner's outcome (heavy bonus)
+  boot?: { scorerHe: string; won: boolean } // the picked scorer's boot outcome in this scenario
+  rank: number                     // finishing place in this scenario (the realistic ceiling)
+  rankPct: number                  // cumulative chance to finish at that place or better
+  pts: number                      // points scored in this scenario
+  peak: number                     // theoretical best place ever reached
+  peakPct: number                  // its (near-zero) cumulative chance
 }
 
-// The destination phrasing for the best-case wish-list — "France to win it all".
-const DEPTH_NEED: Record<number, string> = { 7: 'לזכות באליפות', 6: 'להגיע לגמר', 5: 'להגיע לחצי הגמר', 4: 'להגיע לרבע הגמר' }
+// Depth (7=champion … 2=reached R32, 0=out) → Hebrew phrase for a pick that, in the
+// remaining games, reaches the depth it was backed to (or deeper) — the runs that go
+// right. Future tense, because the scenario is forward-looking: only picks whose fate is
+// still undecided appear here (settled ones are filtered out upstream).
+const REACHED_HIT: Record<number, string> = {
+  7: 'תזכה באליפות', 6: 'תגיע לגמר', 5: 'תגיע לחצי הגמר', 4: 'תגיע לרבע הגמר', 3: 'תגיע לשמינית', 2: 'תעלה מהבתים',
+}
+// …and the phrase for a pick that falls short of its backed depth in the remaining games
+// (often because it runs into another of the bettor's own teams) — the bracket resolving
+// a collision, still forward-looking.
+const REACHED_MISS: Record<number, string> = {
+  6: 'תפסיד בגמר', 5: 'תיעצר בחצי הגמר', 4: 'תיעצר ברבע הגמר', 3: 'תיעצר בשמינית', 2: 'תיעצר בשלב ה-32', 0: 'לא תעלה מהבתים',
+}
 
-export function buildBestCase(
-  row: Row,
-  advancement: AdvancementSummary | null,
-  stageReach: Record<string, StageReach>,
-  goldenBoot: GoldenBootDigest | null = null,
-): BestCaseDigest | null {
-  const steps: BestCaseStep[] = []
-  const gone: string[] = []
+function scenarioLine(teamHe: string, reached: number, predictedRank: number): BestScenarioLine {
+  const hit = reached >= predictedRank
+  const reachedLabel = hit ? (REACHED_HIT[reached] ?? REACHED_HIT[2]) : (REACHED_MISS[reached] ?? REACHED_MISS[0])
+  return { teamHe, reachedLabel, hit }
+}
 
-  // Marquee depth calls first, deepest bet listed at the top — a title bid outranks a
-  // quarter-final one. A pick with no simulated path to its depth is dropped (a 0% wish
-  // is noise, not a scenario).
-  if (advancement) {
-    const deep = advancement.picks
-      .filter(p => p.stage !== 'out' && p.predictedRank >= 4)
-      .sort((a, b) => b.predictedRank - a.predictedRank || b.reach - a.reach)
-    for (const p of deep) {
-      const pct = Math.round(reachAtRank(stageReach[p.team], p.predictedRank) * 100)
-      if (pct > 0) steps.push({ teamHe: p.teamHe, need: DEPTH_NEED[p.predictedRank] ?? DEPTH_NEED[4], pct })
-    }
-  }
-
-  // The golden boot sits between the deep calls and the group escapes — a heavy +10
-  // bonus, but only live while the scorer's team is still in.
-  if (goldenBoot && goldenBoot.alive && goldenBoot.scorerHe && goldenBoot.scorerHe !== '—') {
-    const pct = Math.round(row.scorerBootPct)
-    if (pct > 0) steps.push({ teamHe: goldenBoot.scorerHe, need: 'לזכות בנעל הזהב', pct })
-  }
-
-  if (advancement) {
-    // Group escapes still genuinely in play (not already ~locked, not busted), hardest
-    // first — the calls whose success is least assured are the ones to sweat.
-    const grp = advancement.picks
-      .filter(p => p.stage !== 'out' && p.predictedRank <= 3 && p.reach < 0.85)
-      .sort((a, b) => a.reach - b.reach)
-    for (const p of grp) {
-      const pct = Math.round(p.reach * 100)
-      if (pct > 0) steps.push({ teamHe: p.teamHe, need: 'לעלות מהבית', pct })
-    }
-    for (const p of advancement.picks) {
-      if (p.stage === 'out' && p.predictedRank >= 4) gone.push(p.teamHe)
-    }
-  }
-
-  // Nothing left that can still be chased → no best-case to show.
-  if (!steps.length) return null
-  const place: BestCasePlace = {
-    realistic: row.bestPlace, realisticPct: row.bestPlacePct,
+export function buildBestCase(row: Row): BestCaseDigest | null {
+  const s = row.bestScenario
+  if (!s) return null
+  const lines = s.picks
+    .map(p => ({ ...scenarioLine(p.teamHe, p.reached, p.predictedRank), reached: p.reached, predictedRank: p.predictedRank }))
+    // Deepest actual run first (then deepest bet) — the marquee outcomes lead the read.
+    .sort((a, b) => b.reached - a.reached || b.predictedRank - a.predictedRank)
+    .map(({ teamHe, reachedLabel, hit }) => ({ teamHe, reachedLabel, hit }))
+  const third = s.thirdTeamHe ? { teamHe: s.thirdTeamHe, won: s.third } : undefined
+  const boot = s.bootScorerHe ? { scorerHe: s.bootScorerHe, won: s.boot } : undefined
+  if (!lines.length && !third && !boot) return null
+  return {
+    lines, third, boot,
+    rank: s.rank, rankPct: row.bestPlacePct, pts: Math.round(s.pts),
     peak: row.peakPlace, peakPct: row.peakPlacePct,
   }
-  return { steps, ceiling: row.ceiling, place, gone }
 }
 
 // Who we're writing about — second person ("אתה") for the viewer's own featured
@@ -450,7 +396,6 @@ export function buildBettorHeadline(
   // Once the knockouts are under way the group stage is settled history: the
   // advancers line drops and only knockout-depth busts stay in "eliminated".
   knockoutsStarted = false,
-  nextStep: NextStepDigest | null = null,
   // Phase of each knockout round at the viewed point — lets the settled group/R32
   // recap give way to a forward "points still to come" line once they're history.
   stagePhases: Partial<Record<string, StagePhase>> = {},
@@ -458,12 +403,6 @@ export function buildBettorHeadline(
   const standing = standingText(row, totalPlayers, subject)
 
   const out: BettorHeadline = { standing }
-
-  // Lead the read with what still has to happen for this bettor to gain ground.
-  if (nextStep) {
-    const ns = nextStepClause(nextStep)
-    if (ns) out.nextStep = ns
-  }
 
   if (advancement && advancement.total > 0) {
     const deepLive = advancement.picks.filter(p => p.stage !== 'out' && p.predictedRank >= 4).sort((a, b) => b.predictedRank - a.predictedRank)

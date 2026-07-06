@@ -8,7 +8,7 @@ import { GROUP_MATCHES, ALL_GROUP_LETTERS, TEAMS } from './src/shared/groups'
 import { calculateStandings } from './src/shared/standings'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './src/formView/thirdPlace/thirdPlace'
 import { resolveRound32, resolveKnockout, buildKnockoutBracket } from './src/formView/knockout/knockout'
-import { computeUserPoints, advancingTeam } from './src/leaderboard/points'
+import { computeUserPoints, advancingTeam, GOLDEN_BOOT_BONUS, OLEH_POINTS } from './src/leaderboard/points'
 import { TEAM_STRENGTH } from './src/pages/results/teamStrength'
 import { matchLambdas } from './src/shared/lambdas'
 import { SCORERS } from './golden-boot'
@@ -652,7 +652,20 @@ export interface SimAgg {
   // best place with a non-trivial cumulative chance) and the theoretical peak (the very
   // best place they ever reached, however unlikely) — field-relative, not a tier bucket.
   rankCounts?: Map<string, number[]>
+  // Per bettor, indexed by finishing place (r-1), the single highest-scoring simulated
+  // tournament that landed them in that place — captured as the depth each of their deep
+  // picks reached *in that one sim* plus whether their scorer took the boot. Because it's
+  // one real tournament, the depths are mutually consistent (if two of their teams met,
+  // only the winner went on), so buildRows can surface a coherent "optimal scenario" for
+  // the bettor's realistic ceiling place — never a physically impossible wish-list.
+  bestByRank?: Map<string, (BestScenarioSlot | null)[]>
 }
+
+// One captured best-case tournament for a bettor at a given finishing place: the points
+// they scored and, aligned by index with deepScenarioPicks(u), the depth each deep pick
+// reached (7=champion … 2=reached R32, 0=out in the group), plus the boot outcome and
+// whether their predicted third-place winner took the (heavily-scored) third-place match.
+export interface BestScenarioSlot { pts: number; depths: number[]; boot: boolean; third: boolean }
 
 // Side-agnostic key for a knockout pairing, so a bettor who stored the two teams
 // in either order matches the simulated matchup.
@@ -711,7 +724,17 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   const koPairs = new Map<number, Map<string, number>>()
   const series = collect ? new Map<string, number[]>() : undefined
   const rankCounts = collect ? new Map<string, number[]>() : undefined
-  for (const u of USERS) { win.set(u.label, 0); top3.set(u.label, 0); top5.set(u.label, 0); sumPts.set(u.label, 0); sumSq.set(u.label, 0); sumRank.set(u.label, 0); stages.set(u.label, zeroStages()); series?.set(u.label, []); rankCounts?.set(u.label, new Array(USERS.length).fill(0)) }
+  const bestByRank = collect ? new Map<string, (BestScenarioSlot | null)[]>() : undefined
+  // Precomputed per-bettor deep-pick lists + a label→user lookup, so the hot loop can
+  // snapshot each bettor's picks' depths without recomputing predictedAdvancers per sim.
+  const deepPicksByLabel = collect ? new Map<string, ReturnType<typeof deepScenarioPicks>>() : undefined
+  const userByLabel = collect ? new Map<string, User>() : undefined
+  for (const u of USERS) {
+    win.set(u.label, 0); top3.set(u.label, 0); top5.set(u.label, 0); sumPts.set(u.label, 0); sumSq.set(u.label, 0); sumRank.set(u.label, 0); stages.set(u.label, zeroStages()); series?.set(u.label, []); rankCounts?.set(u.label, new Array(USERS.length).fill(0))
+    bestByRank?.set(u.label, new Array(USERS.length).fill(null))
+    deepPicksByLabel?.set(u.label, deepScenarioPicks(u))
+    userByLabel?.set(u.label, u)
+  }
   // Seed every group team at 0 so a team that *never* reaches the knockouts still
   // gets an explicit 0 (a missing key would otherwise hide it from the survival
   // verdict — exactly the case for a side that's already mathematically doomed).
@@ -750,6 +773,21 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       const winner = standings[0]?.team
       if (winner) groupFirst.set(winner, (groupFirst.get(winner) ?? 0) + 1)
     }
+    // Deepest round each team reached *this* sim (7=champion … 2=reached R32), so the
+    // best-case collector can read a mutually-consistent depth for every pick at once.
+    let depthByTeam: Map<string, number> | undefined
+    let bootSet: Set<string> | undefined
+    if (bestByRank) {
+      depthByTeam = new Map<string, number>()
+      const setDepth = (t: string | undefined, d: number) => { if (t && (depthByTeam!.get(t) ?? 0) < d) depthByTeam!.set(t, d) }
+      for (const m of ks.r32) { setDepth(m.home, 2); setDepth(m.away, 2) }
+      for (const m of ks.r16) { setDepth(m.home, 3); setDepth(m.away, 3) }
+      for (const m of ks.qf) { setDepth(m.home, 4); setDepth(m.away, 4) }
+      for (const m of ks.sf) { setDepth(m.home, 5); setDepth(m.away, 5) }
+      for (const m of ks.final) { setDepth(m.home, 6); setDepth(m.away, 6) }
+      if (results.champion) setDepth(results.champion, 7)
+      bootSet = new Set(bootWinners)
+    }
     const scored = USERS.map(u => {
       const b = computeUserPoints(u, results)
       const st = stages.get(u.label)!
@@ -768,9 +806,28 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
     let rank = 1
     for (let r = 0; r < scored.length; r++) {
       if (r > 0 && scored[r].pts !== scored[r - 1].pts) rank = r + 1
-      sumRank.set(scored[r].label, sumRank.get(scored[r].label)! + rank)
-      const rc = rankCounts?.get(scored[r].label)
+      const label = scored[r].label
+      sumRank.set(label, sumRank.get(label)! + rank)
+      const rc = rankCounts?.get(label)
       if (rc) rc[rank - 1]++
+      // Keep, for this finishing place, the highest-scoring sim we've seen for this
+      // bettor — a single coherent tournament we can later narrate as their best case.
+      if (bestByRank && depthByTeam) {
+        const slots = bestByRank.get(label)!
+        const cur = slots[rank - 1]
+        if (!cur || scored[r].pts > cur.pts) {
+          const picks = deepPicksByLabel!.get(label)!
+          const depths = picks.map(p => depthByTeam!.get(p.team) ?? 0)
+          const bettor = userByLabel!.get(label)!
+          const scorer = bettor.topGoalscorer
+          const thirdPick = bettor.predictedThirdPlaceWinner
+          slots[rank - 1] = {
+            pts: scored[r].pts, depths,
+            boot: !!scorer && bootSet!.has(scorer),
+            third: !!thirdPick && results.thirdPlaceWinner === thirdPick,
+          }
+        }
+      }
     }
     for (const s of scored) {
       sumPts.set(s.label, sumPts.get(s.label)! + s.pts)
@@ -778,7 +835,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       series?.get(s.label)!.push(s.pts)
     }
   }
-  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts }
+  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts, bestByRank }
 }
 
 // Add every tally of `b` into `a` (in place) and return `a`. All aggregate
@@ -816,6 +873,18 @@ export function mergeSimAgg(a: SimAgg, b: SimAgg): SimAgg {
       const cur = a.rankCounts.get(label)
       if (cur) for (let i = 0; i < arr.length; i++) cur[i] += arr[i]
       else a.rankCounts.set(label, [...arr])
+    }
+  }
+  // Best-case scenarios don't sum — per place we keep the higher-scoring of the two
+  // chunks' captured tournaments, so the merged result matches a single n-run.
+  if (a.bestByRank && b.bestByRank) {
+    for (const [label, arr] of b.bestByRank) {
+      const cur = a.bestByRank.get(label)
+      if (!cur) { a.bestByRank.set(label, arr.map(s => (s ? { ...s, depths: [...s.depths] } : null))); continue }
+      for (let i = 0; i < arr.length; i++) {
+        const bs = arr[i]
+        if (bs && (!cur[i] || bs.pts > cur[i]!.pts)) cur[i] = { ...bs, depths: [...bs.depths] }
+      }
     }
   }
   return a
@@ -865,6 +934,19 @@ export function deepestStage(u: typeof USERS[number], team: string): { rank: num
 const TIER = (team: string) => {
   const att = TEAM_STRENGTH[team]?.att ?? 1
   return att >= 1.6 ? 'מהפייבוריטיות' : att >= 1.35 ? 'נבחרת חזקה' : att >= 1.1 ? 'נבחרת בינונית' : 'נבחרת חלשה'
+}
+
+// The bettor's deep picks (quarter-final and beyond), deepest first — the teams whose
+// runs make up the best-case scenario. Shared by the sim collector and buildRows so the
+// stored per-sim depth array lines up with these picks by index (stable order).
+export function deepScenarioPicks(u: User): { team: string; teamHe: string; predictedRank: number }[] {
+  const out: { team: string; teamHe: string; predictedRank: number }[] = []
+  for (const team of predictedAdvancers(u)) {
+    const rank = deepestStage(u, team).rank
+    if (rank >= 4) out.push({ team, teamHe: he(team), predictedRank: rank })
+  }
+  out.sort((a, b) => b.predictedRank - a.predictedRank || (a.team < b.team ? -1 : 1))
+  return out
 }
 
 function turkeyDepth(u: typeof USERS[number]): string {
@@ -1275,11 +1357,36 @@ export function placeStats(counts: number[] | undefined, n: number, expRank: num
   return { bestPlace, bestPlacePct, peakPlace, peakPlacePct }
 }
 
+// A single deep pick's fate inside the bettor's captured best-case tournament: how far
+// it was backed to go vs how far it actually went in that one coherent sim.
+export interface BestScenarioPick {
+  teamHe: string
+  predictedRank: number // depth backed (7=title … 4=QF)
+  reached: number       // depth actually reached in the captured sim (7=champion … 2=R32, 0=out)
+}
+
+// The bettor's coherent best-case scenario — one real simulated tournament in which they
+// finished at their realistic ceiling place. Every pick's depth is mutually consistent
+// (if two of their teams met, only the winner advanced), so this can be narrated as a
+// single believable "here's your dream run" without contradicting the bracket.
+export interface BestScenario {
+  rank: number   // finishing place in this sim (= the bettor's realistic ceiling)
+  pts: number    // points scored in this sim
+  picks: BestScenarioPick[]
+  boot: boolean  // their picked scorer took (or shared) the golden boot in this sim
+  bootScorerHe: string
+  third: boolean       // their predicted third-place winner took the third-place match here
+  thirdTeamHe: string  // that team's Hebrew name — empty when the bet is settled / not made
+}
+
 export interface Row {
   label: string; winPct: number; top3Pct: number; top5Pct: number; avgPts: number
   std: number; ceiling: number; curRank: number; expRank: number; turkey: string
   // The realistic best finish + the theoretical peak, from the simulated rank histogram.
   bestPlace: number; bestPlacePct: number; peakPlace: number; peakPlacePct: number
+  // The coherent optimal-scenario snapshot at the realistic ceiling place (null when the
+  // bettor has no deep picks / the sim never captured a landing at that place).
+  bestScenario?: BestScenario
   championHe: string; championTeam: string; championAlive: boolean; scorer: string; reason: string
   // Model probability the bettor's picked scorer wins or *shares* the golden boot —
   // the exact condition on the +10 bonus, so the card can explain that reward.
@@ -1294,6 +1401,23 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
   const curRank = new Map(curScores.map((s, i) => [s.label, i + 1]))
   const signals = teamSignals(played)
   const avgWin = 100 / USERS.length
+
+  // The tournament as it *really* stands now — used to keep the best-case scenario
+  // forward-looking: a pick whose team is already out, or has already reached the depth
+  // it was backed to, is settled history and drops out of "what can still happen". So the
+  // scenario naturally shrinks and sharpens as more matches are played.
+  const realExits = realEliminations(cur)
+  const curDepthByTeam = new Map<string, number>()
+  {
+    const setD = (t: string | undefined, d: number) => { if (t && (curDepthByTeam.get(t) ?? 0) < d) curDepthByTeam.set(t, d) }
+    const ks = cur.knockoutStages
+    for (const m of ks.r32) { setD(m.home, 2); setD(m.away, 2) }
+    for (const m of ks.r16) { setD(m.home, 3); setD(m.away, 3) }
+    for (const m of ks.qf) { setD(m.home, 4); setD(m.away, 4) }
+    for (const m of ks.sf) { setD(m.home, 5); setD(m.away, 5) }
+    for (const m of ks.final) { setD(m.home, 6); setD(m.away, 6) }
+    if (cur.champion) setD(cur.champion, 7)
+  }
 
   // field average per stage
   const fieldStage = zeroStages()
@@ -1315,6 +1439,54 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
       const val = st[k] / n
       return { key: k, label: STAGE_LABEL[k], val, field: fieldStage[k], edge: val - fieldStage[k] }
     })
+    // The coherent best case: the captured highest-scoring sim in which this bettor
+    // finished at their realistic ceiling place. Its per-pick depths came from one real
+    // tournament, so they can't contradict the bracket (colliding picks resolve there).
+    const slot = real.bestByRank?.get(u.label)?.[places.bestPlace - 1] ?? null
+    let bestScenario: BestScenario | undefined
+    if (slot) {
+      // Keep only picks still in play: team not eliminated, and not yet at the depth it
+      // was backed to. Map by the *original* index first so the stored depth array stays
+      // aligned with the pick list after filtering. Lookups use the team code (realExits /
+      // curDepthByTeam are code-keyed), while the display carries the Hebrew name.
+      const picks = deepScenarioPicks(u)
+        .map((p, i) => ({ team: p.team, teamHe: p.teamHe, predictedRank: p.predictedRank, reached: slot.depths[i] ?? 0 }))
+        .filter(p => !realExits.has(p.team) && (curDepthByTeam.get(p.team) ?? 0) < p.predictedRank)
+        .map(p => ({ teamHe: p.teamHe, predictedRank: p.predictedRank, reached: p.reached }))
+      // The third-place bet is still live only if it hasn't been decided yet and the
+      // predicted team can still play the third-place match — i.e. it's alive, or it
+      // already lost the semi (exit rank 5) and drops into the playoff. A team out earlier
+      // (before the semis), or already in the final, can never be third, so it's dropped.
+      const thirdPick = u.predictedThirdPlaceWinner
+      let thirdTeamHe = ''
+      if (thirdPick && !cur.thirdPlaceWinner) {
+        const exit = realExits.get(thirdPick)
+        if (!exit || exit.rank === 5) thirdTeamHe = he(thirdPick)
+      }
+      // The golden boot and the third-place bonus are *additive* bets that never fight the
+      // bracket: winning the boot only ever adds its +10 (plus goals), and a still-live
+      // third-place pick can always land. So the genuine ceiling scenario collects both —
+      // yet the captured sim is just one sampled draw and may miss them (e.g. the picked
+      // scorer finishing second in that particular run). Showing that as "✕ won't win" reads
+      // as if losing were *better*, which is wrong. So whenever the bonus is still winnable
+      // we assert it here and credit the points the captured sim happened to leave on the
+      // table. (Team picks stay as the sim played them — those collisions are real.)
+      const bootWinnable = !!u.topGoalscorer && (real.bootFreq.get(u.topGoalscorer) ?? 0) > 0
+      const bootWon = bootWinnable || slot.boot
+      const thirdWon = !!thirdTeamHe || slot.third
+      const bonusFix =
+        (bootWon && !slot.boot ? GOLDEN_BOOT_BONUS : 0) +
+        (thirdWon && !slot.third ? OLEH_POINTS.thirdPlaceWinner : 0)
+      bestScenario = {
+        rank: places.bestPlace,
+        pts: slot.pts + bonusFix,
+        picks,
+        boot: bootWon,
+        bootScorerHe: bootWinnable ? he(u.topGoalscorer) : '',
+        third: thirdWon,
+        thirdTeamHe,
+      }
+    }
     return {
       label: u.label, winPct,
       top3Pct: (real.top3.get(u.label)! / n) * 100,
@@ -1322,6 +1494,7 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
       avgPts: mean, std, ceiling,
       bestPlace: places.bestPlace, bestPlacePct: places.bestPlacePct,
       peakPlace: places.peakPlace, peakPlacePct: places.peakPlacePct,
+      bestScenario,
       curRank: curRank.get(u.label)!,
       expRank: expRankVal,
       turkey: turkeyDepth(u),
