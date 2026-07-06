@@ -181,10 +181,8 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
 // advances, so the list can never show "Spain to the semis AND Portugal to the quarters"
 // when the draw pits them in the round of 16. Each row is what happens to that pick in the
 // remaining games (✓ reaches its backed depth, ✕ stopped earlier — often by another of the
-// bettor's own teams); the payoff is that same tournament's place + points.
+// bettor's own teams). The place/points payoff for this run lives in the standing line up top.
 function BestCase({ bc }: { bc: BestCaseDigest }) {
-  // "אפסי" only fits a truly tiny chance; a mid-single-digit peak reads as "קלוש".
-  const peakOdds = bc.peakPct < 1 ? 'בסיכוי אפסי' : 'בסיכוי קלוש'
   return (
     <div className="wp-best" dir="rtl">
       <div className="wp-best-head">
@@ -211,12 +209,6 @@ function BestCase({ bc }: { bc: BestCaseDigest }) {
           </li>
         )}
       </ul>
-      <div className="wp-best-payoff">
-        בתרחיש הזה אתה מסיים <b>מקום {bc.rank}</b> עם כ-<b>{bc.pts}</b> נק׳ — תרחיש כזה או טוב יותר קורה בכ-<b>{fmtPct(bc.rankPct)}</b> מהסימולציות.
-        {bc.peak < bc.rank && (
-          <> · בשיא התיאורטי אפשר עד <b>מקום {bc.peak}</b>, אך {peakOdds} ({fmtPct(bc.peakPct)}).</>
-        )}
-      </div>
     </div>
   )
 }
