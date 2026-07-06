@@ -801,6 +801,56 @@
   animation: lb-seal-pop 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) 0.3s both;
 }
 
+/* the predicted final matchup: two finalists either side of a dash */
+.lb-final-value {
+  gap: 8px;
+  white-space: normal;
+}
+
+.lb-final-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lb-final-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lb-final-vs {
+  flex: none;
+  opacity: 0.4;
+  font-weight: 600;
+}
+
+/* a finalist that's already out of the tournament — struck through, muted, with
+   a small "הודחה" tag so a dead pick reads instantly */
+.lb-final-team--out .lb-final-name {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.lb-final-team--out .lb-pick-flag {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.lb-final-out {
+  flex: none;
+  font-family: 'Heebo', sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #9b2c2c;
+  background: rgba(155, 44, 44, 0.1);
+  border: 1px solid rgba(155, 44, 44, 0.35);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
 @keyframes lb-pick-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }

@@ -51,6 +51,7 @@ export function buildLeaderboardRows(users: User[], results: TournamentResults) 
       label: user.label,
       topGoalscorer: user.topGoalscorer,
       predictedChampion: user.predictedChampion,
+      predictedFinalTeams: user.predictedFinalTeams,
       groupTeamDetail: computeGroupTeamDetail(user, results),
       ...computeUserPoints(user, results),
     }))

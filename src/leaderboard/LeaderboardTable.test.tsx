@@ -129,6 +129,22 @@ test.each([
   expect(within(panel).queryByText('France')).not.toBeInTheDocument()
 })
 
+test('reveals the predicted final matchup, flagging an eliminated finalist', () => {
+  const row = { ...makeRow({ matchPoints: 8, advancementPoints: 0 }), predictedFinalTeams: ['France', 'England'] }
+  const { container } = render(<LeaderboardTable rows={[row]} eliminated={new Set(['England'])} />)
+  const table = within(container.querySelector('.lb-desktop') as HTMLElement)
+
+  fireEvent.click(table.getByRole('button', { name: /Dana/ }))
+  const panel = table.getByTestId('lb-traj-Dana')
+
+  expect(within(panel).getByText('משחק הגמר')).toBeInTheDocument()
+  // both finalists shown in Hebrew
+  expect(within(panel).getByText('צרפת')).toBeInTheDocument()
+  expect(within(panel).getByText('אנגליה')).toBeInTheDocument()
+  // the knocked-out finalist is tagged, the surviving one is not
+  expect(within(panel).getByText('הודחה')).toBeInTheDocument()
+})
+
 test('marks a pick correct when it earned its winner bonus', () => {
   const row = {
     ...makeRow({ matchPoints: 8, advancementPoints: 0 }),

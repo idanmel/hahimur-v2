@@ -7,6 +7,7 @@ import RecordsView from './RecordsView'
 import WinProbabilityView from './winprob/WinProbabilityView'
 import { buildLeaderboardRows, buildGroupScopeRows, buildGroupSummaryRows, buildGroupDetailRows, buildRangeRows, rangePlaceMovement, rankTrajectories, hitStats } from './leaderboardRows'
 import type { Scope } from './leaderboardRows'
+import { eliminatedTeams } from '../pages/forms/compareStats'
 import type { TournamentResults } from '../shared/types'
 import type { User } from '../users'
 
@@ -33,7 +34,7 @@ export default function ScopedLeaderboard({ users, results, realResults, scope, 
       myTables={users.find(u => u.label === me)?.groupTables}
     />
   )
-  if (scope === 'all') return <LeaderboardTable rows={buildLeaderboardRows(users, results)} me={me} trajectories={rankTrajectories(users, results)} hits={hitStats(users, results)} />
+  if (scope === 'all') return <LeaderboardTable rows={buildLeaderboardRows(users, results)} me={me} trajectories={rankTrajectories(users, results)} hits={hitStats(users, results)} eliminated={eliminatedTeams(realResults)} />
   if (scope === 'summary') return <GroupScopeTable key="summary" variant="summary" rows={buildGroupSummaryRows(users, results)} me={me} />
   if (scope === 'range') return (
     <GroupScopeTable

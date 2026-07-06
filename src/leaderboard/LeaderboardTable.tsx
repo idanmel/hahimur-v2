@@ -10,8 +10,12 @@ export interface LeaderboardRow extends PointsBreakdown {
   label: string
   topGoalscorer?: string
   predictedChampion?: string
+  predictedFinalTeams?: string[]
   groupTeamDetail?: GroupTeamDetail
 }
+
+// Stable empty fallback so an omitted `eliminated` prop never remounts children.
+const EMPTY_ELIMINATED: Set<string> = new Set()
 
 type RoundKey = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final' | 'goldenBoot'
 
@@ -78,6 +82,14 @@ const MedalIcon = () => (
     <path d="m9 9-3-6M15 9l3-6" />
     <circle cx="12" cy="14.5" r="5.5" />
     <path d="m12 11.6 1 2 2.2.3-1.6 1.5.4 2.2-2-1.05-2 1.05.4-2.2-1.6-1.5 2.2-.3 1-2Z" />
+  </svg>
+)
+
+const BallIcon = () => (
+  <svg className="lb-pick-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="m12 7 4.3 3.1-1.65 5.05h-5.3L7.7 10.1 12 7Z" />
+    <path d="M12 3v4M4.4 8.6l3.3 1.5M6.3 18.5l2.75-2.35M17.7 18.5l-2.75-2.35M19.6 8.6l-3.3 1.5" />
   </svg>
 )
 
@@ -220,13 +232,51 @@ function ScoreBreakdownPanel({ row }: { row: LeaderboardRow }) {
   )
 }
 
-// A bettor's two outright picks (golden boot, champion), shown in the expand
-// panel. Correctness rides on the points breakdown the row already carries.
-function PicksPanel({ row }: { row: LeaderboardRow }) {
-  if (!row.topGoalscorer && !row.predictedChampion) return null
+// One finalist inside the "משחק הגמר" plaque: flag chip + name, struck through
+// with a "הודחה" tag once the team is out of the tournament.
+function FinalTeam({ team, eliminated }: { team: string; eliminated: boolean }) {
+  const t = TEAMS[team]
+  return (
+    <span className={`lb-final-team${eliminated ? ' lb-final-team--out' : ''}`}>
+      {t?.iso && <span className={`fi fi-${t.iso} lb-pick-flag`} aria-hidden="true" />}
+      <span className="lb-final-name">{t?.he ?? team}</span>
+      {eliminated && <span className="lb-final-out">הודחה</span>}
+    </span>
+  )
+}
+
+// The bettor's predicted final matchup — the two teams they placed in the final.
+// Teams already knocked out of the tournament are flagged so a dead pick reads at
+// a glance.
+function FinalMatchPlaque({ teams, eliminated }: { teams: string[]; eliminated: Set<string> }) {
+  const [home, away] = teams
+  return (
+    <div className="lb-pick lb-pick--final">
+      <span className="lb-pick-emblem"><BallIcon /></span>
+      <span className="lb-pick-text">
+        <span className="lb-pick-kicker">משחק הגמר</span>
+        <span className="lb-pick-value lb-final-value">
+          <FinalTeam team={home} eliminated={eliminated.has(home)} />
+          <span className="lb-final-vs">-</span>
+          <FinalTeam team={away} eliminated={eliminated.has(away)} />
+        </span>
+      </span>
+    </div>
+  )
+}
+
+// A bettor's outright picks (golden boot, champion) plus their predicted final
+// matchup, shown in the expand panel. Correctness rides on the points breakdown
+// the row already carries; eliminated finalists are flagged against `eliminated`.
+function PicksPanel({ row, eliminated }: { row: LeaderboardRow; eliminated: Set<string> }) {
+  const finalTeams = row.predictedFinalTeams?.filter(Boolean) ?? []
+  if (!row.topGoalscorer && !row.predictedChampion && finalTeams.length < 2) return null
   const champ = row.predictedChampion ? TEAMS[row.predictedChampion] : undefined
   return (
     <div className="lb-picks">
+      {finalTeams.length >= 2 && (
+        <FinalMatchPlaque teams={finalTeams} eliminated={eliminated} />
+      )}
       {row.topGoalscorer && (
         <PickPlaque kicker="מלך השערים" icon={<MedalIcon />} value={row.topGoalscorer} correct={row.goldenBoot.winnerBonus > 0} />
       )}
@@ -245,7 +295,8 @@ function NameCell({ label, isMe }: { label: string; isMe: boolean }) {
   )
 }
 
-export default function LeaderboardTable({ rows, me, trajectories, hits }: { rows: LeaderboardRow[]; me?: string; trajectories?: Record<string, number[]>; hits?: Record<string, { pgiya: number; tzelifa: number }> }) {
+export default function LeaderboardTable({ rows, me, trajectories, hits, eliminated }: { rows: LeaderboardRow[]; me?: string; trajectories?: Record<string, number[]>; hits?: Record<string, { pgiya: number; tzelifa: number }>; eliminated?: Set<string> }) {
+  const eliminatedSet = eliminated ?? EMPTY_ELIMINATED
   // mobile: tap a bettor to reveal their rank trajectory beneath their row
   const [openLabel, setOpenLabel] = useState<string | null>(null)
   const activeRounds = ROUNDS.filter(({ key }) =>
@@ -271,7 +322,7 @@ export default function LeaderboardTable({ rows, me, trajectories, hits }: { row
   // A row expands if it has points to break down, picks to reveal, or a rank
   // trajectory to chart.
   const hasDetail = (row: LeaderboardRow) =>
-    row.total > 0 || !!row.topGoalscorer || !!row.predictedChampion || !!trajectories?.[row.label]
+    row.total > 0 || !!row.topGoalscorer || !!row.predictedChampion || (row.predictedFinalTeams?.filter(Boolean).length ?? 0) >= 2 || !!trajectories?.[row.label]
 
   // Name cell that toggles the expand panel, when there's detail to show.
   const renderName = (row: LeaderboardRow, isMe: boolean) => {
@@ -300,7 +351,7 @@ export default function LeaderboardTable({ rows, me, trajectories, hits }: { row
       <tr className="lb-traj-row">
         <td className="lb-td lb-traj-cell" colSpan={colSpan} data-testid={`lb-traj-${row.label}`}>
           <ScoreBreakdownPanel row={row} />
-          <PicksPanel row={row} />
+          <PicksPanel row={row} eliminated={eliminatedSet} />
           {trajectory && <RankTrajectoryChart ranks={trajectory} hits={hits?.[row.label]} />}
         </td>
       </tr>
