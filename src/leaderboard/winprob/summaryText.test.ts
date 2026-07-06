@@ -189,13 +189,12 @@ describe('remainingPotentialClause', () => {
 })
 
 describe('buildBestCase', () => {
-  test('narrates one coherent sim: picks by deepest actual run, misses (collisions) flagged, boot, and the place/points payoff', () => {
+  test('narrates one coherent sim: picks by deepest actual run, misses (collisions) flagged, boot and third', () => {
     // A single captured tournament. ספרד reached the semis it was backed to (hit);
     // פורטוגל was backed to the quarters but ran into ספרד and was stopped in the round of
     // 16 (miss — the bracket resolving the collision, never a contradictory wish-list);
     // ארגנטינה reached its backed quarters (hit). The scorer took the boot.
     const r = row({
-      bestPlace: 4, bestPlacePct: 12.5, peakPlace: 1, peakPlacePct: 0.3,
       bestScenario: {
         rank: 4, pts: 512,
         picks: [
@@ -215,11 +214,6 @@ describe('buildBestCase', () => {
     ])
     expect(bc.third).toEqual({ teamHe: 'קרואטיה', won: true })
     expect(bc.boot).toEqual({ scorerHe: 'הארי קיין', won: true })
-    expect(bc.rank).toBe(4)
-    expect(bc.rankPct).toBe(12.5)
-    expect(bc.pts).toBe(512)
-    expect(bc.peak).toBe(1)
-    expect(bc.peakPct).toBe(0.3)
   })
 
   test('returns null when the sim captured no best-case scenario for the bettor', () => {
@@ -262,10 +256,10 @@ describe('buildBettorHeadline', () => {
     }
     const r = row({ curRank: 1, expRank: 5, winPct: 24, top5Pct: 63.6, avgPts: 402, stages: [stage('group', 'שלב הבתים', 22, 80, 58), stage('gb', 'נעל זהב', 7)] })
     const h = buildBettorHeadline(r, adv, reach, 27, ME)
-    // standing reads as a verdict: place in words, the title odds, and the projected slip
-    expect(h.standing).toContain('אתה בראש הטבלה, מקום 1 מתוך 27')
+    // standing reads short and factual: place, the odds, and the projected finish
+    expect(h.standing).toContain('אתה במקום 1 מתוך 27')
     expect(h.standing).toContain('24.0% לזכייה')
-    expect(h.standing).toContain('נסיגה למקום 5')
+    expect(h.standing).toContain('צפי סיום: מקום 5')
     expect(h.standing).toContain('402 נק׳')
     // the route ladder reads forward in RTL — arrows point right→left (' ← ')
     expect(h.route).toEqual({ teamHe: 'צרפת', ladder: 'שמינית 82% ← רבע 55% ← חצי 30% ← גמר 21% ← אלופה 13%' })
@@ -279,9 +273,9 @@ describe('buildBettorHeadline', () => {
   test('writes the standing in third person for another bettor', () => {
     const r = row({ curRank: 9, expRank: 9, winPct: 0, top5Pct: 2, avgPts: 120, stages: [] })
     const h = buildBettorHeadline(r, null, {}, 27, { self: false, name: 'דנה' })
-    expect(h.standing).toContain('דנה בחצי העליון, מקום 9 מתוך 27')
-    expect(h.standing).toContain('כמעט מחוץ למרוץ על הזכייה')
-    expect(h.standing).toContain('סיום סביב מקום 9')
+    expect(h.standing).toContain('דנה במקום 9 מתוך 27')
+    expect(h.standing).toContain('0.0% לזכייה, 2.0% לטופ 5')
+    expect(h.standing).toContain('צפי סיום: מקום 9')
   })
 
   test('flags an eliminated marquee pick and explains the points deficit', () => {
@@ -344,8 +338,46 @@ describe('buildBettorHeadline', () => {
     expect(h.crossings).toBeUndefined()
   })
 
-  test('a leader the model expects to slip gets a blunt "leading now, but" verdict', () => {
+  test('a leader the model expects to slip shows the projected finish plainly', () => {
     const h = buildBettorHeadline(row({ curRank: 1, expRank: 4, avgPts: 402 }), null, {}, 27, ME)
-    expect(h.standing).toContain('מוביל כעת אך המודל צופה נסיגה למקום 4')
+    expect(h.standing).toContain('אתה במקום 1 מתוך 27')
+    expect(h.standing).toContain('צפי סיום: מקום 4, כ-402 נק׳')
+  })
+
+  test('folds the whole ceiling picture — place, scenario points, cumulative chance, and the peak — into the one standing line', () => {
+    const r = row({
+      curRank: 10, expRank: 8, avgPts: 466, winPct: 0.4, bestPlace: 3, bestPlacePct: 12.1,
+      peakPlace: 1, peakPlacePct: 0.6,
+      bestScenario: { rank: 3, pts: 558, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeamHe: '' },
+    })
+    const h = buildBettorHeadline(r, null, {}, 26, { self: false, name: 'עידן מלמד' })
+    expect(h.standing).toContain('עידן מלמד במקום 10 מתוך 26')
+    expect(h.standing).toContain('צפי סיום: מקום 8, כ-466 נק׳')
+    expect(h.standing).toContain('המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 3 (כ-558 נק׳, סיכוי כ-12.1% לסיים שם או מעליו)')
+    // peak is 1st place → reuses the win % (0.4), never the separately-rounded peakPlacePct (0.6)
+    expect(h.standing).toContain('לטפס גבוה מזה, עד מקום 1, בסיכוי אפסי (0.4%)')
+  })
+
+  test('for a first-place ceiling, states only the point ceiling — the title chance already sits in the win %', () => {
+    const r = row({
+      curRank: 2, expRank: 3, avgPts: 507, winPct: 31.2, top5Pct: 89.3,
+      bestPlace: 1, bestPlacePct: 31.3,
+      bestScenario: { rank: 1, pts: 678, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeamHe: '' },
+    })
+    const h = buildBettorHeadline(r, null, {}, 26, ME)
+    expect(h.standing).toContain('31.2% לזכייה')
+    expect(h.standing).toContain('המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 1 (כ-678 נק׳)')
+    // no second, conflicting "chance to finish there" number for 1st place
+    expect(h.standing).not.toContain('לסיים שם')
+  })
+
+  test('states the ceiling without points when no scenario was captured', () => {
+    const h = buildBettorHeadline(row({ curRank: 26, expRank: 26, bestPlace: 20, bestPlacePct: 13.2 }), null, {}, 26, { self: false, name: 'חן ענבר' })
+    expect(h.standing).toContain('המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 20 (סיכוי כ-13.2% לסיים שם או מעליו)')
+  })
+
+  test('omits the realistic ceiling when it only echoes the current place', () => {
+    const h = buildBettorHeadline(row({ curRank: 3, expRank: 8, bestPlace: 5 }), null, {}, 26, ME)
+    expect(h.standing).not.toContain('המקום הריאלי הגבוה ביותר')
   })
 })

@@ -286,15 +286,12 @@ export interface BestScenarioLine {
   hit: boolean         // reached the depth it was backed to (or deeper)
 }
 
+// Just the "what has to happen" breakdown — the place/points/odds payoff now lives in
+// the one-line standing at the top (see standingText), so this stays a pure to-do list.
 export interface BestCaseDigest {
   lines: BestScenarioLine[]        // each deep pick's fate in the scenario, deepest run first
   third?: { teamHe: string; won: boolean } // the predicted third-place winner's outcome (heavy bonus)
   boot?: { scorerHe: string; won: boolean } // the picked scorer's boot outcome in this scenario
-  rank: number                     // finishing place in this scenario (the realistic ceiling)
-  rankPct: number                  // cumulative chance to finish at that place or better
-  pts: number                      // points scored in this scenario
-  peak: number                     // theoretical best place ever reached
-  peakPct: number                  // its (near-zero) cumulative chance
 }
 
 // Depth (7=champion … 2=reached R32, 0=out) → Hebrew phrase for a pick that, in the
@@ -328,11 +325,7 @@ export function buildBestCase(row: Row): BestCaseDigest | null {
   const third = s.thirdTeamHe ? { teamHe: s.thirdTeamHe, won: s.third } : undefined
   const boot = s.bootScorerHe ? { scorerHe: s.bootScorerHe, won: s.boot } : undefined
   if (!lines.length && !third && !boot) return null
-  return {
-    lines, third, boot,
-    rank: s.rank, rankPct: row.bestPlacePct, pts: Math.round(s.pts),
-    peak: row.peakPlace, peakPct: row.peakPlacePct,
-  }
+  return { lines, third, boot }
 }
 
 // Who we're writing about — second person ("אתה") for the viewer's own featured
@@ -344,40 +337,47 @@ export type HeadlineSubject =
 
 // Where a bettor sits in words, not just a number — so the standing reads like a
 // verdict on their real situation rather than a stat dump.
-function rankPhrase(rank: number, total: number): string {
-  if (rank <= 1) return 'בראש הטבלה'
-  if (rank <= Math.max(2, Math.ceil(total * 0.15))) return 'בצמרת הטבלה'
-  if (rank <= Math.ceil(total / 2)) return 'בחצי העליון'
-  if (rank < total) return 'בחצי התחתון'
-  return 'בתחתית הטבלה'
-}
-
-// How alive the title hopes are, framed by the model's win odds.
-function chancePhrase(winPct: number): string {
-  if (winPct >= 25) return 'מועמד מוביל לזכייה'
-  if (winPct >= 12) return 'מועמד רציני לזכייה'
-  if (winPct >= 4) return 'עדיין בתמונה לזכייה'
-  if (winPct > 0) return 'אאוטסיידר לזכייה'
-  return 'כמעט מחוץ למרוץ על הזכייה'
-}
-
-// The opening paragraph: standing in words + place, the live title odds, and the
-// model's projected finish with its trajectory — all grounded in this bettor's
-// own numbers, in second or third person per `subject`.
+// The opening line, short and factual, all in one place: current standing, title/top-5
+// odds, the model's projected finish, and — when there's real room to climb — the whole
+// ceiling picture (realistic best place with its exact chance and its scenario points,
+// then the theoretical peak with its slim/negligible odds). No filler, in second or
+// third person per `subject`.
 function standingText(row: Row, totalPlayers: number, subject: HeadlineSubject): string {
   const exp = Math.round(row.expRank)
   const subj = subject.self ? 'אתה' : subject.name
-  const place = `${subj} ${rankPhrase(row.curRank, totalPlayers)}, מקום ${row.curRank} מתוך ${totalPlayers}.`
-  const chance = `${chancePhrase(row.winPct)} — ${fmtPct(row.winPct)} לזכייה, ${fmtPct(row.top5Pct)} לטופ 5.`
   const avg = Math.round(row.avgPts)
-  // A leader the model expects to slip gets a blunt "leading now, but…" so the gap
-  // between the current standing and the projected finish reads as the headline.
-  const slipLead = row.curRank === 1 ? 'מוביל כעת אך ' : ''
-  const proj =
-    exp < row.curRank ? `המודל צופה טיפוס למקום ${exp} בסיום, עם צפי של כ-${avg} נק׳.`
-    : exp > row.curRank ? `${slipLead}המודל צופה נסיגה למקום ${exp} בסיום, עם צפי של כ-${avg} נק׳.`
-    : `המודל צופה סיום סביב מקום ${exp}, עם צפי של כ-${avg} נק׳.`
-  return `${place} ${chance} ${proj}`
+  const place = `${subj} במקום ${row.curRank} מתוך ${totalPlayers}.`
+  const chance = `${fmtPct(row.winPct)} לזכייה, ${fmtPct(row.top5Pct)} לטופ 5.`
+  const proj = `צפי סיום: מקום ${exp}, כ-${avg} נק׳.`
+  // The ceiling is only worth stating when the realistic best is above where they sit
+  // now — otherwise it just echoes the current place.
+  let ceiling = ''
+  if (row.bestPlace < row.curRank) {
+    const ptsStr = row.bestScenario ? `כ-${Math.round(row.bestScenario.pts)} נק׳` : ''
+    if (row.bestPlace === 1) {
+      // Finishing 1st is exactly the title chance already stated above (winPct), so we
+      // don't restate a second, tie-rounded number for it — just the scenario's point
+      // ceiling, which is the only genuinely new figure here.
+      if (ptsStr) ceiling = ` המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום 1 (${ptsStr}).`
+    } else {
+      // The cumulative chance to finish *at that place or better* — this is what makes the
+      // place "realistic" (it clears REALISTIC_PLACE_P). The exact single-place chance is
+      // always tiny in a big field and would make the ceiling look un-realistic.
+      const chanceStr = `סיכוי כ-${fmtPct(row.bestPlacePct)} לסיים שם או מעליו`
+      const inner = ptsStr ? `${ptsStr}, ${chanceStr}` : chanceStr
+      ceiling = ` המקום הריאלי הגבוה ביותר שאפשר לסיים בו: מקום ${row.bestPlace} (${inner}).`
+      // A strictly higher place seen in the sims is the theoretical peak — a long shot,
+      // labelled אפסי/קלוש by how tiny its chance is.
+      if (row.peakPlace < row.bestPlace) {
+        // Finishing 1st *is* the title chance already stated up top (winPct). Reuse it so the
+        // two numbers can never disagree by a rounding tick; any deeper peak keeps its own pct.
+        const peakPct = row.peakPlace === 1 ? row.winPct : row.peakPlacePct
+        const odds = peakPct < 1 ? 'אפסי' : 'קלוש'
+        ceiling += ` לטפס גבוה מזה, עד מקום ${row.peakPlace}, בסיכוי ${odds} (${fmtPct(peakPct)}).`
+      }
+    }
+  }
+  return `${place} ${chance} ${proj}${ceiling}`
 }
 
 // A synthesised read of one bettor's bet, used both for the viewer's featured card

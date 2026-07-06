@@ -1331,7 +1331,8 @@ export interface StageStat { key: StageKey; label: string; val: number; field: n
 // A bettor's finish-place ceiling, read off the simulated rank histogram:
 //  - bestPlace: the *realistic* best finish — the highest place (lowest number) they
 //    reach with at least a non-trivial cumulative chance (REALISTIC_PLACE_P), so it's
-//    not a one-in-a-thousand fluke. bestPlacePct is that cumulative chance.
+//    not a one-in-a-thousand fluke. bestPlacePct is that cumulative chance (finish at that
+//    place or better) — the number that actually makes it "realistic".
 //  - peakPlace: the theoretical best — the very best place seen in *any* sim, however
 //    unlikely. peakPlacePct is its (typically near-zero) cumulative chance.
 // Both are field-relative (they come from ranking every bettor each sim), which is what
