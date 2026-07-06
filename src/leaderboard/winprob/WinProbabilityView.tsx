@@ -172,10 +172,14 @@ function StageForecast({ rows, goldenBoot }: { rows: StageForecastRow[]; goldenB
   )
 }
 
-// התרחיש האופטימלי — the tap-to-open best-case route: every bet that can still pay
-// off (title/finalist/semis calls, the golden boot, live group escapes), each with the
-// model's chance for that exact outcome, capped off with the ceiling points and win
-// odds it all adds up to. Answers "what has to break my way to finish as high as I can".
+// כמה גבוה אתה יכול לסיים — the tap-to-open upside breakdown: every bet that can still
+// pay off (title/finalist/semis calls, the golden boot, live group escapes), each with
+// the model's MARGINAL chance for that exact outcome. These are per-pick, independent
+// odds — NOT a single joint scenario: two of your teams can be drawn against each other,
+// so the winner knocks the other out and their deep runs are mutually exclusive. That's
+// why we never say "if they all happen together". The consistent bottom line (ceiling
+// points + realistic place) comes straight from the sim, which already resolves those
+// head-to-heads, so it — not the sum of the rows — is the honest combined payoff.
 // The optimal finish this best case actually yields — a concrete, field-relative place
 // (the highest with a real shot), plus a parenthetical near-zero-odds note for the
 // theoretical peak. Never claims a place the sims didn't realistically deliver, so the
@@ -200,8 +204,8 @@ function BestCase({ bc }: { bc: BestCaseDigest }) {
   return (
     <div className="wp-best" dir="rtl">
       <div className="wp-best-head">
-        <span className="wp-best-title">התרחיש למקום האופטימלי שלך</span>
-        <span className="wp-best-sub">מה צריך לקרות כדי לטפס גבוה ככל האפשר — לכל תרחיש, הסיכוי שלו לפי המודל:</span>
+        <span className="wp-best-title">כמה גבוה אתה יכול לסיים</span>
+        <span className="wp-best-sub">הפוטנציאל של כל בחירה בנפרד — הסיכוי שתגיע לעומק שחזית לה (לא בהכרח כולן יחד):</span>
       </div>
       <ul className="wp-best-list">
         {bc.steps.map((s, i) => (
@@ -213,7 +217,7 @@ function BestCase({ bc }: { bc: BestCaseDigest }) {
         ))}
       </ul>
       <div className="wp-best-payoff">
-        בתרחיש הטוב ביותר (5% התרחישים הגבוהים) — כ-<b>{Math.round(bc.ceiling)}</b> נק׳. <BestCasePlaceLine place={bc.place} />
+        בסימולציות הטובות ביותר שלך (5% העליונים) — כ-<b>{Math.round(bc.ceiling)}</b> נק׳ (המודל כבר לוקח בחשבון שחלק מהקבוצות שלך ייפגשו ביניהן, כך שלא כל הבחירות יכולות להיפרע יחד). <BestCasePlaceLine place={bc.place} />
       </div>
       {bc.gone.length > 0 && (
         <div className="wp-best-gone">כבר נסגר לרעתך ומוריד את התקרה: {bc.gone.join(', ')}</div>
@@ -633,8 +637,8 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
       <p className="lb-prob-note">
         <b>איך לקרוא:</b> מיון לפי הסיכוי לסיים <b>ראשון מבין כל המהמרים</b>. «ראשון / טופ 3 / טופ 5» = הסיכוי
         לסיים במקום הזה או טוב יותר. «מקום צפוי» = הדירוג הממוצע בסיום, וחץ מראה אם צפויים לעלות או לרדת.
-        <b>לחצו על שורה</b> לסיכום אישי — ובראשו «התרחיש למקום האופטימלי שלך»: מה צריך לקרות כדי לטפס גבוה ככל האפשר,
-        עם הסיכוי לכל תרחיש, ולמטה «גזרת התחזית» מפרקת את הסיכוי לנקודות בכל שלב נוקאאוט ובנעל הזהב.
+        <b>לחצו על שורה</b> לסיכום אישי — ובראשו «כמה גבוה אתה יכול לסיים»: הפוטנציאל של כל בחירה בנפרד (לא בהכרח כולן יחד),
+        ולמטה «גזרת התחזית» מפרקת את הסיכוי לנקודות בכל שלב נוקאאוט ובנעל הזהב.
         {knockoutsStarted && <> אנחנו כבר בנוקאאוט — עם פחות משחקים שנותרו נסגרים תרחישים, אז המספרים כאן מדויקים יותר מאי־פעם.</>}
         {!isLatest && <> בחרתם נקודת זמן קודמת — אפשר לחזור ל«המשחק האחרון» בבורר למעלה.</>}
       </p>
