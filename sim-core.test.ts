@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { KnockoutMatch, PredictionsState, Standing, TournamentResults } from './src/shared/types'
 import { makeUser } from './src/leaderboard/testFixtures'
 import { USERS } from './src/users'
-import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, buildRows, compareRows, mergeSimAgg, podiumByAdvancer, pivotalMatches } from './sim-core'
+import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, buildRows, compareRows, mergeSimAgg, podiumByAdvancer, pivotalMatches, rivalBackers } from './sim-core'
 import { tournamentResults } from './src/tournament-results'
 import { realPlayedState } from './src/leaderboard/winprob/realPlayed'
 import { buildKnockoutBracket } from './src/formView/knockout/knockout'
@@ -141,6 +141,18 @@ describe('runSims knockout-reach', () => {
     // exactly one winner per group per sim → total firsts == groups × sims
     const totalFirst = [...agg.groupFirst.values()].reduce((a, b) => a + b, 0)
     expect(totalFirst).toBe(12 * 200)
+  })
+
+  test('third-place wins are tallied: one bronze per sim, each winner also reached the semis', () => {
+    const n = 200
+    const agg = runSims({ A1: { home: 1, away: 0 } }, n, 12345)
+    // Exactly one third-place match winner per sim (the bracket always resolves it).
+    const total = [...agg.thirdFreq.values()].reduce((a, b) => a + b, 0)
+    expect(total).toBe(n)
+    // A bronze winner is a semi loser, so it can never win the third-place match more
+    // often than it reached the semis.
+    for (const [team, third] of agg.thirdFreq)
+      expect(third).toBeLessThanOrEqual(agg.reachSF.get(team) ?? 0)
   })
 
   test('stage-reach is cumulative: deeper rounds are reached no more often than shallower', () => {
@@ -463,6 +475,141 @@ describe('buildRows champion-conditioned fields', () => {
       // conditioning is monotone: top-5 ≥ top-3 ≥ win, same as the unconditional finish odds.
       expect(r.condTop5Pct!).toBeGreaterThanOrEqual(r.condTop3Pct! - 1e-9)
       expect(r.condTop3Pct!).toBeGreaterThanOrEqual(r.condWinPct! - 1e-9)
+    }
+  })
+})
+
+// A systematic sweep: every number a bettor sees must describe ONE physically-possible
+// tournament and obey the obvious ordering laws. We build the real rows twice — once
+// pre-tournament (everything in play) and once from the live results — and assert the
+// invariants on every row. If any of these ever trip, a bettor is being shown a scenario
+// that can't happen (the class of bug we keep getting bitten by), not a rounding nit.
+describe('buildRows output is internally coherent', () => {
+  const N = 800
+  const CHAMPION = 7
+  const FINALIST = 6
+  const SEMIS = 5
+  const EPS = 1e-9
+
+  const states: [string, PredictionsState][] = [
+    ['pre-tournament', {}],
+    ['live results', realPlayedState(tournamentResults)],
+  ]
+
+  for (const [name, played] of states) {
+    describe(name, () => {
+      const rows = buildRows(runSims(played, N, 20260707, true), N, played)
+      const total = rows.length
+
+      test('there is at least one bettor to check', () => {
+        expect(total).toBeGreaterThan(0)
+      })
+
+      for (const r of rows) {
+        describe(r.label, () => {
+          test('win ⊆ top3 ⊆ top5, all within 0–100', () => {
+            expect(r.winPct).toBeGreaterThanOrEqual(0)
+            expect(r.winPct).toBeLessThanOrEqual(r.top3Pct + EPS)
+            expect(r.top3Pct).toBeLessThanOrEqual(r.top5Pct + EPS)
+            expect(r.top5Pct).toBeLessThanOrEqual(100 + EPS)
+          })
+
+          test('ranks sit inside the field and the peak is not below the realistic best', () => {
+            for (const v of [r.curRank, r.expRank, r.bestPlace, r.peakPlace]) {
+              expect(v).toBeGreaterThanOrEqual(1)
+              expect(v).toBeLessThanOrEqual(total)
+            }
+            expect(r.peakPlace).toBeLessThanOrEqual(r.bestPlace) // a smaller place is a better finish
+          })
+
+          test('champion-conditioned reads exist iff the champion can win, and stay ordered', () => {
+            expect(r.championWinPct).toBeGreaterThanOrEqual(0)
+            expect(r.championWinPct).toBeLessThanOrEqual(100 + EPS)
+            if (r.championWinPct === 0) {
+              expect(r.condWinPct).toBeNull()
+              expect(r.condTop3Pct).toBeNull()
+              expect(r.condTop5Pct).toBeNull()
+            } else if (r.condWinPct !== null) {
+              expect(r.condWinPct).toBeGreaterThanOrEqual(0)
+              expect(r.condWinPct).toBeLessThanOrEqual(r.condTop3Pct! + EPS)
+              expect(r.condTop3Pct!).toBeLessThanOrEqual(r.condTop5Pct! + EPS)
+              expect(r.condTop5Pct!).toBeLessThanOrEqual(100 + EPS)
+            }
+          })
+
+          const s = r.bestScenario
+          if (s) {
+            test('the best case is one real tournament: ≤1 champion, ≤2 finalists', () => {
+              expect(s.picks.filter(p => p.reached >= CHAMPION).length).toBeLessThanOrEqual(1)
+              expect(s.picks.filter(p => p.reached >= FINALIST).length).toBeLessThanOrEqual(2)
+              expect(s.rank).toBe(r.bestPlace)
+              expect(s.pts).toBeGreaterThanOrEqual(0)
+              for (const p of s.picks) {
+                expect(p.reached).toBeGreaterThanOrEqual(0)
+                expect(p.reached).toBeLessThanOrEqual(CHAMPION)
+              }
+            })
+
+            test('the third-place pick is never also a finalist in that same run', () => {
+              if (!s.thirdTeamHe) return
+              const asPick = s.picks.find(p => p.teamHe === s.thirdTeamHe)
+              if (asPick) expect(asPick.reached).toBeLessThanOrEqual(SEMIS)
+              const clash = s.picks.find(p => p.teamHe === s.thirdTeamHe && p.reached >= FINALIST)
+              expect(clash, `${s.thirdTeamHe} shown in both the final and the third-place match`).toBeUndefined()
+            })
+
+            test('collisions resolve toward rank: among same-depth picks, fewer rivals ⇒ deeper run', () => {
+              // Within each backed depth, the pick FEWER rivals also backed must not be shown
+              // stopping earlier than a more-popular same-depth pick — that would be the
+              // rank-negative resolution the optimal scenario is meant to avoid.
+              const byRank = new Map<number, typeof s.picks>()
+              for (const p of s.picks) {
+                if (p.team === s.thirdTeam) continue // third-place pick is steered separately
+                const g = byRank.get(p.predictedRank)
+                if (g) g.push(p); else byRank.set(p.predictedRank, [p])
+              }
+              for (const [rank, g] of byRank) {
+                for (const a of g) for (const b of g) {
+                  if (rivalBackers(a.team, rank, r.label) < rivalBackers(b.team, rank, r.label)) {
+                    expect(a.reached, `${a.team} (rarer) shown shallower than ${b.team}`).toBeGreaterThanOrEqual(b.reached)
+                  }
+                }
+              }
+            })
+          }
+        })
+      }
+    })
+  }
+})
+
+describe('buildRows best-case coherence', () => {
+  // Regression: a bettor's predicted third-place winner lost its semi and then took the
+  // third-place match — so it can never ALSO be shown reaching the final/title in the same
+  // (single, coherent) best-case tournament. Run pre-tournament (everything in play) so
+  // every deep pick, including the third-place bet, is live.
+  const REACHED_FINAL_OR_TITLE = 6
+
+  test('the third-place pick is never shown reaching the final in the same scenario', () => {
+    const n = 600
+    const rows = buildRows(runSims({}, n, 12345, true), n, {})
+    for (const r of rows) {
+      const s = r.bestScenario
+      if (!s?.thirdTeamHe) continue
+      const clash = s.picks.find(p => p.teamHe === s.thirdTeamHe && p.reached >= REACHED_FINAL_OR_TITLE)
+      expect(clash, `${r.label}: ${s.thirdTeamHe} shown in both the final and the third-place match`).toBeUndefined()
+    }
+  })
+
+  test("Idan's Argentina is not simultaneously a finalist and the third-place winner", () => {
+    const n = 600
+    const rows = buildRows(runSims({}, n, 12345, true), n, {})
+    const idan = rows.find(r => r.label === 'עידן מלמד')
+    expect(idan).toBeDefined()
+    const s = idan!.bestScenario
+    if (s?.thirdTeamHe) {
+      const deepRun = s.picks.find(p => p.teamHe === s.thirdTeamHe)
+      if (deepRun) expect(deepRun.reached).toBeLessThanOrEqual(5) // capped at the semis
     }
   })
 })

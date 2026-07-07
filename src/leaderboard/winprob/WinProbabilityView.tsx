@@ -187,25 +187,28 @@ function BestCase({ bc }: { bc: BestCaseDigest }) {
     <div className="wp-best" dir="rtl">
       <div className="wp-best-head">
         <span className="wp-best-title">התרחיש האופטימלי שלך</span>
-        <span className="wp-best-sub">הריצה הקוהרנטית שמביאה אותך הכי גבוה. הקבוצות שלך מתחרות על אותם מקומות בבראקט — ✕ אינו הפסד ש״עדיף״ לך, אלא בחירה שנופלת כדי שהאחרות ייקחו אותך גבוה יותר:</span>
+        <span className="wp-best-sub">המסלול הריאלי שמביא אותך למקום הגבוה ביותר, עם הסיכוי של המודל לכל אירוע. כששתיים מהבחירות שלך נפגשות בבראקט מוצג הצד שהכי מעלה אותך בדירוג — ✕ אינו הפסד ש״עדיף״ לך, אלא בחירה שנופלת כדי שהאחרת תעביר אותך גבוה יותר:</span>
       </div>
       <ul className="wp-best-list">
         {bc.lines.map((line, i) => (
           <li key={i} className={`wp-best-row${line.hit ? '' : ' wp-best-row--miss'}`}>
             <span className="wp-best-mark">{line.hit ? '✓' : '✕'}</span>
             <span className="wp-best-need"><b>{line.teamHe}</b> {line.reachedLabel}</span>
+            {line.pct != null && <span className="wp-best-pct">{line.pct}%</span>}
           </li>
         ))}
         {bc.third && (
           <li className={`wp-best-row${bc.third.won ? '' : ' wp-best-row--miss'}`}>
             <span className="wp-best-mark">{bc.third.won ? '✓' : '✕'}</span>
             <span className="wp-best-need"><b>{bc.third.teamHe}</b> {bc.third.won ? 'תזכה במשחק המקום השלישי' : 'לא תזכה במשחק המקום השלישי'}</span>
+            {bc.third.pct != null && <span className="wp-best-pct">{bc.third.pct}%</span>}
           </li>
         )}
         {bc.boot && (
           <li className={`wp-best-row${bc.boot.won ? '' : ' wp-best-row--miss'}`}>
             <span className="wp-best-mark">{bc.boot.won ? '✓' : '✕'}</span>
             <span className="wp-best-need"><b>{bc.boot.scorerHe}</b> {bc.boot.won ? 'יזכה בנעל הזהב' : 'לא יזכה בנעל הזהב'}</span>
+            {bc.boot.pct != null && <span className="wp-best-pct">{bc.boot.pct}%</span>}
           </li>
         )}
       </ul>
@@ -289,7 +292,7 @@ function RowDetail({ row, advancement, stageReach, totalPlayers, isMe, crossings
   const subject: HeadlineSubject = isMe ? { self: true, firstName } : { self: false, name: row.label }
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
   const h = buildBettorHeadline(row, advancement ?? null, stageReach, totalPlayers, subject, crossings, goldenBoot, knockoutsStarted, stagePhases)
-  const bestCase = buildBestCase(row)
+  const bestCase = buildBestCase(row, stageReach)
   return (
     <div className="wp-detail-card" dir="rtl">
       <h4 className="wp-me-title wp-detail-title">{isMe ? `ההימור שלך, ${firstName}` : `ההימור של ${row.label}`}</h4>
@@ -310,7 +313,7 @@ function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossing
   const firstName = name.split(' ')[0]
   const stagePhases = Object.fromEntries(forecast.stages.map(s => [s.key, s.phase]))
   const h = buildBettorHeadline(row, advancement, stageReach, totalPlayers, { self: true, firstName }, crossings, goldenBoot, knockoutsStarted, stagePhases)
-  const bestCase = buildBestCase(row)
+  const bestCase = buildBestCase(row, stageReach)
   return (
     <section className="wp-me" dir="rtl" aria-label="סיכום ההימור שלך">
       <h3 className="wp-me-title">ההימור שלך, {firstName}</h3>

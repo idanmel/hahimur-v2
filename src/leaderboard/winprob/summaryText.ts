@@ -101,7 +101,7 @@ function routeLadder(team: string, predictedRank: number, stageReach: Record<str
   if (steps.length < 2) return null
   // RTL line: the arrow must point in the reading direction (right→left), so the
   // ladder reads forward as שמינית → … → אלופה. A ' → ' glyph points backwards here.
-  return steps.map(s => `${s.word} ${Math.round(sr[s.key] * 100)}%`).join(' ← ')
+  return steps.map(s => `${s.word} ${Math.round((sr[s.key] ?? 0) * 100)}%`).join(' ← ')
 }
 
 export interface BettorHeadline {
@@ -284,14 +284,15 @@ export interface BestScenarioLine {
   teamHe: string       // the picked team
   reachedLabel: string // where it got to in this scenario ("הגיעה לחצי הגמר", "נעצרה בשמינית"…)
   hit: boolean         // reached the depth it was backed to (or deeper)
+  pct?: number         // model odds of the *shown* outcome, 0–100 (P(reach) for a hit, P(fall short) for a miss)
 }
 
 // Just the "what has to happen" breakdown — the place/points/odds payoff now lives in
 // the one-line standing at the top (see standingText), so this stays a pure to-do list.
 export interface BestCaseDigest {
   lines: BestScenarioLine[]        // each deep pick's fate in the scenario, deepest run first
-  third?: { teamHe: string; won: boolean } // the predicted third-place winner's outcome (heavy bonus)
-  boot?: { scorerHe: string; won: boolean } // the picked scorer's boot outcome in this scenario
+  third?: { teamHe: string; won: boolean; pct?: number } // the predicted third-place winner's outcome (heavy bonus)
+  boot?: { scorerHe: string; won: boolean; pct?: number } // the picked scorer's boot outcome in this scenario
 }
 
 // Depth (7=champion … 2=reached R32, 0=out) → Hebrew phrase for a pick that, in the
@@ -314,16 +315,35 @@ function scenarioLine(teamHe: string, reached: number, predictedRank: number): B
   return { teamHe, reachedLabel, hit }
 }
 
-export function buildBestCase(row: Row): BestCaseDigest | null {
+// Odds of the *shown* outcome as a rounded 0–100 %: for a hit, the chance the event
+// happens; for a miss (a collision sacrifice), the chance it falls short as needed. Undefined
+// when we have no model reach for that pick (e.g. the pure-text unit tests pass no stageReach).
+function outcomePct(reachP: number | undefined, won: boolean): number | undefined {
+  if (reachP == null) return undefined
+  return Math.round((won ? reachP : 1 - reachP) * 100)
+}
+
+export function buildBestCase(row: Row, stageReach: Record<string, StageReach> = {}): BestCaseDigest | null {
   const s = row.bestScenario
   if (!s) return null
+  const third = s.thirdTeamHe
+    ? { teamHe: s.thirdTeamHe, won: s.third, pct: outcomePct(stageReach[s.thirdTeam]?.third, s.third) }
+    : undefined
   const lines = s.picks
-    .map(p => ({ ...scenarioLine(p.teamHe, p.reached, p.predictedRank), reached: p.reached, predictedRank: p.predictedRank }))
+    .map(p => ({ ...scenarioLine(p.teamHe, p.reached, p.predictedRank), reached: p.reached, predictedRank: p.predictedRank, team: p.team }))
     // Deepest actual run first (then deepest bet) — the marquee outcomes lead the read.
     .sort((a, b) => b.reached - a.reached || b.predictedRank - a.predictedRank)
-    .map(({ teamHe, reachedLabel, hit }) => ({ teamHe, reachedLabel, hit }))
-  const third = s.thirdTeamHe ? { teamHe: s.thirdTeamHe, won: s.third } : undefined
-  const boot = s.bootScorerHe ? { scorerHe: s.bootScorerHe, won: s.boot } : undefined
+    .map(({ teamHe, reachedLabel, hit, team, predictedRank }) => {
+      const reachP = stageReach[team] ? reachAtRank(stageReach[team], predictedRank) : undefined
+      return { teamHe, reachedLabel, hit, pct: outcomePct(reachP, hit) }
+    })
+    // The third-place winner gets its own dedicated line below (it lost its semi and then
+    // took the playoff). Drop its generic "reached the semis" pick line here so the same
+    // team never appears on two lines and reads as if it were in two places at once.
+    .filter(l => !third || l.teamHe !== third.teamHe)
+  const boot = s.bootScorerHe
+    ? { scorerHe: s.bootScorerHe, won: s.boot, pct: outcomePct(row.scorerBootPct / 100, s.boot) }
+    : undefined
   if (!lines.length && !third && !boot) return null
   return { lines, third, boot }
 }
@@ -414,7 +434,10 @@ export function buildBettorHeadline(
       const ladder = routeLadder(lead.team, lead.predictedRank, stageReach)
       if (ladder) out.route = { teamHe: lead.teamHe, ladder }
     }
-    const others = advancement.picks.filter(p => p.predictedRank >= 5 && p.team !== lead?.team).sort((a, b) => b.predictedRank - a.predictedRank)
+    // Only *live* marquee calls belong here — a busted deep pick is already reported once in
+    // the "eliminated" line below, so listing it again here (as "— הודחה") would name the
+    // same team twice in one card. Mirrors the live-only filter used for the route lead.
+    const others = advancement.picks.filter(p => p.stage !== 'out' && p.predictedRank >= 5 && p.team !== lead?.team).sort((a, b) => b.predictedRank - a.predictedRank)
     if (others.length) out.bigBets = others.map(p => betPhrase(p, stageReach)).join(', ')
 
     // Before the knockouts, recap the group escapes + banked points. Once they start,

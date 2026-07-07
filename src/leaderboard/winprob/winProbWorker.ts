@@ -70,6 +70,7 @@ worker.onmessage = async (e: MessageEvent<WinProbRequest>) => {
       sf: (real.reachSF.get(t) ?? 0) / n,
       final: (real.reachFinal.get(t) ?? 0) / n,
       champion: (real.champFreq.get(t) ?? 0) / n,
+      third: (real.thirdFreq.get(t) ?? 0) / n,
     }
   }
 

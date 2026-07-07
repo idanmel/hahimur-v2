@@ -617,6 +617,10 @@ export interface SimAgg {
   sumRank: Map<string, number>
   stages: Map<string, Stages>
   champFreq: Map<string, number>
+  // How many simulated tournaments each team wins the third-place match in — read as a
+  // probability (÷n), the model's odds a team takes the bronze. Used to quote the chance
+  // behind a bettor's third-place bet in the optimal-scenario read.
+  thirdFreq: Map<string, number>
   // How many simulated tournaments each *scorer* finishes as (or tied for) the top
   // goalscorer — i.e. wins or shares the golden boot. Read as a probability, this is
   // exactly the condition on the +10 bonus (an absolute race outcome, not a ranking
@@ -726,6 +730,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   const sumRank = new Map<string, number>()
   const stages = new Map<string, Stages>()
   const champFreq = new Map<string, number>()
+  const thirdFreq = new Map<string, number>()
   const bootFreq = new Map<string, number>()
   const reachR32 = new Map<string, number>()
   const groupFirst = new Map<string, number>()
@@ -756,6 +761,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
   for (let i = 0; i < n; i++) {
     const results = simulateTournament(played, realGoals, realGames)
     if (results.champion) champFreq.set(results.champion, (champFreq.get(results.champion) ?? 0) + 1)
+    if (results.thirdPlaceWinner) thirdFreq.set(results.thirdPlaceWinner, (thirdFreq.get(results.thirdPlaceWinner) ?? 0) + 1)
     // Every sampled boot winner (usually one, more when tied) gets a tally — a tie
     // credits each, mirroring the pool rule that a shared boot still pays the bonus.
     const bootWinners = Array.isArray(results.goldenBootWinner) ? results.goldenBootWinner : results.goldenBootWinner ? [results.goldenBootWinner] : []
@@ -863,7 +869,7 @@ export function runSims(played: PredictionsState, n: number, seed: number, colle
       series?.get(s.label)!.push(s.pts)
     }
   }
-  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts, bestByRank, condWinByChamp, condTop3ByChamp, condTop5ByChamp }
+  return { win, top3, top5, sumPts, sumSq, sumRank, stages, champFreq, thirdFreq, bootFreq, reachR32, groupFirst, reachR16, reachQF, reachSF, reachFinal, koPairs, series, rankCounts, bestByRank, condWinByChamp, condTop3ByChamp, condTop5ByChamp }
 }
 
 // Add every tally of `b` into `a` (in place) and return `a`. All aggregate
@@ -878,7 +884,7 @@ export function mergeSimAgg(a: SimAgg, b: SimAgg): SimAgg {
   }
   addMap(a.win, b.win); addMap(a.top3, b.top3); addMap(a.top5, b.top5)
   addMap(a.sumPts, b.sumPts); addMap(a.sumSq, b.sumSq); addMap(a.sumRank, b.sumRank)
-  addMap(a.champFreq, b.champFreq); addMap(a.bootFreq, b.bootFreq); addMap(a.reachR32, b.reachR32); addMap(a.groupFirst, b.groupFirst)
+  addMap(a.champFreq, b.champFreq); addMap(a.thirdFreq, b.thirdFreq); addMap(a.bootFreq, b.bootFreq); addMap(a.reachR32, b.reachR32); addMap(a.groupFirst, b.groupFirst)
   addMap(a.reachR16, b.reachR16); addMap(a.reachQF, b.reachQF); addMap(a.reachSF, b.reachSF); addMap(a.reachFinal, b.reachFinal)
   for (const [num, bp] of b.koPairs) {
     const cur = a.koPairs.get(num)
@@ -958,6 +964,20 @@ function teamSignals(played: PredictionsState): Map<string, 'won' | 'lost' | 'dr
     else { map.set(m.homeTeam, 'drew'); map.set(m.awayTeam, 'drew') }
   }
   return map
+}
+
+// How many OTHER bettors also backed `team` to reach at least `rank`. When two of your own
+// picks collide in the bracket and only one can go through, your points are the same either
+// way — so the rank-favourable outcome is the one FEWER rivals share: the popular team
+// advancing lifts the pack along with you, the rare one advancing lifts you alone. Lower is
+// better for the excluded bettor. Drives the optimal scenario's collision resolution.
+export function rivalBackers(team: string, rank: number, excludeLabel: string): number {
+  let c = 0
+  for (const u of USERS) {
+    if (u.label === excludeLabel) continue
+    if (deepestStage(u, team).rank >= rank) c++
+  }
+  return c
 }
 
 export function deepestStage(u: typeof USERS[number], team: string): { rank: number; label: string } {
@@ -1352,6 +1372,9 @@ export function advancementSummaryForLabel(
 // backed a team to, rather than only "advances from the group".
 export interface StageReach {
   r32: number; r16: number; qf: number; sf: number; final: number; champion: number
+  // P(win the third-place match). Not a depth on the reach ladder (it's a distinct bet),
+  // so it sits alongside rather than feeding reachAtRank. Optional for older callers/tests.
+  third?: number
 }
 
 // The reach probability at the depth a bettor predicted (deepestStage rank):
@@ -1402,6 +1425,7 @@ export function placeStats(counts: number[] | undefined, n: number, expRank: num
 // A single deep pick's fate inside the bettor's captured best-case tournament: how far
 // it was backed to go vs how far it actually went in that one coherent sim.
 export interface BestScenarioPick {
+  team: string          // team code — for looking up the model's reach odds / pick popularity
   teamHe: string
   predictedRank: number // depth backed (7=title … 4=QF)
   reached: number       // depth actually reached in the captured sim (7=champion … 2=R32, 0=out)
@@ -1418,6 +1442,7 @@ export interface BestScenario {
   boot: boolean  // their picked scorer took (or shared) the golden boot in this sim
   bootScorerHe: string
   third: boolean       // their predicted third-place winner took the third-place match here
+  thirdTeam: string    // that team's code — empty when the bet is settled / not made
   thirdTeamHe: string  // that team's Hebrew name — empty when the bet is settled / not made
 }
 
@@ -1519,24 +1544,57 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
     const slot = real.bestByRank?.get(u.label)?.[places.bestPlace - 1] ?? null
     let bestScenario: BestScenario | undefined
     if (slot) {
-      // Keep only picks still in play: team not eliminated, and not yet at the depth it
-      // was backed to. Map by the *original* index first so the stored depth array stays
-      // aligned with the pick list after filtering. Lookups use the team code (realExits /
-      // curDepthByTeam are code-keyed), while the display carries the Hebrew name.
-      const picks = deepScenarioPicks(u)
-        .map((p, i) => ({ team: p.team, teamHe: p.teamHe, predictedRank: p.predictedRank, reached: slot.depths[i] ?? 0 }))
-        .filter(p => !realExits.has(p.team) && (curDepthByTeam.get(p.team) ?? 0) < p.predictedRank)
-        .map(p => ({ teamHe: p.teamHe, predictedRank: p.predictedRank, reached: p.reached }))
-      // The third-place bet is still live only if it hasn't been decided yet and the
-      // predicted team can still play the third-place match — i.e. it's alive, or it
-      // already lost the semi (exit rank 5) and drops into the playoff. A team out earlier
-      // (before the semis), or already in the final, can never be third, so it's dropped.
+      const deep = deepScenarioPicks(u)
+      // The third-place bet lives in ONE coherent tournament: the team lost its semi and
+      // then took the third-place match. So it can only be credited when, in this very
+      // captured run, it reached the semis (depth ≥ 5) — a team that went further (final/
+      // title) or fell short (out before the semis) can't also be the third-place winner.
+      // We also require the real bet to still be open: not yet decided, and the team either
+      // alive or already a semi-loser (exit rank 5). Its captured depth is read by its index
+      // in `deep` (stable order, same array the per-sim depths were stored against).
       const thirdPick = u.predictedThirdPlaceWinner
+      const thirdIdx = thirdPick ? deep.findIndex(p => p.team === thirdPick) : -1
+      const thirdDepth = thirdIdx >= 0 ? (slot.depths[thirdIdx] ?? 0) : 0
       let thirdTeamHe = ''
-      if (thirdPick && !cur.thirdPlaceWinner) {
+      if (thirdPick && !cur.thirdPlaceWinner && thirdDepth >= 5) {
         const exit = realExits.get(thirdPick)
         if (!exit || exit.rank === 5) thirdTeamHe = he(thirdPick)
       }
+      // Keep only picks still in play: team not eliminated, and not yet at the depth it
+      // was backed to. Map by the *original* index first so the stored depth array stays
+      // aligned with the pick list after filtering. Lookups use the team code (realExits /
+      // curDepthByTeam are code-keyed), while the display carries the Hebrew name. The
+      // credited third-place team is capped at the semis here so it isn't shown reaching the
+      // final in the same scenario it's said to win the third-place match.
+      const livePicks = deep
+        .map((p, i) => {
+          const raw = slot.depths[i] ?? 0
+          const reached = thirdTeamHe && p.team === thirdPick ? Math.min(raw, 5) : raw
+          return { team: p.team, teamHe: p.teamHe, predictedRank: p.predictedRank, reached }
+        })
+        .filter(p => !realExits.has(p.team) && (curDepthByTeam.get(p.team) ?? 0) < p.predictedRank)
+      // Rank-favourable collision resolution. Two picks backed to the same round give you
+      // the same points whichever goes through — so when the captured run advanced one and
+      // dropped the other, hand the deeper run to whichever FEWER rivals also backed (see
+      // rivalBackers): the outcome that lifts you highest above the field, not an arbitrary
+      // coin-flip. Coherence-safe: it only permutes the reached depths among picks at the
+      // same backed depth (same multiset of outcomes, reassigned). The third-place pick is
+      // steered separately, so it sits out.
+      const byRank = new Map<number, typeof livePicks>()
+      for (const p of livePicks) {
+        if (thirdTeamHe && p.team === thirdPick) continue
+        const g = byRank.get(p.predictedRank)
+        if (g) g.push(p); else byRank.set(p.predictedRank, [p])
+      }
+      for (const [rank, g] of byRank) {
+        if (g.length < 2) continue
+        const depths = g.map(p => p.reached).sort((a, b) => b - a)
+        const order = [...g].sort((a, b) =>
+          rivalBackers(a.team, rank, u.label) - rivalBackers(b.team, rank, u.label) ||
+          (a.team < b.team ? -1 : 1))
+        order.forEach((p, i) => { p.reached = depths[i] })
+      }
+      const picks = livePicks.map(p => ({ team: p.team, teamHe: p.teamHe, predictedRank: p.predictedRank, reached: p.reached }))
       // The golden boot and the third-place bonus are *additive* bets that never fight the
       // bracket: winning the boot only ever adds its +10 (plus goals), and a still-live
       // third-place pick can always land. So the genuine ceiling scenario collects both —
@@ -1558,6 +1616,7 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
         boot: bootWon,
         bootScorerHe: bootWinnable ? he(u.topGoalscorer) : '',
         third: thirdWon,
+        thirdTeam: thirdTeamHe ? (thirdPick ?? '') : '',
         thirdTeamHe,
       }
     }

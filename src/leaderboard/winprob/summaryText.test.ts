@@ -196,15 +196,16 @@ describe('buildBestCase', () => {
     // ארגנטינה reached its backed quarters (hit). The scorer took the boot.
     const r = row({
       bestScenario: {
-        rank: 4, pts: 512,
+        rank: 4, pts: 512, thirdTeam: 'Croatia',
         picks: [
-          { teamHe: 'ספרד', predictedRank: 5, reached: 5 },
-          { teamHe: 'פורטוגל', predictedRank: 4, reached: 3 },
-          { teamHe: 'ארגנטינה', predictedRank: 4, reached: 4 },
+          { team: 'Spain', teamHe: 'ספרד', predictedRank: 5, reached: 5 },
+          { team: 'Portugal', teamHe: 'פורטוגל', predictedRank: 4, reached: 3 },
+          { team: 'Argentina', teamHe: 'ארגנטינה', predictedRank: 4, reached: 4 },
         ],
         boot: true, bootScorerHe: 'הארי קיין',
         third: true, thirdTeamHe: 'קרואטיה',
       },
+      scorerBootPct: 30,
     })
     const bc = buildBestCase(r)!
     expect(bc.lines).toEqual([
@@ -213,7 +214,61 @@ describe('buildBestCase', () => {
       { teamHe: 'פורטוגל', reachedLabel: 'תיעצר בשמינית', hit: false },
     ])
     expect(bc.third).toEqual({ teamHe: 'קרואטיה', won: true })
-    expect(bc.boot).toEqual({ scorerHe: 'הארי קיין', won: true })
+    // No stageReach passed → team/third odds stay undefined; the boot % reads off scorerBootPct.
+    expect(bc.boot).toEqual({ scorerHe: 'הארי קיין', won: true, pct: 30 })
+  })
+
+  test('attaches model odds per line: P(reach) for a hit, P(fall short) for a collision miss, and the boot/third odds', () => {
+    const r = row({
+      scorerBootPct: 42,
+      bestScenario: {
+        rank: 4, pts: 512, thirdTeam: 'Croatia',
+        picks: [
+          { team: 'Spain', teamHe: 'ספרד', predictedRank: 5, reached: 5 },     // hit → P(reach SF)
+          { team: 'Portugal', teamHe: 'פורטוגל', predictedRank: 4, reached: 3 }, // miss → P(fall short of QF)
+        ],
+        boot: true, bootScorerHe: 'הארי קיין',
+        third: true, thirdTeamHe: 'קרואטיה',
+      },
+    })
+    const stageReach = {
+      Spain: sr({ sf: 0.4 }),
+      Portugal: sr({ qf: 0.7 }),
+      Croatia: sr({ third: 0.22 }),
+    }
+    const bc = buildBestCase(r, stageReach)!
+    expect(bc.lines).toEqual([
+      { teamHe: 'ספרד', reachedLabel: 'תגיע לחצי הגמר', hit: true, pct: 40 },
+      { teamHe: 'פורטוגל', reachedLabel: 'תיעצר בשמינית', hit: false, pct: 30 }, // 1 − 0.7
+    ])
+    expect(bc.third).toEqual({ teamHe: 'קרואטיה', won: true, pct: 22 })
+    expect(bc.boot).toEqual({ scorerHe: 'הארי קיין', won: true, pct: 42 })
+  })
+
+  test('the third-place winner is shown once (its own line), never also as a semi-final pick', () => {
+    // Reproduces Idan's scenario: France is champion, Argentina and Spain reached the semis,
+    // and Argentina — a semi loser — takes the third-place match. Argentina must appear only
+    // on the third-place line, not also as a "reached the semis" pick (that read as if the
+    // same team were in two places in one tournament).
+    const r = row({
+      bestScenario: {
+        rank: 4, pts: 545, thirdTeam: 'Argentina',
+        picks: [
+          { team: 'France', teamHe: 'צרפת', predictedRank: 7, reached: 7 },
+          { team: 'Argentina', teamHe: 'ארגנטינה', predictedRank: 5, reached: 5 },
+          { team: 'Spain', teamHe: 'ספרד', predictedRank: 5, reached: 5 },
+        ],
+        boot: true, bootScorerHe: 'קיליאן אמבפה',
+        third: true, thirdTeamHe: 'ארגנטינה',
+      },
+    })
+    const bc = buildBestCase(r)!
+    expect(bc.lines).toEqual([
+      { teamHe: 'צרפת', reachedLabel: 'תזכה באליפות', hit: true },
+      { teamHe: 'ספרד', reachedLabel: 'תגיע לחצי הגמר', hit: true },
+    ])
+    expect(bc.lines.some(l => l.teamHe === 'ארגנטינה')).toBe(false)
+    expect(bc.third).toEqual({ teamHe: 'ארגנטינה', won: true })
   })
 
   test('returns null when the sim captured no best-case scenario for the bettor', () => {
@@ -221,7 +276,7 @@ describe('buildBestCase', () => {
   })
 
   test('returns null when the scenario has no deep picks, no third-place bet and no scorer to show', () => {
-    const r = row({ bestScenario: { rank: 8, pts: 100, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeamHe: '' } })
+    const r = row({ bestScenario: { rank: 8, pts: 100, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeam: '', thirdTeamHe: '' } })
     expect(buildBestCase(r)).toBeNull()
   })
 })
@@ -278,12 +333,25 @@ describe('buildBettorHeadline', () => {
     expect(h.standing).toContain('צפי סיום: מקום 9')
   })
 
-  test('flags an eliminated marquee pick and explains the points deficit', () => {
+  test('an eliminated marquee pick is reported once, in the eliminated line only', () => {
     const adv = summary([pick({ team: 'ברזיל', predictedRank: 7, stage: 'out' })])
     const r = row({ stages: [stage('gb', 'נעל זהב', -15), stage('group', 'שלב הבתים', 5, 30, 25)] })
     const h = buildBettorHeadline(r, adv, {}, 27, ME)
     expect(h.route).toBeUndefined()
-    expect(h.bigBets).toBe('ברזיל (לאליפות) — הודחה')
+    // A busted pick is not also listed as a live "big bet" — that named the same team twice.
+    expect(h.bigBets).toBeUndefined()
+    expect(h.eliminated).toBe('ברזיל')
+  })
+
+  test('a busted deep pick never appears in both the big-bets and eliminated lines', () => {
+    const adv = summary([
+      pick({ team: 'ספרד', predictedRank: 7, stage: 'likely', reach: 1 }), // deepest live → route lead
+      pick({ team: 'צרפת', predictedRank: 6, stage: 'likely', reach: 1 }), // live finalist call → big bet
+      pick({ team: 'ברזיל', predictedRank: 6, stage: 'out' }),             // busted finalist call
+    ])
+    const h = buildBettorHeadline(row({ stages: [] }), adv, {}, 27, ME)
+    expect(h.bigBets).toBe('צרפת לגמר (0%)')
+    expect(h.bigBets).not.toContain('ברזיל')
     expect(h.eliminated).toBe('ברזיל')
   })
 
@@ -348,7 +416,7 @@ describe('buildBettorHeadline', () => {
     const r = row({
       curRank: 10, expRank: 8, avgPts: 466, winPct: 0.4, bestPlace: 3, bestPlacePct: 12.1,
       peakPlace: 1, peakPlacePct: 0.6,
-      bestScenario: { rank: 3, pts: 558, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeamHe: '' },
+      bestScenario: { rank: 3, pts: 558, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeam: '', thirdTeamHe: '' },
     })
     const h = buildBettorHeadline(r, null, {}, 26, { self: false, name: 'עידן מלמד' })
     expect(h.standing).toContain('עידן מלמד במקום 10 מתוך 26')
@@ -362,7 +430,7 @@ describe('buildBettorHeadline', () => {
     const r = row({
       curRank: 2, expRank: 3, avgPts: 507, winPct: 31.2, top5Pct: 89.3,
       bestPlace: 1, bestPlacePct: 31.3,
-      bestScenario: { rank: 1, pts: 678, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeamHe: '' },
+      bestScenario: { rank: 1, pts: 678, picks: [], boot: false, bootScorerHe: '', third: false, thirdTeam: '', thirdTeamHe: '' },
     })
     const h = buildBettorHeadline(r, null, {}, 26, ME)
     expect(h.standing).toContain('31.2% לזכייה')
