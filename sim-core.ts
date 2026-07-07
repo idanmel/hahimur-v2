@@ -1581,7 +1581,24 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
       reason: explain(u, winPct, avgWin, signals),
       stages,
     }
-  }).sort((a, b) => b.winPct - a.winPct)
+  }).sort(compareRows)
+}
+
+// Rank the win-probability board by the odds that matter, in order, so ties on the
+// headline number don't fall back to an arbitrary (input) order: first the chance to
+// finish *first*, then top-3, then top-5, then the expected finishing place (lower is
+// better), then average points, and finally the name so the order is fully stable. This
+// keeps, say, a field of bettors all on ~0% to win sorted by who's actually closer to the
+// podium rather than jumbled.
+export function compareRows(a: Row, b: Row): number {
+  return (
+    b.winPct - a.winPct ||
+    b.top3Pct - a.top3Pct ||
+    b.top5Pct - a.top5Pct ||
+    a.expRank - b.expRank ||
+    b.avgPts - a.avgPts ||
+    a.label.localeCompare(b.label, 'he')
+  )
 }
 
 // ---- HTML report -----------------------------------------------------------

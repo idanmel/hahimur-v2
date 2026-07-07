@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { KnockoutMatch, PredictionsState, Standing, TournamentResults } from './src/shared/types'
 import { makeUser } from './src/leaderboard/testFixtures'
 import { USERS } from './src/users'
-import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, buildRows, mergeSimAgg, podiumByAdvancer, pivotalMatches } from './sim-core'
+import { realEliminations, effectiveEliminations, EFFECTIVE_OUT_EPS, eliminatedBackedPickInMatch, bracketSurvival, advancementSummary, reachAtRank, currentResults, simulateTournament, realGamesByTeam, explainMatchForUser, he, runSims, buildRows, compareRows, mergeSimAgg, podiumByAdvancer, pivotalMatches } from './sim-core'
 import { tournamentResults } from './src/tournament-results'
 import { realPlayedState } from './src/leaderboard/winprob/realPlayed'
 import { buildKnockoutBracket } from './src/formView/knockout/knockout'
@@ -464,6 +464,26 @@ describe('buildRows champion-conditioned fields', () => {
       expect(r.condTop5Pct!).toBeGreaterThanOrEqual(r.condTop3Pct! - 1e-9)
       expect(r.condTop3Pct!).toBeGreaterThanOrEqual(r.condWinPct! - 1e-9)
     }
+  })
+})
+
+describe('buildRows win-probability ordering', () => {
+  const played: PredictionsState = { A1: { home: 1, away: 0 } }
+
+  test('rows are sorted by win, then top-3, top-5, expected place, avg points', () => {
+    const n = 400
+    const rows = buildRows(runSims(played, n, 12345, true), n, played)
+    // win% is the primary key — never increases down the board
+    for (let i = 1; i < rows.length; i++) expect(rows[i].winPct).toBeLessThanOrEqual(rows[i - 1].winPct + 1e-9)
+    // and the full tiebreak chain holds pairwise (no adjacent pair is out of order)
+    for (let i = 1; i < rows.length; i++) expect(compareRows(rows[i - 1], rows[i])).toBeLessThanOrEqual(0)
+  })
+
+  test('compareRows breaks a win/top3/top5 tie by the better (lower) expected place', () => {
+    const base = { winPct: 0, top3Pct: 0, top5Pct: 0, avgPts: 10, label: 'ב' } as const
+    const better = { ...base, expRank: 8 } as unknown as Parameters<typeof compareRows>[0]
+    const worse = { ...base, label: 'א', expRank: 12 } as unknown as Parameters<typeof compareRows>[0]
+    expect(compareRows(better, worse)).toBeLessThan(0) // lower expRank ranks ahead despite the name order
   })
 })
 
