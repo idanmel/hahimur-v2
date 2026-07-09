@@ -225,7 +225,7 @@ export const knockoutStages: KnockoutStages = {
       { matchNum: 88, home: 'Paraguay', away: 'Belgium', resolved: true, scores: { home: 1, away: 2 }, matchDate: '3 ביולי', kickoffIST: '21:00' },
   ],
   r16: [
-      { matchNum: 89, home: 'Germany', away: 'France', resolved: true, scores: { home: 1, away: 0 }, matchDate: '5 ביולי', kickoffIST: '00:00' },
+      { matchNum: 89, home: 'Germany', away: 'France', resolved: true, scores: { home: 0, away: 1 }, matchDate: '5 ביולי', kickoffIST: '00:00' },
       { matchNum: 90, home: 'Switzerland', away: 'Netherlands', resolved: true, scores: { home: 1, away: 2 }, matchDate: '4 ביולי', kickoffIST: '20:00' },
       { matchNum: 91, home: 'Brazil', away: 'Norway', resolved: true, scores: { home: 1, away: 0 }, matchDate: '5 ביולי', kickoffIST: '23:00' },
       { matchNum: 92, home: 'Mexico', away: 'England', resolved: true, scores: { home: 1, away: 2 }, matchDate: '6 ביולי', kickoffIST: '03:00' },
@@ -235,26 +235,26 @@ export const knockoutStages: KnockoutStages = {
       { matchNum: 96, home: 'Canada', away: 'Portugal', resolved: true, scores: { home: 1, away: 3 }, matchDate: '7 ביולי', kickoffIST: '23:00' },
   ],
   qf: [
-      { matchNum: 97, home: 'Germany', away: 'Netherlands', resolved: true, scores: { home: 2, away: 0 }, matchDate: '9 ביולי', kickoffIST: '23:00' },
+      { matchNum: 97, home: 'France', away: 'Netherlands', resolved: true, scores: { home: 2, away: 0 }, matchDate: '9 ביולי', kickoffIST: '23:00' },
       { matchNum: 98, home: 'Spain', away: 'Egypt', resolved: true, scores: { home: 2, away: 0 }, matchDate: '10 ביולי', kickoffIST: '22:00' },
       { matchNum: 99, home: 'Brazil', away: 'England', resolved: true, scores: { home: 1, away: 0 }, matchDate: '12 ביולי', kickoffIST: '00:00' },
       { matchNum: 100, home: 'Argentina', away: 'Portugal', resolved: true, scores: { home: 0, away: 1 }, matchDate: '12 ביולי', kickoffIST: '04:00' },
   ],
   sf: [
-      { matchNum: 101, home: 'Germany', away: 'Spain', resolved: true, scores: { home: 1, away: 2 }, matchDate: '14 ביולי', kickoffIST: '22:00' },
+      { matchNum: 101, home: 'France', away: 'Spain', resolved: true, scores: { home: 1, away: 2 }, matchDate: '14 ביולי', kickoffIST: '22:00' },
       { matchNum: 102, home: 'Brazil', away: 'Portugal', resolved: true, scores: { home: 0, away: 1 }, matchDate: '15 ביולי', kickoffIST: '22:00' },
   ],
   thirdPlace: [
-      { matchNum: 103, home: 'Germany', away: 'Brazil', resolved: true, scores: { home: 1, away: 0 }, matchDate: '19 ביולי', kickoffIST: '00:00' },
+      { matchNum: 103, home: 'France', away: 'Brazil', resolved: true, scores: { home: 1, away: 0 }, matchDate: '19 ביולי', kickoffIST: '00:00' },
   ],
   final: [
-      { matchNum: 104, home: 'Spain', away: 'Portugal', resolved: true, scores: { home: 1, away: 2 }, matchDate: '19 ביולי', kickoffIST: '22:00' },
+      { matchNum: 104, home: 'Spain', away: 'Portugal', resolved: true, scores: { home: 2, away: 1 }, matchDate: '19 ביולי', kickoffIST: '22:00' },
   ],
 }
 
-export const predictedChampion = 'Portugal'
-export const predictedThirdPlaceWinner = 'Germany'
+export const predictedChampion = 'Spain'
+export const predictedThirdPlaceWinner = 'France'
 export const predictedR16Teams = ['Germany', 'France', 'Switzerland', 'Netherlands', 'Brazil', 'Norway', 'Mexico', 'England', 'Colombia', 'Spain', 'United States', 'Egypt', 'Argentina', 'Belgium', 'Canada', 'Portugal']
-export const predictedQFTeams = ['Germany', 'Netherlands', 'Spain', 'Egypt', 'Brazil', 'England', 'Argentina', 'Portugal']
-export const predictedSFTeams = ['Germany', 'Spain', 'Brazil', 'Portugal']
+export const predictedQFTeams = ['France', 'Netherlands', 'Spain', 'Egypt', 'Brazil', 'England', 'Argentina', 'Portugal']
+export const predictedSFTeams = ['France', 'Spain', 'Brazil', 'Portugal']
 export const predictedFinalTeams = ['Spain', 'Portugal']
