@@ -2906,8 +2906,18 @@
 .sc-detail-ok { color: var(--green); font-weight: 900; }
 .sc-detail-no { color: #b04242; font-weight: 900; }
 .sc-boot-badge { background: var(--gold); color: #3a2a00; font-weight: 800; font-size: 10.5px; border-radius: 6px; padding: 0 5px; }
-.sc-podium-detail { margin-top: 6px; text-align: start; width: 100%; }
-.sc-podium-detail .sc-detail-grid { grid-template-columns: 1fr; gap: 4px; }
+/* full-width detail panel shown below the podium for the open top-3 player */
+.sc-podium-detail-panel {
+  margin: -6px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 160, 22, 0.55);
+  border-radius: 12px;
+  background: rgba(212, 160, 22, 0.1);
+}
+.sc-podium-detail-name {
+  font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 800; color: var(--navy);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
 
 /* live odds list (P#1 / P top-3 / P top-5) */
 .sc-odds { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
@@ -2938,6 +2948,7 @@
 .sc-odds-row:hover { background: rgba(212, 160, 22, 0.12); }
 .sc-odds-row:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .sc-odds-row--me { box-shadow: inset 0 0 0 1.5px var(--navy); }
+.sc-odds-gap { height: 1px; margin: 3px 10px; border-top: 1px dashed rgba(200, 184, 122, 0.7); }
 .sc-odds-name { font-size: 13px; font-weight: 700; color: var(--navy); display: inline-flex; align-items: center; gap: 6px; }
 .sc-odds-p1 { text-align: center; font-size: 13px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
 .sc-odds-p3 { text-align: center; font-size: 13px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
@@ -3105,4 +3116,18 @@
   .sc-team-name { font-size: 13px; }
   .sc-td--bonus { display: none; }
   .sc-th--bonus { display: none; }
+  /* tighter podium so the three cards fit a phone without squeezing text */
+  .sc-podium { gap: 6px; }
+  .sc-podium-card { padding: 8px 5px; }
+  .sc-podium-name { font-size: 11.5px; }
+  .sc-podium-pts { font-size: 16px; }
+  .sc-podium-medal { font-size: 19px; }
+  /* keep the odds row readable: narrower % columns, smaller gap */
+  .sc-odds-head, .sc-odds-row { grid-template-columns: 1fr 46px 46px 46px; gap: 5px; }
+  .sc-odds-row { padding: 6px 8px; }
+  .sc-odds-name { font-size: 12px; }
+  .sc-odds-p1, .sc-odds-p3, .sc-odds-p5 { font-size: 12px; }
+  /* detail cells stack key over value so flags + names never collide */
+  .sc-detail-cell { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .sc-detail-final { justify-content: flex-start; }
 }

@@ -322,46 +322,6 @@ export function projectProvisional(users: User[], base: Map<string, number>, inf
     .map((row, i) => ({ ...row, rank: i + 1 }))
 }
 
-// Holding the entered results fixed, sweep every outcome of the still-open matches and
-// record each bettor's best/worst possible final rank. min === max means their position
-// is already clinched — it can't change no matter how the rest plays out.
-export function computeClinch(users: User[], base: Map<string, number>, info: RemainingInfo, sc: ScenarioScores, entered: EnteredFlags, bootCands: (string | null)[] = [null]): Map<string, { min: number; max: number }> {
-  const [a, b] = info.sf
-  const sf1opts = entered.sf[0] ? [sc.sf[0]] : meaningfulScores(users, a.matchNum, a.teams[0], a.teams[1], a.scores)
-  const sf2opts = entered.sf[1] ? [sc.sf[1]] : meaningfulScores(users, b.matchNum, b.teams[0], b.teams[1], b.scores)
-  const agg = new Map<string, { min: number; max: number }>(users.map(u => [u.label, { min: Infinity, max: -Infinity }]))
-  const cmp = byPts(base)
-  const pickOf = new Map(users.map(u => [u.label, u.topGoalscorer]))
-  for (const s1 of sf1opts) {
-    const w1 = winnerOf(a.teams[0], a.teams[1], s1)
-    const l1 = sfLoser(a, w1)
-    for (const s2 of sf2opts) {
-      const w2 = winnerOf(b.teams[0], b.teams[1], s2)
-      const l2 = sfLoser(b, w2)
-      const finalOpts = entered.final ? [sc.final] : meaningfulScores(users, MATCH_NUM.final, w1, w2, info.finalScores)
-      const thirdOpts = entered.third ? [sc.third] : meaningfulScores(users, MATCH_NUM.third, l1, l2, info.thirdScores)
-      for (const sf of finalOpts) {
-        for (const st of thirdOpts) {
-          const r = resolveScenario(info, { sf: [s1, s2], final: sf, third: st })
-          const matchTotals = users.map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) }))
-          for (const bw of bootCands) {
-            const totals = matchTotals
-              .map(t => ({ label: t.label, pts: t.pts + (bw && pickOf.get(t.label) === bw ? GOLDEN_BOOT_BONUS : 0) }))
-              .sort(cmp)
-            for (let i = 0; i < totals.length; i++) {
-              const g = agg.get(totals[i].label)!
-              const rank = i + 1
-              if (rank < g.min) g.min = rank
-              if (rank > g.max) g.max = rank
-            }
-          }
-        }
-      }
-    }
-  }
-  return agg
-}
-
 // ─── model-based chances (Monte-Carlo over the still-open matches) ───────────
 //
 // Reachability answers "can X still finish #1?"; this answers "how likely?". We hold
@@ -515,10 +475,14 @@ export interface Reachability {
   bestBoot: Map<string, string | null>
 }
 
-export function computeReachability(users: User[], base: Map<string, number>, info: RemainingInfo, bootCands: (string | null)[] = [null]): Reachability {
+// `sc`/`entered` (optional) hold already-entered results fixed, so the sweep only spans the
+// still-open matches — the cards then narrow as results come in and stay consistent with the
+// live table's locks. Omit them (the default) for the unconditional "from scratch" picture.
+export function computeReachability(users: User[], base: Map<string, number>, info: RemainingInfo, bootCands: (string | null)[] = [null], sc?: ScenarioScores, entered?: EnteredFlags): Reachability {
   const [a, b] = info.sf
-  const sf1opts = meaningfulScores(users, a.matchNum, a.teams[0], a.teams[1], a.scores)
-  const sf2opts = meaningfulScores(users, b.matchNum, b.teams[0], b.teams[1], b.scores)
+  const fixed = (flag: boolean | undefined, s: MatchScores | undefined): s is MatchScores => !!flag && !!s
+  const sf1opts = fixed(entered?.sf[0], sc?.sf[0]) ? [sc!.sf[0]] : meaningfulScores(users, a.matchNum, a.teams[0], a.teams[1], a.scores)
+  const sf2opts = fixed(entered?.sf[1], sc?.sf[1]) ? [sc!.sf[1]] : meaningfulScores(users, b.matchNum, b.teams[0], b.teams[1], b.scores)
 
   const agg = new Map<string, { min: number; max: number }>(users.map(u => [u.label, { min: Infinity, max: -Infinity }]))
   const best = new Map<string, ScenarioScores>()
@@ -533,13 +497,13 @@ export function computeReachability(users: User[], base: Map<string, number>, in
     for (const s2 of sf2opts) {
       const w2 = winnerOf(b.teams[0], b.teams[1], s2)
       const l2 = sfLoser(b, w2)
-      const finalOpts = meaningfulScores(users, MATCH_NUM.final, w1, w2, info.finalScores)
-      const thirdOpts = meaningfulScores(users, MATCH_NUM.third, l1, l2, info.thirdScores)
+      const finalOpts = fixed(entered?.final, sc?.final) ? [sc!.final] : meaningfulScores(users, MATCH_NUM.final, w1, w2, info.finalScores)
+      const thirdOpts = fixed(entered?.third, sc?.third) ? [sc!.third] : meaningfulScores(users, MATCH_NUM.third, l1, l2, info.thirdScores)
       for (const sf of finalOpts) {
         for (const st of thirdOpts) {
           leaves++
-          const sc: ScenarioScores = { sf: [s1, s2], final: sf, third: st }
-          const r = resolveScenario(info, sc)
+          const leaf: ScenarioScores = { sf: [s1, s2], final: sf, third: st }
+          const r = resolveScenario(info, leaf)
           const matchTotals = users.map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) }))
           for (const bw of bootCands) {
             const totals = matchTotals
@@ -548,7 +512,7 @@ export function computeReachability(users: User[], base: Map<string, number>, in
             for (let i = 0; i < totals.length; i++) {
               const st2 = agg.get(totals[i].label)!
               const rank = i + 1
-              if (rank < st2.min) { st2.min = rank; best.set(totals[i].label, sc); bestBoot.set(totals[i].label, bw) }
+              if (rank < st2.min) { st2.min = rank; best.set(totals[i].label, leaf); bestBoot.set(totals[i].label, bw) }
               if (rank > st2.max) st2.max = rank
             }
           }

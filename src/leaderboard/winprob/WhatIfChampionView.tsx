@@ -7,7 +7,6 @@ import {
   computeBaseTotals,
   baseRanking,
   projectProvisional,
-  computeClinch,
   simulateChances,
   resolveScenario,
   computeReachability,
@@ -228,13 +227,9 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   const rows = useMemo(() => projectProvisional(users, base, info, scenario, entered, bootWinner), [users, base, info, scKey, bootWinner])
   // Reachability & locks sweep every boot outcome too — a position is only truly "in reach"
   // (or clinched) once the ±10 boot swing is accounted for, not just the match results.
-  const reach = useMemo(() => computeReachability(users, base, info, bootCands), [users, base, info, bootCands])
-  // Locks: while nothing is entered the (unconditional) reachability already has the answer,
-  // so we skip the heavy sweep and keep typing snappy. Once a result is in, condition on it.
-  const clinch = useMemo(
-    () => (anyEntered && !allEntered ? computeClinch(users, base, info, scenario, entered, bootCands) : null),
-    [users, base, info, scKey, bootCands],
-  )
+  // Conditioned on whatever's entered, so the cards narrow (and lock) alongside the live table
+  // instead of always showing the from-scratch picture — which is what made them disagree.
+  const reach = useMemo(() => computeReachability(users, base, info, bootCands, scenario, entered), [users, base, info, bootCands, scKey])
 
   // Everything a bettor picked that still matters at the end — surfaced on click.
   const detailsOf = useMemo(
@@ -249,15 +244,12 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
     [users],
   )
   // A row's shown position is final only if it can't move — clinched AND already at that rank.
+  // reach is conditioned on the entered results, so min===max means "locked given what's in".
   // Once everything is entered every position is trivially "locked", so we don't badge those.
   const lockedAt = (label: string, rank: number) => {
     if (allEntered) return false
-    if (!clinch) {
-      const s = reach.stats.get(label)
-      return !!s && s.minRank === s.maxRank && s.minRank === rank
-    }
-    const c = clinch.get(label)
-    return !!c && c.min === c.max && c.min === rank
+    const s = reach.stats.get(label)
+    return !!s && s.minRank === s.maxRank && s.minRank === rank
   }
 
   const shown = showFull ? rows : rows.slice(0, 5)
@@ -283,20 +275,29 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   }
 
   const contenders = reach.contenders
-  const top3 = useMemo(() => [...reach.stats.values()].filter(s => s.canTop3).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
-  const top5only = useMemo(() => [...reach.stats.values()].filter(s => s.canTop5 && !s.canTop3).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
+  // Show each bettor in every tier they can still reach, so someone who can win yet is already
+  // guaranteed the podium shows as an *option* for #1 and *locked* (🔒) for top-3 — that's a
+  // valid, informative state. We only drop them from a lower tier once they're locked into a
+  // strictly better one (a guaranteed #1 shouldn't also read as a podium candidate).
+  const top3 = useMemo(() => [...reach.stats.values()].filter(s => s.canTop3 && s.maxRank > 1).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
+  const top5only = useMemo(() => [...reach.stats.values()].filter(s => s.canTop5 && s.maxRank > 3).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
 
   // Live model-based odds for #1 / top-3, conditioned on whatever results are entered.
   const chances = useMemo(() => simulateChances(users, base, info, scenario, entered, bootWinner), [users, base, info, scKey, bootWinner])
-  const oddsList = useMemo(
+  const oddsRanked = useMemo(
     () =>
       users
         .map(u => ({ label: u.label, ...(chances.get(u.label) ?? { p1: 0, p3: 0, p5: 0 }) }))
         .filter(o => o.p5 >= 0.005)
-        .sort((a, b) => b.p1 - a.p1 || b.p3 - a.p3 || b.p5 - a.p5 || a.label.localeCompare(b.label, 'he'))
-        .slice(0, 5),
+        .sort((a, b) => b.p1 - a.p1 || b.p3 - a.p3 || b.p5 - a.p5 || a.label.localeCompare(b.label, 'he')),
     [chances, users],
   )
+  const oddsList = oddsRanked.slice(0, 5)
+  // keep the picked player visible even when they've dropped out of the top 5
+  const meOdds =
+    me && !oddsList.some(o => o.label === me)
+      ? oddsRanked.find(o => o.label === me) ?? { label: me, ...(chances.get(me) ?? { p1: 0, p3: 0, p5: 0 }) }
+      : null
   const pct = (p: number) => (p >= 0.995 ? '100%' : p >= 0.005 ? `${Math.round(p * 100)}%` : p > 0 ? '<1%' : '—')
 
   const championDecided = !info.finalOpen || (entered.final && sfsKnown)
@@ -364,6 +365,22 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
               <span className="sc-odds-p5">{pct(o.p5)}</span>
             </button>
           ))}
+          {meOdds && (
+            <>
+              <div className="sc-odds-gap" aria-hidden />
+              <button
+                type="button"
+                className="sc-odds-row sc-odds-row--me"
+                onClick={() => applyScenario(meOdds.label)}
+                title="טען תרחיש טוב עבורו"
+              >
+                <span className="sc-odds-name">{firstName(meOdds.label)}<span className="lb-me-badge">אני</span></span>
+                <span className="sc-odds-p1">{pct(meOdds.p1)}</span>
+                <span className="sc-odds-p3">{pct(meOdds.p3)}</span>
+                <span className="sc-odds-p5">{pct(meOdds.p5)}</span>
+              </button>
+            </>
+          )}
         </div>
       </section>
 
@@ -456,13 +473,19 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
                 <div className="sc-podium-medal">{MEDALS[r.rank - 1]}{locked && <span className="sc-podium-lock" title="המקום סגור">🔒</span>}</div>
                 <div className="sc-podium-name">{r.label}{r.label === me && <span className="lb-me-badge">אני</span>}</div>
                 <div className="sc-podium-pts">{r.pts} <span className="sc-podium-unit">נק׳</span></div>
-                {openBoot === r.label
-                  ? <div className="sc-podium-detail">{renderDetail(r.label)}</div>
-                  : <div className="sc-podium-move"><Move from={baseRank.get(r.label) ?? r.rank} to={r.rank} /> {r.bonus > 0 && <span className="sc-bonus">+{r.bonus}</span>}{r.boot > 0 && <span className="sc-bonus sc-bonus--boot">⚽+{r.boot}</span>}</div>}
+                <div className="sc-podium-move"><Move from={baseRank.get(r.label) ?? r.rank} to={r.rank} /> {r.bonus > 0 && <span className="sc-bonus">+{r.bonus}</span>}{r.boot > 0 && <span className="sc-bonus sc-bonus--boot">⚽+{r.boot}</span>}</div>
               </div>
             )
           })}
         </div>
+        {/* the open podium player's detail, full-width below the (narrow) cards so it reads
+            cleanly on mobile instead of being crammed into a third of the row */}
+        {podium.some(r => r.label === openBoot) && openBoot && (
+          <div className="sc-podium-detail-panel" dir="rtl">
+            <div className="sc-podium-detail-name">{openBoot}{openBoot === me && <span className="lb-me-badge">אני</span>}</div>
+            {renderDetail(openBoot)}
+          </div>
+        )}
 
         <table className="sc-table">
           <thead>
@@ -521,19 +544,18 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
       <section className="sc-reach" dir="rtl">
         <div className="sc-reach-head">
           <h3 className="sc-reach-title-main">מי עוד בפנים — על פני כל התרחישים</h3>
-          <p className="sc-reach-sub">מחושב על כל שילוב אפשרי של תוצאות בארבעת המשחקים (כולל תוצאות מדויקות ונעל הזהב). 🔒 = מובטח, לא משנה איך זה ייגמר.</p>
+          <p className="sc-reach-sub">{anyEntered
+            ? <>מחושב על כל שילוב אפשרי של המשחקים שנותרו, בהינתן התוצאות שהזנתם (כולל תוצאות מדויקות ונעל הזהב). 🔒 = מובטח, לא משנה איך שאר המשחקים ייגמרו.</>
+            : <>מחושב על כל שילוב אפשרי של תוצאות בארבעת המשחקים (כולל תוצאות מדויקות ונעל הזהב). הזינו תוצאות והרשימות יצטמצמו. 🔒 = מובטח, לא משנה איך זה ייגמר.</>}</p>
         </div>
-        <ReachGroup tone="gold" limit={1} title="יכולים לסיים ראשון" hint="רק הם עדיין יכולים לחטוף את המקום הראשון." stats={contenders} />
-        <ReachGroup tone="green" limit={3} title="מועמדים לטופ 3" hint="יכולים לסיים בשלושת הראשונים בתרחיש כלשהו." stats={top3} />
-        <ReachGroup tone="amber" limit={5} title="עוד נאבקים על טופ 5" hint="יכולים להיכנס לטופ 5 — אך רק אם התוצאות יתאימו." stats={top5only} />
+        <ReachGroup tone="gold" limit={1} title="יכולים לסיים ראשון" hint="🔒 = המקום הראשון כבר מובטח להם." stats={contenders} />
+        <ReachGroup tone="green" limit={3} title="מועמדים לטופ 3" hint="🔒 = הפודיום כבר מובטח להם." stats={top3} />
+        <ReachGroup tone="amber" limit={5} title="מועמדים לטופ 5" hint="🔒 = טופ 5 כבר מובטח להם." stats={top5only} />
       </section>
 
       <p className="lb-prob-note">
-        <b>איך זה עובד:</b> קבעו תוצאה מדויקת לכל משחק ו<b>הטבלה מתעדכנת אחרי כל תוצאה</b> — סופרת רק את מה שכבר הזנתם.
-        {' '}הניקוד כולל הכל: פגיעה/צליפה, עלייה לגמר (16), אלופה (25), מדליה (20) ו<b>נעל הזהב (+10)</b>. 🔒 = המקום כבר סגור ולא ישתנה.
-        {' '}<b>נעל הזהב:</b> בחרו מי יזכה (ברירת המחדל — המוביל כרגע) וה־+10 ייכנס לטבלה; «מי עוד בפנים» נסרק על <b>כל</b> תוצאה
-        {' '}ו<b>כל</b> זוכה אפשרי בנעל, ולכן מדויק לחלוטין. שערים עתידיים של המלך (3 לשער) לא נספרים כאן — הם קטנים ותלויים במי כובש.
-        {' '}לחיצה על מהמר מציגה את כל הימוריו: אלופה, גמר, מקום שלישי ומלך השערים.
+        <b>איך זה עובד:</b> קבעו תוצאה מדויקת לכל משחק — <b>הטבלה מתעדכנת אחרי כל תוצאה</b> וכוללת הכל: פגיעה/צליפה, גמר, אלופה, מדליה ו<b>נעל הזהב (+10)</b>.
+        {' '}בחרו מי יזכה בנעל (ברירת מחדל — המוביל כרגע). 🔒 = המקום כבר סגור. לחיצה על מהמר מציגה את כל הימוריו.
       </p>
     </>
   )
