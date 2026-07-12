@@ -62,3 +62,33 @@ describe('hasOdds', () => {
     expect(hasOdds('Spain', 'מנצח 74')).toBe(false)
   })
 })
+
+describe('market blend', () => {
+  it('leaves a fixture with no line as the pure model', () => {
+    // Spain/Qatar has no bookmaker line, so the model number is untouched.
+    const o = matchOutcomeOdds('Spain', 'Qatar')
+    expect(o.homeWin).toBeGreaterThan(0.7)
+    expect(o.homeWin + o.draw + o.awayWin).toBeCloseTo(1, 6)
+  })
+
+  it('flips Spain–France to favour France once the market is blended in', () => {
+    // Elo alone rates Spain the slight favourite to advance; the market has France
+    // ahead, and the blend must pull the card over to France.
+    const adv = advanceOdds('Spain', 'France') // Spain = home
+    expect(adv.home + adv.away).toBeCloseTo(1, 6)
+    expect(adv.away).toBeGreaterThan(adv.home) // France (away) now favoured
+  })
+
+  it('sits between the pure model and the pure market for a lined fixture', () => {
+    // The blended to-advance number for France should land between what Elo says
+    // and what the book says — proof it is a genuine mix, not one or the other.
+    const blended = advanceOdds('France', 'Spain').home
+    expect(blended).toBeGreaterThan(0.5) // above the ~0.47 the model gives France
+    expect(blended).toBeLessThan(0.56)   // below the ~0.563 the market gives France
+  })
+
+  it('keeps the blended 3-way a proper distribution', () => {
+    const o = matchOutcomeOdds('France', 'Spain')
+    expect(o.homeWin + o.draw + o.awayWin).toBeCloseTo(1, 6)
+  })
+})

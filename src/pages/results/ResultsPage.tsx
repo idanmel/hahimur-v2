@@ -318,7 +318,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
             rangeFrom={rangeFrom} rangeTo={rangeTo} onRangeFromChange={setRangeFrom} onRangeToChange={setRangeTo}
             playedMatchLabels={playedMatchLabels}
           />
-          <ScopedLeaderboard users={users} results={tournamentResults} realResults={realTournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} me={me} />
+          <ScopedLeaderboard users={users} results={tournamentResults} realResults={realTournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} me={me} bootRace={raceBoard.realGoals} teamByPlayer={TEAM_BY_PLAYER} />
         </section>
 
         {/* Simulation callout */}

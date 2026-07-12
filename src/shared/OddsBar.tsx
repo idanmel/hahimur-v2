@@ -1,6 +1,12 @@
 import { TEAMS } from './groups'
 import { matchOutcomeOdds, advanceOdds, hasOdds } from './matchOdds'
+import { hasMarketLine } from './marketOdds'
 import './OddsBar.css'
+
+// The source label under the bar: a plain Elo read, or "Elo + market" once real
+// bookmaker lines are blended into this fixture (see matchOdds.ts).
+const sourceLabel = (home: string, away: string) =>
+  hasMarketLine(home, away) ? ' · מודל Elo + שוק' : ' · הערכת מודל (Elo)'
 
 const pct = (p: number) => `${Math.round(p * 100)}%`
 
@@ -34,7 +40,7 @@ export default function OddsBar({ home, away, knockout = false }: {
     return (
       <div className="odds" dir="rtl" data-testid="odds-bar">
         <div className="odds__caption">
-          סיכוי להעפיל<span className="odds__src"> · הערכת מודל (Elo)</span>
+          סיכוי להעפיל<span className="odds__src">{sourceLabel(home, away)}</span>
         </div>
         <div className="odds__bar" aria-hidden="true">
           <span className="odds__seg odds__seg--home" style={{ width: pct(o.home) }} />
@@ -52,7 +58,7 @@ export default function OddsBar({ home, away, knockout = false }: {
   return (
     <div className="odds" dir="rtl" data-testid="odds-bar">
       <div className="odds__caption">
-        סיכוי לנצח<span className="odds__src"> · הערכת מודל (Elo)</span>
+        סיכוי לנצח<span className="odds__src">{sourceLabel(home, away)}</span>
       </div>
       <div className="odds__bar" aria-hidden="true">
         <span className="odds__seg odds__seg--home" style={{ width: pct(o.homeWin) }} />

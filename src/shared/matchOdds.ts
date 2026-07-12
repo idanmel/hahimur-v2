@@ -6,6 +6,11 @@ import { TEAM_STRENGTH } from '../pages/results/teamStrength'
 // we sum the joint pmf over a score grid to read off win/draw/win. A 10-a-side
 // grid captures essentially all the mass for football λ's (well under 3), and we
 // renormalise the tiny tail beyond it so the three always sum to 1.
+//
+// The market blend lives one layer down, in matchLambdas: fixtures with bookmaker
+// lines already arrive here as market-calibrated λ's. So the card is just a pure
+// read of the shared λ's — the very same numbers the Monte-Carlo engine samples
+// from — and the card can never disagree with the win-probability board.
 const MAX_GOALS = 10
 
 function poissonPmf(lambda: number, k: number): number {
@@ -20,8 +25,10 @@ export interface MatchOdds {
   awayWin: number
 }
 
-// P(home win) / P(draw) / P(away win) in regulation (90'), the read a group
-// match wants. Both teams must be known real sides; caller guards placeholders.
+// P(home win) / P(draw) / P(away win) in regulation (90'), read straight off the
+// shared λ's. For a fixture with bookmaker lines those λ's are already market-
+// calibrated (see lambdas.ts), so the card reflects the market without a second
+// blend here. Both teams must be known real sides; caller guards placeholders.
 export function matchOutcomeOdds(home: string, away: string): MatchOdds {
   const [lh, la] = matchLambdas(home, away)
   const hp: number[] = [], ap: number[] = []
@@ -39,8 +46,9 @@ export function matchOutcomeOdds(home: string, away: string): MatchOdds {
 }
 
 // P(each side advances) for a knockout tie. A regulation draw goes to ET/pens,
-// which the engine breaks in proportion to attacking rate (lh/(lh+la)) — the
-// exact rule sampleKOScore uses — so the two views agree on who goes through.
+// which the engine breaks in proportion to attacking rate (lh/(lh+la)) — the exact
+// rule sampleKOScore uses — so the card and the simulation agree on who goes
+// through. The λ's already carry any market calibration.
 export function advanceOdds(home: string, away: string): { home: number; away: number } {
   const [lh, la] = matchLambdas(home, away)
   const { homeWin, draw, awayWin } = matchOutcomeOdds(home, away)

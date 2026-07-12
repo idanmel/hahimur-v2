@@ -13,7 +13,7 @@ import type { TournamentResults } from '../shared/types'
 import type { User } from '../users'
 
 // key resets the table's sort state when switching scopes
-export default function ScopedLeaderboard({ users, results, realResults, scope, rangeFrom, rangeTo, me }: {
+export default function ScopedLeaderboard({ users, results, realResults, scope, rangeFrom, rangeTo, me, bootRace, teamByPlayer }: {
   users: User[]
   results: TournamentResults
   // real played results for the win-probability view (independent of manual edits)
@@ -22,9 +22,12 @@ export default function ScopedLeaderboard({ users, results, realResults, scope, 
   rangeFrom: number
   rangeTo: number
   me?: string
+  // live golden-boot race (name → goals, incl. unpicked leaders) for the "מה אם" view
+  bootRace?: Record<string, number>
+  teamByPlayer?: Record<string, string>
 }) {
   if (scope === 'prob') return <WinProbabilityView results={realResults} me={me} users={users} />
-  if (scope === 'whatif') return <WhatIfChampionView results={realResults} me={me} users={users} />
+  if (scope === 'whatif') return <WhatIfChampionView results={realResults} me={me} users={users} bootRace={bootRace} teamByPlayer={teamByPlayer} />
   if (scope === 'records') return <RecordsView users={users} results={realResults} me={me} />
   if (scope === 'timelapse') return <TimelapseView users={users} results={results} me={me} />
   if (scope === 'crossings') return <CrossingsView user={users.find(u => u.label === me)} users={users} results={realResults} />
