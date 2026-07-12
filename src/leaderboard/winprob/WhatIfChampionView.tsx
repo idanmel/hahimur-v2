@@ -294,7 +294,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
         .map(u => ({ label: u.label, ...(chances.get(u.label) ?? { p1: 0, p3: 0, p5: 0 }) }))
         .filter(o => o.p5 >= 0.005)
         .sort((a, b) => b.p1 - a.p1 || b.p3 - a.p3 || b.p5 - a.p5 || a.label.localeCompare(b.label, 'he'))
-        .slice(0, 8),
+        .slice(0, 5),
     [chances, users],
   )
   const pct = (p: number) => (p >= 0.995 ? '100%' : p >= 0.005 ? `${Math.round(p * 100)}%` : p > 0 ? '<1%' : '—')
