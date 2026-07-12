@@ -341,7 +341,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
         <p className="sc-headline-lead">
           {anyEntered
             ? <>הסיכויים לפי התוצאות עד כה. שנו תוצאה למטה והם יתעדכנו.</>
-            : <>סיכויים לסיים <b>ראשון</b> ו<b>בטופ 3</b> לפי מודל הכוח. הזינו תוצאות למטה כדי לעדכן — או לחצו על שם לטעינת התרחיש הטוב שלו.</>}
+            : <>סיכויים ל<b>ראשון</b>, <b>טופ 3</b> ו<b>טופ 5</b> לפי מודל הכוח. הזינו תוצאות לעדכון, או לחצו על שם לתרחיש הטוב עבורו.</>}
         </p>
         <div className="sc-odds">
           <div className="sc-odds-head">
@@ -359,10 +359,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
               title="טען תרחיש טוב עבורו"
             >
               <span className="sc-odds-name">{firstName(o.label)}{o.label === me && <span className="lb-me-badge">אני</span>}</span>
-              <span className="sc-odds-p1">
-                <span className="sc-odds-bar" style={{ width: `${Math.round(o.p1 * 100)}%` }} />
-                <span className="sc-odds-val">{pct(o.p1)}</span>
-              </span>
+              <span className="sc-odds-p1">{pct(o.p1)}</span>
               <span className="sc-odds-p3">{pct(o.p3)}</span>
               <span className="sc-odds-p5">{pct(o.p5)}</span>
             </button>
