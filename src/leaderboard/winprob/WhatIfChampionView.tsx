@@ -186,6 +186,14 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   const [showFull, setShowFull] = useState(false)
   // Projected golden-boot winner (default = current leader). null = an unpicked player wins → nobody gets +10.
   const [bootWinner, setBootWinner] = useState<string | null>(boot.leader)
+  // Projected FINAL goal tally for the boot winner. Goals beyond his current count pay his
+  // backers +3 each (POINTS_PER_GOAL), so choosing a lower-tally player only helps once you
+  // give him enough goals to actually overtake the leader.
+  const [bootGoals, setBootGoals] = useState<number>(boot.leader ? boot.goals[boot.leader] ?? 0 : 0)
+  const pickBoot = (name: string | null) => {
+    setBootWinner(name)
+    setBootGoals(name ? boot.goals[name] ?? 0 : 0)
+  }
 
   const [openBoot, setOpenBoot] = useState<string | null>(null)
 
@@ -224,7 +232,29 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   const scKey = JSON.stringify(scenario)
   const bootCands = boot.sweep
   const resolved = useMemo(() => resolveScenario(info, scenario), [info, scKey])
-  const rows = useMemo(() => projectProvisional(users, base, info, scenario, entered, bootWinner), [users, base, info, scKey, bootWinner])
+  // Only goals beyond the boot king's current tally are new points; picking a name never
+  // removes the goals already banked in `base`.
+  const bootCurGoals = bootWinner ? boot.goals[bootWinner] ?? 0 : 0
+  const bootExtraGoals = Math.max(0, bootGoals - bootCurGoals)
+  const bootPicked = !!bootWinner && (boot.options.find(o => o.name === bootWinner)?.picked ?? false)
+  // Most goals any *other* contender has: the projected king only actually wins (and pays +10)
+  // once his goals reach that bar. A chaser left at his current tally can't be king.
+  const bootRivalMax = bootWinner
+    ? Math.max(0, ...Object.entries(boot.goals).filter(([n]) => n !== bootWinner).map(([, g]) => g))
+    : 0
+  const bootIsKing = bootPicked && bootGoals >= bootRivalMax
+  // Projected final goals: the selected king takes the stepper value, everyone else keeps their
+  // current tally. Whoever ends at the top total (co-)wins — a tie means *several* winners, and
+  // every picked co-winner's backers earn +10 (exactly what the points engine does for ties).
+  const projGoals: Record<string, number> = { ...boot.goals }
+  if (bootWinner) projGoals[bootWinner] = bootGoals
+  const projMax = Math.max(0, ...Object.values(projGoals))
+  const pickedNames = new Set(users.map(u => u.topGoalscorer))
+  const bootBonusWinners = projMax > 0 ? Object.keys(projGoals).filter(n => projGoals[n] === projMax && pickedNames.has(n)) : []
+  const bootBonusKey = bootBonusWinners.join('|')
+  // Anyone (picked or not) sitting at the top projected total (co-)wins the boot in this scenario.
+  const isBootWinner = (name: string) => projMax > 0 && (name === bootWinner ? bootGoals : boot.goals[name] ?? 0) === projMax
+  const rows = useMemo(() => projectProvisional(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner), [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey])
   // Reachability & locks sweep every boot outcome too — a position is only truly "in reach"
   // (or clinched) once the ±10 boot swing is accounted for, not just the match results.
   // Conditioned on whatever's entered, so the cards narrow (and lock) alongside the live table
@@ -265,13 +295,14 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
     setSfScores([sc.sf[0], sc.sf[1]])
     setFinalScore(sc.final)
     setThirdScore(sc.third)
-    if (reach.bestBoot.has(label)) setBootWinner(reach.bestBoot.get(label) ?? null)
+    const bb = reach.bestBoot.get(label)
+    if (bb) pickBoot(bb) // only auto-select a named winner; "nobody wins" has no picker anymore
   }
   const resetScores = () => {
     setSfScores([dflt(sf1.scores), dflt(sf2.scores)])
     setFinalScore(dflt(info.finalScores))
     setThirdScore(dflt(info.thirdScores))
-    setBootWinner(boot.leader)
+    pickBoot(boot.leader)
   }
 
   const contenders = reach.contenders
@@ -282,8 +313,11 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   const top3 = useMemo(() => [...reach.stats.values()].filter(s => s.canTop3 && s.maxRank > 1).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
   const top5only = useMemo(() => [...reach.stats.values()].filter(s => s.canTop5 && s.maxRank > 3).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
 
+  // Current standings position per bettor (from the live table) — shown beside the name in the
+  // odds list, which is sorted by win chance, so it's clear who's climbing/falling.
+  const rankOf = new Map(rows.map(r => [r.label, r.rank]))
   // Live model-based odds for #1 / top-3, conditioned on whatever results are entered.
-  const chances = useMemo(() => simulateChances(users, base, info, scenario, entered, bootWinner), [users, base, info, scKey, bootWinner])
+  const chances = useMemo(() => simulateChances(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner), [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey])
   const oddsRanked = useMemo(
     () =>
       users
@@ -299,6 +333,20 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
       ? oddsRanked.find(o => o.label === me) ?? { label: me, ...(chances.get(me) ?? { p1: 0, p3: 0, p5: 0 }) }
       : null
   const pct = (p: number) => (p >= 0.995 ? '100%' : p >= 0.005 ? `${Math.round(p * 100)}%` : p > 0 ? '<1%' : '—')
+  // The odds come from a probabilistic model, so "top-3 in every sample" rounds to 100% even
+  // when it isn't mathematically guaranteed. That made the headline read 100% with no 🔒 in the
+  // cards below. So we print 100% + 🔒 only when the deterministic sweep confirms the tier is
+  // locked, and cap everything else at 99% — keeping the odds and the locks in sync.
+  const oddsCell = (label: string, p: number, tier: 1 | 3 | 5): ReactNode => {
+    const s = reach.stats.get(label)
+    if (s && s.maxRank <= tier) {
+      // Guaranteed for this tier → 100%. But a lock is redundant in every column, so show the
+      // 🔒 only in the *highest* tier the bettor is already locked into (champion > top-3 > top-5).
+      const highestLocked = s.maxRank <= 1 ? 1 : s.maxRank <= 3 ? 3 : 5
+      return highestLocked === tier ? <>100%<span className="sc-odds-lock" aria-label="נעול"> 🔒</span></> : '100%'
+    }
+    return p >= 0.995 ? '99%' : pct(p)
+  }
 
   const championDecided = !info.finalOpen || (entered.final && sfsKnown)
   const thirdDecided = !info.thirdOpen || (entered.third && sfsKnown)
@@ -327,7 +375,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
           <span className="sc-detail-key">מלך השערים</span>
           <span className="sc-detail-val">
             <span className="sc-detail-boot">⚽ {d.boot} <span className="sc-detail-goals">({bootG})</span></span>
-            {bootWinner === d.boot && <span className="sc-boot-badge" title="מקבל +10 בתרחיש הנוכחי">+10</span>}
+            {d.boot && bootBonusWinners.includes(d.boot) && <span className="sc-boot-badge" title="מקבל +10 בתרחיש הנוכחי">+10</span>}
           </span>
         </div>
       </div>
@@ -359,10 +407,10 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
               onClick={() => applyScenario(o.label)}
               title="טען תרחיש טוב עבורו"
             >
-              <span className="sc-odds-name">{firstName(o.label)}{o.label === me && <span className="lb-me-badge">אני</span>}</span>
-              <span className="sc-odds-p1">{pct(o.p1)}</span>
-              <span className="sc-odds-p3">{pct(o.p3)}</span>
-              <span className="sc-odds-p5">{pct(o.p5)}</span>
+              <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(o.label)}</span>{firstName(o.label)}{o.label === me && <span className="lb-me-badge">אני</span>}</span>
+              <span className="sc-odds-p1">{oddsCell(o.label, o.p1, 1)}</span>
+              <span className="sc-odds-p3">{oddsCell(o.label, o.p3, 3)}</span>
+              <span className="sc-odds-p5">{oddsCell(o.label, o.p5, 5)}</span>
             </button>
           ))}
           {meOdds && (
@@ -374,10 +422,10 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
                 onClick={() => applyScenario(meOdds.label)}
                 title="טען תרחיש טוב עבורו"
               >
-                <span className="sc-odds-name">{firstName(meOdds.label)}<span className="lb-me-badge">אני</span></span>
-                <span className="sc-odds-p1">{pct(meOdds.p1)}</span>
-                <span className="sc-odds-p3">{pct(meOdds.p3)}</span>
-                <span className="sc-odds-p5">{pct(meOdds.p5)}</span>
+                <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(meOdds.label)}</span>{firstName(meOdds.label)}<span className="lb-me-badge">אני</span></span>
+                <span className="sc-odds-p1">{oddsCell(meOdds.label, meOdds.p1, 1)}</span>
+                <span className="sc-odds-p3">{oddsCell(meOdds.label, meOdds.p3, 3)}</span>
+                <span className="sc-odds-p5">{oddsCell(meOdds.label, meOdds.p5, 5)}</span>
               </button>
             </>
           )}
@@ -397,15 +445,6 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
           <MatchBuilder title="חצי גמר 1" home={sf1.teams[0]} away={sf1.teams[1]} scores={effSf[0]} locked={sf1Locked} onChange={s => setSf(0, s)} />
           <MatchBuilder title="חצי גמר 2" home={sf2.teams[0]} away={sf2.teams[1]} scores={effSf[1]} locked={sf2Locked} onChange={s => setSf(1, s)} />
           <MatchBuilder
-            title="גמר"
-            home={sfsKnown ? resolved.finalists[0] : 'מנצחת חצי גמר 1'}
-            away={sfsKnown ? resolved.finalists[1] : 'מנצחת חצי גמר 2'}
-            scores={effFinal}
-            locked={finalLocked}
-            pending={info.finalOpen && !sfsKnown}
-            onChange={setFinalScore}
-          />
-          <MatchBuilder
             title="מקום שלישי"
             home={sfsKnown ? resolved.losers[0] : 'מפסידת חצי גמר 1'}
             away={sfsKnown ? resolved.losers[1] : 'מפסידת חצי גמר 2'}
@@ -414,36 +453,55 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
             pending={info.thirdOpen && !sfsKnown}
             onChange={setThirdScore}
           />
+          <MatchBuilder
+            title="גמר"
+            home={sfsKnown ? resolved.finalists[0] : 'מנצחת חצי גמר 1'}
+            away={sfsKnown ? resolved.finalists[1] : 'מנצחת חצי גמר 2'}
+            scores={effFinal}
+            locked={finalLocked}
+            pending={info.finalOpen && !sfsKnown}
+            onChange={setFinalScore}
+          />
         </div>
         <div className="sc-boot-pick">
           <div className="sc-boot-pick-head">
             <span className="sc-boot-pick-title">⚽ נעל הזהב — מי יזכה?</span>
-            <span className="sc-boot-pick-sub">רק המועמדים שעדיין במירוץ. מי שהימר על מלך השערים מקבל <b>+10</b>; אם מוביל שלא נבחר זוכה — אף אחד לא מקבל.</span>
+            <span className="sc-boot-pick-sub">מי שהימר על הזוכה מקבל <b>+10</b> ועוד <b>+3</b> לכל גול שלו. תיקו בראש = <b>כולם זוכים</b>. אם מוביל שלא נבחר זוכה — אף אחד לא מקבל.</span>
           </div>
           <div className="sc-boot-opts">
             {boot.options.map(o => (
               <button
                 key={o.name}
                 type="button"
-                className={`sc-boot-opt${bootWinner === o.name ? ' sc-boot-opt--on' : ''}${o.picked ? '' : ' sc-boot-opt--unpicked'}`}
-                onClick={() => setBootWinner(o.name)}
+                className={`sc-boot-opt${bootWinner === o.name ? ' sc-boot-opt--on' : ''}${isBootWinner(o.name) ? ' sc-boot-opt--win' : ''}${o.picked ? '' : ' sc-boot-opt--unpicked'}`}
+                onClick={() => pickBoot(o.name)}
                 title={o.picked ? (o.alive ? 'נבחר על ידי מהמרים — זכייה שלו נותנת להם +10' : 'הנבחרת שלו הודחה') : 'לא נבחר על ידי אף אחד — זכייה שלו = אף אחד לא מקבל בונוס'}
               >
+                {isBootWinner(o.name) && <span className="sc-boot-opt-king" title="זוכה נעל הזהב בתרחיש הזה" aria-label="זוכה">👑</span>}
                 <span className="sc-boot-opt-name">{o.name}</span>
-                <span className="sc-boot-opt-g">{o.goals}</span>
+                <span className="sc-boot-opt-g">{o.name === bootWinner ? bootGoals : o.goals}</span>
                 {!o.picked && <span className="sc-boot-opt-tag">לא נבחר</span>}
                 {!o.alive && <span className="sc-boot-opt-out" aria-label="הודחה">❄</span>}
               </button>
             ))}
-            <button
-              type="button"
-              className={`sc-boot-opt${bootWinner === null ? ' sc-boot-opt--on' : ''} sc-boot-opt--unpicked`}
-              onClick={() => setBootWinner(null)}
-              title="שחקן אחר שלא ברשימה זוכה — אף אחד לא מקבל בונוס"
-            >
-              אחר / אף אחד
-            </button>
           </div>
+          {bootPicked && (
+            <div className="sc-boot-goals">
+              <span className="sc-boot-goals-label">כמה גולים יסיים <b>{bootWinner}</b>?</span>
+              <div className="sc-boot-goals-ctl">
+                <button type="button" className="sc-boot-goals-btn" onClick={() => setBootGoals(g => Math.min(bootCurGoals + 9, g + 1))} aria-label="עוד גול">+</button>
+                <span className="sc-boot-goals-val">{bootGoals}</span>
+                <button type="button" className="sc-boot-goals-btn" onClick={() => setBootGoals(g => Math.max(bootCurGoals, g - 1))} disabled={bootGoals <= bootCurGoals} aria-label="פחות גולים">−</button>
+              </div>
+              <span className={`sc-boot-goals-hint${bootIsKing ? '' : ' sc-boot-goals-hint--warn'}`}>
+                {!bootIsKing
+                  ? <>לא מספיק כדי לזכות — צריך <b>{bootRivalMax}</b> גולים לפחות{bootExtraGoals > 0 && <> (אבל +{bootExtraGoals * 3} על הגולים הנוספים)</>}</>
+                  : bootExtraGoals > 0
+                    ? <>מקבל <b>+{10 + bootExtraGoals * 3}</b> למי שהימר עליו (10 נעל + {bootExtraGoals * 3} על {bootExtraGoals} גולים)</>
+                    : <>מקבל <b>+10</b> · כל גול נוסף = +3 למי שהימר עליו</>}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 

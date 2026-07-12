@@ -134,6 +134,17 @@ describe('golden boot', () => {
     expect(bootBonus(kaneBacker, null)).toBe(0)
   })
 
+  it('pays every backer when several winners tie at the top', () => {
+    const kaneBacker = USERS.find(u => u.topGoalscorer === 'הארי קיין')!
+    const mbappeBacker = USERS.find(u => u.topGoalscorer === 'קיליאן אמבפה')!
+    const tied = ['הארי קיין', 'קיליאן אמבפה']
+    expect(bootBonus(kaneBacker, tied)).toBe(10)
+    expect(bootBonus(mbappeBacker, tied)).toBe(10)
+    // someone who backed a third player still gets nothing
+    const other = USERS.find(u => !tied.includes(u.topGoalscorer))!
+    expect(bootBonus(other, tied)).toBe(0)
+  })
+
   it('folds the +10 into projected totals for the selected winner', () => {
     const empty: EnteredFlags = { sf: [false, false], final: false, third: false }
     const sc: ScenarioScores = { sf: [{ home: null, away: null }, { home: null, away: null }], final: { home: null, away: null }, third: { home: null, away: null } }

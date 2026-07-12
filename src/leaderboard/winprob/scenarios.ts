@@ -1,6 +1,6 @@
 import type { MatchScores, TournamentResults, KnockoutMatch } from '../../shared/types'
 import type { User } from '../../users'
-import { computeUserPoints, OLEH_POINTS, singleMatchPoints, GOLDEN_BOOT_BONUS } from '../points'
+import { computeUserPoints, OLEH_POINTS, singleMatchPoints, GOLDEN_BOOT_BONUS, POINTS_PER_GOAL } from '../points'
 import { predictedPairing, orientPrediction } from '../../formView/knockout/koRounds'
 import { TEAMS } from '../../shared/groups'
 import { TEAM_BY_PICKED } from '../../shared/scorers'
@@ -129,8 +129,21 @@ const BOOT_GAP = 2
 // remainingDelta (which must mirror the points engine, where the bonus is unset until
 // the tournament ends) and applied on top wherever we project a final standing. An
 // unpicked leader as bootWinner pays nobody (no user has them as a pick) — exactly right.
-export function bootBonus(user: User, bootWinner: string | null): number {
-  return bootWinner && user.topGoalscorer === bootWinner ? GOLDEN_BOOT_BONUS : 0
+export function bootBonus(user: User, bootWinner: string | string[] | null): number {
+  if (!bootWinner) return 0
+  // A tie at the top means several co-winners — the engine pays every tied winner's backers,
+  // so a set of names is accepted (any one matching the user's pick earns the +10).
+  const winners = Array.isArray(bootWinner) ? bootWinner : [bootWinner]
+  return winners.includes(user.topGoalscorer) ? GOLDEN_BOOT_BONUS : 0
+}
+
+// Points for the projected boot king's *future* goals: every goal he scores beyond his
+// current tally pays each backer POINTS_PER_GOAL (3), exactly like the engine's goalsPoints.
+// This is what makes picking a lower-tally player (e.g. Kane behind Mbappé) coherent —
+// he only wins by scoring more, and those extra goals earn his backers 3 apiece.
+export function bootGoalPoints(user: User, bootWinner: string | null, extraGoals: number): number {
+  if (!bootWinner || user.topGoalscorer !== bootWinner || extraGoals <= 0) return 0
+  return POINTS_PER_GOAL * extraGoals
 }
 
 // Build a *sensible* boot picture: only the players still realistically in the race —
@@ -265,7 +278,7 @@ export interface ProjectedRow {
 const byPts = (base: Map<string, number>) => (a: { label: string; pts: number }, b: { label: string; pts: number }) =>
   b.pts - a.pts || (base.get(b.label) ?? 0) - (base.get(a.label) ?? 0) || a.label.localeCompare(b.label, 'he')
 
-export function projectStandings(users: User[], base: Map<string, number>, info: RemainingInfo, sc: ScenarioScores, bootWinner: string | null = null): ProjectedRow[] {
+export function projectStandings(users: User[], base: Map<string, number>, info: RemainingInfo, sc: ScenarioScores, bootWinner: string | string[] | null = null): ProjectedRow[] {
   const r = resolveScenario(info, sc)
   return users
     .map(u => {
@@ -310,12 +323,15 @@ function provisionalDelta(user: User, r: ResolvedScenario, info: RemainingInfo, 
 
 // The live table: base + only the points from matches already entered. Updates after
 // every single result, not just when all four are in.
-export function projectProvisional(users: User[], base: Map<string, number>, info: RemainingInfo, sc: ScenarioScores, entered: EnteredFlags, bootWinner: string | null = null): ProjectedRow[] {
+// `bootWinner` gets the +10 (null when the projected king can't actually win yet, e.g. a chaser
+// whose goals aren't raised high enough). `bootGoalScorer` earns +3 per extra goal regardless of
+// winning, since goals score independently of the boot bonus. They differ only in that edge.
+export function projectProvisional(users: User[], base: Map<string, number>, info: RemainingInfo, sc: ScenarioScores, entered: EnteredFlags, bootWinner: string | string[] | null = null, bootExtraGoals = 0, bootGoalScorer: string | null = null): ProjectedRow[] {
   const r = resolveScenario(info, sc)
   return users
     .map(u => {
       const bonus = provisionalDelta(u, r, info, entered)
-      const boot = bootBonus(u, bootWinner)
+      const boot = bootBonus(u, bootWinner) + bootGoalPoints(u, bootGoalScorer, bootExtraGoals)
       return { label: u.label, bonus, boot, pts: (base.get(u.label) ?? 0) + bonus + boot }
     })
     .sort(byPts(base))
@@ -373,7 +389,9 @@ export function simulateChances(
   info: RemainingInfo,
   sc: ScenarioScores,
   entered: EnteredFlags,
-  bootWinner: string | null = null,
+  bootWinner: string | string[] | null = null,
+  bootExtraGoals = 0,
+  bootGoalScorer: string | null = null,
   n = 2000,
   seed = 0x9e3779b9,
 ): Map<string, Chances> {
@@ -397,7 +415,7 @@ export function simulateChances(
     const st = entered.third ? sc.third : sampleKnockout(l1, l2, rng)
     const r = resolveScenario(info, { sf: [s1, s2], final: sf, third: st })
     const totals = users
-      .map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) + bootBonus(u, bootWinner) }))
+      .map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) + bootBonus(u, bootWinner) + bootGoalPoints(u, bootGoalScorer, bootExtraGoals) }))
       .sort(cmp)
     win.set(totals[0].label, win.get(totals[0].label)! + 1)
     for (let k = 0; k < 5 && k < totals.length; k++) {
