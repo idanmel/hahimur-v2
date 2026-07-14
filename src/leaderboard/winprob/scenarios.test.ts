@@ -21,7 +21,17 @@ import {
 const info = getRemaining(tournamentResults)
 const base = computeBaseTotals(USERS, tournamentResults)
 
-// Build the real results with the four remaining matches filled in — the ground
+// A match that's already been played keeps its real score — scenarios can only
+// vary the still-open matches (the UI locks decided ones the same way).
+function lockDecided(sc: ScenarioScores): ScenarioScores {
+  return {
+    sf: [info.sf[0].scores ?? sc.sf[0], info.sf[1].scores ?? sc.sf[1]],
+    final: info.finalScores ?? sc.final,
+    third: info.thirdScores ?? sc.third,
+  }
+}
+
+// Build the real results with the remaining matches filled in — the ground
 // truth the fast incremental scorer must reproduce.
 function buildHypo(sc: ScenarioScores): TournamentResults {
   const r = resolveScenario(info, sc)
@@ -44,7 +54,6 @@ describe('getRemaining', () => {
   it('detects the final four with the real semi line-ups', () => {
     expect(info.valid).toBe(true)
     expect(info.sf.flatMap(s => s.teams).sort()).toEqual(['Argentina', 'England', 'France', 'Spain'].sort())
-    expect(info.anyRemaining).toBe(true)
   })
 })
 
@@ -55,7 +64,8 @@ describe('incremental scorer matches the real points engine', () => {
     { sf: [{ home: 1, away: 1, drawWinner: 'away' }, { home: 3, away: 0 }], final: { home: 2, away: 1 }, third: { home: 0, away: 2 } },
   ]
   it('base + remainingDelta === computeUserPoints for every bettor & scenario', () => {
-    for (const sc of scenarios) {
+    for (const raw of scenarios) {
+      const sc = lockDecided(raw)
       const hypo = buildHypo(sc)
       const r = resolveScenario(info, sc)
       for (const u of USERS) {
@@ -76,53 +86,64 @@ describe('winnerOf', () => {
 
 describe('projectStandings', () => {
   it('ranks by projected total under the chosen scoreline', () => {
-    const [a, b] = info.sf
-    // France beat Spain 2-1, England beat Argentina 1-0, France win the final, Spain take third.
-    const sc: ScenarioScores = { sf: [{ home: 2, away: 1 }, { home: 1, away: 0 }], final: { home: 1, away: 0 }, third: { home: 2, away: 1 } }
-    // sanity: this scenario has France & England as finalists, France champion
+    // Already-played matches keep their real score; the rest get hypothetical ones.
+    const sc: ScenarioScores = lockDecided({ sf: [{ home: 2, away: 1 }, { home: 1, away: 0 }], final: { home: 1, away: 0 }, third: { home: 2, away: 1 } })
+    // sanity: one finalist per semi, champion from the final pair, medal from the losers
     const r = resolveScenario(info, sc)
-    expect(new Set(r.finalists)).toEqual(new Set(['France', 'England']))
-    expect(r.champion).toBe('France')
+    expect(info.sf[0].teams).toContain(r.finalists[0])
+    expect(info.sf[1].teams).toContain(r.finalists[1])
+    expect(r.finalists).toContain(r.champion)
+    expect(r.losers).toContain(r.thirdWinner)
     const rows = projectStandings(USERS, base, info, sc)
-    expect(rows[0].rank).toBe(1)
+    expect(rows.map(x => x.rank)).toEqual(rows.map((_, i) => i + 1))
     expect(rows).toHaveLength(USERS.length)
-    void a; void b
+    for (let i = 1; i < rows.length; i++) expect(rows[i - 1].pts).toBeGreaterThanOrEqual(rows[i].pts)
   })
 })
 
 describe('golden boot', () => {
   const bi = bootInfo(USERS, tournamentResults, info)
 
-  it('picks the current leader (Mbappé) as the default projected winner', () => {
-    expect(bi.leader).toBe('קיליאן אמבפה')
-    expect(bi.goals['קיליאן אמבפה']).toBe(8)
+  it('picks the current top scorer as the default projected winner', () => {
+    const lead = Math.max(0, ...Object.values(bi.goals))
+    expect(bi.leader).toBeTruthy()
+    expect(bi.goals[bi.leader!]).toBe(lead)
+    // options come sorted by goals, leader first
+    expect(bi.options[0].name).toBe(bi.leader)
+    const goals = bi.options.map(o => o.goals)
+    expect([...goals].sort((x, y) => y - x)).toEqual(goals)
   })
 
   it('keeps only real contenders — leaders + alive chasers within reach — dropping far-back picks', () => {
-    const names = bi.options.map(o => o.name)
-    expect(names).toContain('קיליאן אמבפה') // 8, leader
-    expect(names).toContain('הארי קיין') // 6, alive, within 2 of the lead
-    expect(names).not.toContain('לאמין ימאל') // 1, alive but way behind → irrelevant
-    expect(names).not.toContain('פראן טורס') // 0 → irrelevant
-    expect(names).not.toContain('קאי האברץ') // Germany, out and trailing
+    const lead = Math.max(0, ...Object.values(bi.goals))
+    expect(bi.options.length).toBeGreaterThan(0)
+    // everyone in: at the lead, or still playing and within the ~2-goal reachable gap
+    for (const o of bi.options) {
+      expect(o.goals >= lead || (o.alive && o.goals >= lead - 2), `${o.name} (${o.goals}) shouldn't be an option`).toBe(true)
+    }
+    // everyone out: strictly behind the lead
+    const inOptions = new Set(bi.options.map(o => o.name))
+    for (const [name, g] of Object.entries(bi.goals)) {
+      if (!inOptions.has(name)) expect(g, `${name} left out despite leading`).toBeLessThan(lead)
+    }
   })
 
   it('sweeps each relevant PICKED contender + null (an unpicked leader wins → nobody)', () => {
-    expect(bi.sweep).toContain('קיליאן אמבפה')
-    expect(bi.sweep).toContain('הארי קיין')
-    expect(bi.sweep).toContain(null)
-    expect(bi.sweep).not.toContain('לאמין ימאל')
+    // the sweep is exactly the picked options (order kept) plus the "nobody" outcome
+    expect(bi.sweep).toEqual([...bi.options.filter(o => o.picked).map(o => o.name), null])
   })
 
   it('surfaces unpicked real leaders (e.g. Messi) when a live race board is supplied', () => {
+    // put Messi one goal clear of whatever the real lead is, so he's the sole leader
+    const lead = Math.max(0, ...Object.values(tournamentResults.playerGoals ?? {}))
     const withRace = bootInfo(USERS, tournamentResults, info, {
-      race: { 'קיליאן אמבפה': 8, 'ליאו מסי': 9 },
-      teamByPlayer: { 'קיליאן אמבפה': 'France', 'ליאו מסי': 'Argentina' },
+      race: { 'ליאו מסי': lead + 1 },
+      teamByPlayer: { 'ליאו מסי': 'Argentina' },
     })
     expect(withRace.leader).toBe('ליאו מסי') // sole leader, unpicked
     const messi = withRace.options.find(o => o.name === 'ליאו מסי')!
     expect(messi.picked).toBe(false)
-    expect(messi.alive).toBe(true) // Argentina still in the semis
+    expect(messi.alive).toBe(true) // Argentina reached the semis, so they play to the end
     // an unpicked leader is NOT a distinct sweep outcome — it collapses into null
     expect(withRace.sweep).not.toContain('ליאו מסי')
   })
@@ -169,22 +190,29 @@ describe('golden boot', () => {
 describe('computeReachability (with scorelines)', () => {
   const reach = computeReachability(USERS, base, info)
 
-  it('finds the three real title contenders — including Klein', () => {
+  it('has Karni as the only remaining title contender after Spain took SF1', () => {
+    // Locked results only shrink the outcome space, so this holds through the final.
     const names = reach.contenders.map(c => c.label)
-    expect(names).toContain('יונתן קרני')
-    expect(names).toContain('ליאור מולדובן')
-    expect(names).toContain('יניב קליין') // scorelines put Klein within reach of #1
-    expect(names).toHaveLength(3)
+    expect(names).toEqual(['יונתן קרני'])
+    expect(reach.stats.get('יונתן קרני')!.minRank).toBe(1)
   })
 
-  it('gives Klein a reachable #1', () => {
-    expect(reach.stats.get('יניב קליין')!.canWin).toBe(true)
-  })
-
-  it('surfaces a broad top-3 and top-5 bubble (scorelines matter)', () => {
-    const top3 = [...reach.stats.values()].filter(s => s.canTop3).length
-    const top5 = [...reach.stats.values()].filter(s => s.canTop5).length
-    expect(top3).toBeGreaterThanOrEqual(8)
-    expect(top5).toBeGreaterThan(top3)
+  it('keeps ranks and bubbles internally consistent in any tournament state', () => {
+    const all = [...reach.stats.values()]
+    for (const s of all) {
+      expect(s.minRank, s.label).toBeLessThanOrEqual(s.maxRank)
+      expect(s.canWin, s.label).toBe(s.minRank === 1)
+      if (s.canWin) expect(s.canTop3, s.label).toBe(true)
+      if (s.canTop3) expect(s.canTop5, s.label).toBe(true)
+      if (s.lockedTop3) expect(s.canTop3, s.label).toBe(true)
+    }
+    // each podium/top-5 spot is filled by someone in every scenario
+    const top3 = all.filter(s => s.canTop3).length
+    const top5 = all.filter(s => s.canTop5).length
+    expect(top3).toBeGreaterThanOrEqual(3)
+    expect(top5).toBeGreaterThanOrEqual(Math.min(5, all.length))
+    expect(top5).toBeGreaterThanOrEqual(top3)
+    // contenders are exactly the canWin set
+    expect(reach.contenders.map(c => c.label).sort()).toEqual(all.filter(s => s.canWin).map(s => s.label).sort())
   })
 })

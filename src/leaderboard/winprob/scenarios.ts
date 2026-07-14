@@ -255,7 +255,12 @@ function scorelinePoints(user: User, m: { matchNum: number; id: string; home: st
 // computeUserPoints exactly (see scenarios.test.ts).
 export function remainingDelta(user: User, r: ResolvedScenario, info: RemainingInfo): number {
   let d = 0
-  for (const m of r.matches) d += scorelinePoints(user, m)
+  const [mSf1, mSf2, mThird, mFinal] = r.matches
+  // A decided match's scoreline points are already in base — only open matches add.
+  if (info.sf[0].winner === null) d += scorelinePoints(user, mSf1)
+  if (info.sf[1].winner === null) d += scorelinePoints(user, mSf2)
+  if (info.thirdOpen) d += scorelinePoints(user, mThird)
+  if (info.finalOpen) d += scorelinePoints(user, mFinal)
   const fp = predictedFinalists(user)
   for (const s of info.sf) {
     if (s.winner !== null) continue // finalist already in base
@@ -305,10 +310,12 @@ export interface EnteredFlags {
 function provisionalDelta(user: User, r: ResolvedScenario, info: RemainingInfo, entered: EnteredFlags): number {
   const [mSf1, mSf2, mThird, mFinal] = r.matches
   let d = 0
-  if (entered.sf[0]) d += scorelinePoints(user, mSf1)
-  if (entered.sf[1]) d += scorelinePoints(user, mSf2)
-  if (entered.third) d += scorelinePoints(user, mThird)
-  if (entered.final) d += scorelinePoints(user, mFinal)
+  // Like remainingDelta: a decided match is already banked in base, so a locked
+  // (entered) real result must not add its scoreline points a second time.
+  if (entered.sf[0] && info.sf[0].winner === null) d += scorelinePoints(user, mSf1)
+  if (entered.sf[1] && info.sf[1].winner === null) d += scorelinePoints(user, mSf2)
+  if (entered.third && info.thirdOpen) d += scorelinePoints(user, mThird)
+  if (entered.final && info.finalOpen) d += scorelinePoints(user, mFinal)
   const fp = predictedFinalists(user)
   info.sf.forEach((s, i) => {
     if (s.winner !== null || !entered.sf[i]) return // already banked, or not decided yet

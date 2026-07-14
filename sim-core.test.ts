@@ -700,10 +700,17 @@ describe('golden boot banks real goals', () => {
 
 describe('podiumByAdvancer', () => {
   const viewer = USERS[0]
-  const played = realPlayedState(tournamentResults)
+  // Reopen the final four (SFs, third place, final) on top of the real results, so an
+  // open known-teams fixture AND a placeholder fixture both exist no matter how far
+  // the live tournament has progressed — the QF results feeding them never change.
+  const played = (() => {
+    const p = { ...realPlayedState(tournamentResults) }
+    for (const n of [101, 102, 103, 104]) delete p[String(n)]
+    return p
+  })()
   const bracket = buildKnockoutBracket(played)
-  // The first not-yet-played knockout fixture whose two participants are real,
-  // resolved teams (an open round-of-32 match in the current data).
+  // A not-yet-played knockout fixture whose two participants are real, resolved
+  // teams (a reopened semi).
   const openMatch = bracket.find(m => TEAMS[m.home] && TEAMS[m.away] && !played[String(m.matchNum)])!
   // A deeper fixture whose feeders are still open, so it carries placeholder labels.
   const placeholderMatch = bracket.find(m => !(TEAMS[m.home] && TEAMS[m.away]))!
