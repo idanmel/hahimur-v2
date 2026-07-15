@@ -385,9 +385,8 @@ function sampleKnockout(home: string, away: string, rng: () => number): MatchSco
 }
 
 export interface Chances {
-  p1: number // P(finish first)
-  p3: number // P(finish top 3)
-  p5: number // P(finish top 5)
+  p1: number // P(finish first) — kept for the headline / sort key
+  pos: number[] // P(finish EXACTLY at rank 1..5); index 0 = 1st … index 4 = 5th
 }
 
 export function simulateChances(
@@ -407,9 +406,8 @@ export function simulateChances(
   const iters = anyOpen ? n : 1 // fully specified → one deterministic pass is exact
   const rng = mulberry32(seed)
   const cmp = byPts(base)
-  const win = new Map<string, number>(users.map(u => [u.label, 0]))
-  const t3 = new Map<string, number>(users.map(u => [u.label, 0]))
-  const t5 = new Map<string, number>(users.map(u => [u.label, 0]))
+  // Per-exact-rank tally: posCount[label][k] = times the bettor finished at rank k+1 (1-5).
+  const posCount = new Map<string, number[]>(users.map(u => [u.label, [0, 0, 0, 0, 0]]))
 
   for (let i = 0; i < iters; i++) {
     const s1 = entered.sf[0] ? sc.sf[0] : sampleKnockout(a.teams[0], a.teams[1], rng)
@@ -424,14 +422,17 @@ export function simulateChances(
     const totals = users
       .map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) + bootBonus(u, bootWinner) + bootGoalPoints(u, bootGoalScorer, bootExtraGoals) }))
       .sort(cmp)
-    win.set(totals[0].label, win.get(totals[0].label)! + 1)
     for (let k = 0; k < 5 && k < totals.length; k++) {
-      if (k < 3) t3.set(totals[k].label, t3.get(totals[k].label)! + 1)
-      t5.set(totals[k].label, t5.get(totals[k].label)! + 1)
+      posCount.get(totals[k].label)![k] += 1
     }
   }
 
-  return new Map(users.map(u => [u.label, { p1: win.get(u.label)! / iters, p3: t3.get(u.label)! / iters, p5: t5.get(u.label)! / iters }]))
+  return new Map(
+    users.map(u => {
+      const c = posCount.get(u.label)!
+      return [u.label, { p1: c[0] / iters, pos: c.map(x => x / iters) }]
+    }),
+  )
 }
 
 export function baseRanking(users: User[], base: Map<string, number>): Map<string, number> {
@@ -488,6 +489,9 @@ export interface ReachStat {
   canTop5: boolean
   lockedTop3: boolean
   lockedTop5: boolean
+  // Every exact finishing rank (1-based) the bettor can still land on across the sweep,
+  // capped at 5 — powers the per-position "who can finish 1st / 2nd / … / 5th" cards.
+  finishRanks: number[]
 }
 
 export interface Reachability {
@@ -509,7 +513,7 @@ export function computeReachability(users: User[], base: Map<string, number>, in
   const sf1opts = fixed(entered?.sf[0], sc?.sf[0]) ? [sc!.sf[0]] : meaningfulScores(users, a.matchNum, a.teams[0], a.teams[1], a.scores)
   const sf2opts = fixed(entered?.sf[1], sc?.sf[1]) ? [sc!.sf[1]] : meaningfulScores(users, b.matchNum, b.teams[0], b.teams[1], b.scores)
 
-  const agg = new Map<string, { min: number; max: number }>(users.map(u => [u.label, { min: Infinity, max: -Infinity }]))
+  const agg = new Map<string, { min: number; max: number; ranks: Set<number> }>(users.map(u => [u.label, { min: Infinity, max: -Infinity, ranks: new Set<number>() }]))
   const best = new Map<string, ScenarioScores>()
   const bestBoot = new Map<string, string | null>()
   const cmp = byPts(base)
@@ -539,6 +543,7 @@ export function computeReachability(users: User[], base: Map<string, number>, in
               const rank = i + 1
               if (rank < st2.min) { st2.min = rank; best.set(totals[i].label, leaf); bestBoot.set(totals[i].label, bw) }
               if (rank > st2.max) st2.max = rank
+              if (rank <= 5) st2.ranks.add(rank)
             }
           }
         }
@@ -559,6 +564,7 @@ export function computeReachability(users: User[], base: Map<string, number>, in
       canTop5: g.min <= 5,
       lockedTop3: g.max <= 3,
       lockedTop5: g.max <= 5,
+      finishRanks: [...g.ranks].sort((x, y) => x - y),
     })
   }
   const contenders = [...stats.values()].filter(s => s.canWin).sort((x, y) => y.basePts - x.basePts)

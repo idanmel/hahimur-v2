@@ -157,19 +157,29 @@ function PickCell({ label, team, ok }: { label: string; team?: string; ok?: bool
   )
 }
 
-function ReachGroup({ title, hint, stats, tone, limit }: { title: string; hint: string; stats: ReachStat[]; tone: 'gold' | 'green' | 'amber'; limit: 1 | 3 | 5 }) {
+const REACH_TONES = ['gold', 'silver', 'bronze', 'green', 'amber'] as const
+
+// One "who can still finish exactly here" card for a single finishing position (1-5).
+// A bettor is 🔒 in a position only when their rank is fully pinned there (min === max === pos).
+function ReachGroup({ position, stats }: { position: number; stats: ReachStat[] }) {
   if (!stats.length) return null
+  const tone = REACH_TONES[position - 1] ?? 'amber'
+  const medal = position <= 3 ? MEDALS[position - 1] : null
+  const anyLocked = stats.some(s => s.minRank === s.maxRank && s.minRank === position)
   return (
     <div className={`sc-reach-group sc-reach-group--${tone}`}>
-      <div className="sc-reach-title">{title}<span className="sc-reach-count">{stats.length}</span></div>
+      <div className="sc-reach-title">{medal && <span aria-hidden>{medal}</span>}מקום {position}<span className="sc-reach-count">{stats.length}</span></div>
       <div className="sc-reach-names">
-        {stats.map(s => (
-          <span key={s.label} className={`sc-reach-chip${s.maxRank <= limit ? ' sc-reach-chip--locked' : ''}`} title={s.maxRank <= limit ? 'מובטח — נעול' : undefined}>
-            {firstName(s.label)}{s.maxRank <= limit && <span className="sc-lockpos" aria-label="נעול"> 🔒</span>}
-          </span>
-        ))}
+        {stats.map(s => {
+          const locked = s.minRank === s.maxRank && s.minRank === position
+          return (
+            <span key={s.label} className={`sc-reach-chip${locked ? ' sc-reach-chip--locked' : ''}`} title={locked ? 'מובטח — כבר נעול בדיוק במקום הזה' : undefined}>
+              {firstName(s.label)}{locked && <span className="sc-lockpos" aria-label="נעול"> 🔒</span>}
+            </span>
+          )
+        })}
       </div>
-      <div className="sc-reach-hint">{hint}</div>
+      {anyLocked && <div className="sc-reach-hint">🔒 = כבר סגור בדיוק במקום הזה.</div>}
     </div>
   )
 }
@@ -306,47 +316,56 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   }
 
   const contenders = reach.contenders
-  // Show each bettor in every tier they can still reach, so someone who can win yet is already
-  // guaranteed the podium shows as an *option* for #1 and *locked* (🔒) for top-3 — that's a
-  // valid, informative state. We only drop them from a lower tier once they're locked into a
-  // strictly better one (a guaranteed #1 shouldn't also read as a podium candidate).
-  const top3 = useMemo(() => [...reach.stats.values()].filter(s => s.canTop3 && s.maxRank > 1).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
-  const top5only = useMemo(() => [...reach.stats.values()].filter(s => s.canTop5 && s.maxRank > 3).sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts), [reach])
+  // One list per finishing position (1-5): everyone who can still land *exactly* there in some
+  // remaining-match combination. A bettor who can finish 2nd–4th shows up in all three cards —
+  // that spread is the point. Sorted by best-case rank, then base points.
+  const byPosition = useMemo(
+    () =>
+      [1, 2, 3, 4, 5].map(pos =>
+        [...reach.stats.values()]
+          .filter(s => s.finishRanks.includes(pos))
+          .sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts),
+      ),
+    [reach],
+  )
 
   // Current standings position per bettor (from the live table) — shown beside the name in the
   // odds list, which is sorted by win chance, so it's clear who's climbing/falling.
   const rankOf = new Map(rows.map(r => [r.label, r.rank]))
   // Live model-based odds for #1 / top-3, conditioned on whatever results are entered.
   const chances = useMemo(() => simulateChances(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner), [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey])
+  const EMPTY_CH = { p1: 0, pos: [0, 0, 0, 0, 0] }
   const oddsRanked = useMemo(
     () =>
       users
-        .map(u => ({ label: u.label, ...(chances.get(u.label) ?? { p1: 0, p3: 0, p5: 0 }) }))
-        .filter(o => o.p5 >= 0.005)
-        .sort((a, b) => b.p1 - a.p1 || b.p3 - a.p3 || b.p5 - a.p5 || a.label.localeCompare(b.label, 'he')),
+        .map(u => ({ label: u.label, ...(chances.get(u.label) ?? EMPTY_CH) }))
+        .filter(o => o.pos.reduce((s, x) => s + x, 0) >= 0.005) // any shot at the top 5
+        .sort((a, b) => {
+          for (let k = 0; k < 5; k++) { const d = b.pos[k] - a.pos[k]; if (Math.abs(d) > 1e-9) return d }
+          return a.label.localeCompare(b.label, 'he')
+        }),
     [chances, users],
   )
   const oddsList = oddsRanked.slice(0, 5)
   // keep the picked player visible even when they've dropped out of the top 5
   const meOdds =
     me && !oddsList.some(o => o.label === me)
-      ? oddsRanked.find(o => o.label === me) ?? { label: me, ...(chances.get(me) ?? { p1: 0, p3: 0, p5: 0 }) }
+      ? oddsRanked.find(o => o.label === me) ?? { label: me, ...(chances.get(me) ?? EMPTY_CH) }
       : null
   const pct = (p: number) => (p >= 0.995 ? '100%' : p >= 0.005 ? `${Math.round(p * 100)}%` : p > 0 ? '<1%' : '—')
-  // The odds come from a probabilistic model, so "top-3 in every sample" rounds to 100% even
-  // when it isn't mathematically guaranteed. That made the headline read 100% with no 🔒 in the
-  // cards below. So we print 100% + 🔒 only when the deterministic sweep confirms the tier is
-  // locked, and cap everything else at 99% — keeping the odds and the locks in sync.
-  const oddsCell = (label: string, p: number, tier: 1 | 3 | 5): ReactNode => {
+  // A single cell = the sampled probability of finishing EXACTLY at `position`. When the
+  // deterministic sweep pins the bettor to exactly that rank (min === max === position) it's a
+  // certainty → 100% + 🔒. Probabilities that round to 100% without a lock are capped at 99%
+  // so the odds never claim a guarantee the sweep didn't confirm; unreachable ranks show "—".
+  const oddsCell = (label: string, p: number, position: number): ReactNode => {
     const s = reach.stats.get(label)
-    if (s && s.maxRank <= tier) {
-      // Guaranteed for this tier → 100%. But a lock is redundant in every column, so show the
-      // 🔒 only in the *highest* tier the bettor is already locked into (champion > top-3 > top-5).
-      const highestLocked = s.maxRank <= 1 ? 1 : s.maxRank <= 3 ? 3 : 5
-      return highestLocked === tier ? <>100%<span className="sc-odds-lock" aria-label="נעול"> 🔒</span></> : '100%'
+    if (s && s.minRank === s.maxRank && s.minRank === position) {
+      return <>100%<span className="sc-odds-lock" aria-label="נעול"> 🔒</span></>
     }
+    if (p <= 0) return '—'
     return p >= 0.995 ? '99%' : pct(p)
   }
+  const POSITIONS = [1, 2, 3, 4, 5]
 
   const championDecided = !info.finalOpen || (entered.final && sfsKnown)
   const thirdDecided = !info.thirdOpen || (entered.third && sfsKnown)
@@ -389,15 +408,13 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
         <h3 className="sc-headline-title">{contenders.length === 1 ? 'האליפות כמעט הוכרעה' : 'מרוץ הסיום — הסיכויים'}</h3>
         <p className="sc-headline-lead">
           {anyEntered
-            ? <>הסיכויים לפי התוצאות עד כה. שנו תוצאה למטה והם יתעדכנו.</>
-            : <>סיכויים ל<b>ראשון</b>, <b>טופ 3</b> ו<b>טופ 5</b> לפי מודל הכוח. הזינו תוצאות לעדכון, או לחצו על שם לתרחיש הטוב עבורו.</>}
+            ? <>הסיכוי לסיים בכל מקום (1–5) לפי התוצאות עד כה. שנו תוצאה למטה והם יתעדכנו.</>
+            : <>הסיכוי לסיים בכל מקום (<b>1–5</b>) לפי מודל הכוח. הזינו תוצאות לעדכון, או לחצו על שם לתרחיש הטוב עבורו.</>}
         </p>
         <div className="sc-odds">
           <div className="sc-odds-head">
             <span className="sc-odds-name-h">מהמר</span>
-            <span className="sc-odds-col-h">אלוף</span>
-            <span className="sc-odds-col-h">טופ 3</span>
-            <span className="sc-odds-col-h">טופ 5</span>
+            {POSITIONS.map(pos => <span key={pos} className="sc-odds-col-h">{pos <= 3 ? MEDALS[pos - 1] : pos}</span>)}
           </div>
           {oddsList.map(o => (
             <button
@@ -408,9 +425,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
               title="טען תרחיש טוב עבורו"
             >
               <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(o.label)}</span>{firstName(o.label)}{o.label === me && <span className="lb-me-badge">אני</span>}</span>
-              <span className="sc-odds-p1">{oddsCell(o.label, o.p1, 1)}</span>
-              <span className="sc-odds-p3">{oddsCell(o.label, o.p3, 3)}</span>
-              <span className="sc-odds-p5">{oddsCell(o.label, o.p5, 5)}</span>
+              {POSITIONS.map(pos => <span key={pos} className="sc-odds-p">{oddsCell(o.label, o.pos[pos - 1], pos)}</span>)}
             </button>
           ))}
           {meOdds && (
@@ -423,9 +438,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
                 title="טען תרחיש טוב עבורו"
               >
                 <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(meOdds.label)}</span>{firstName(meOdds.label)}<span className="lb-me-badge">אני</span></span>
-                <span className="sc-odds-p1">{oddsCell(meOdds.label, meOdds.p1, 1)}</span>
-                <span className="sc-odds-p3">{oddsCell(meOdds.label, meOdds.p3, 3)}</span>
-                <span className="sc-odds-p5">{oddsCell(meOdds.label, meOdds.p5, 5)}</span>
+                {POSITIONS.map(pos => <span key={pos} className="sc-odds-p">{oddsCell(meOdds.label, meOdds.pos[pos - 1], pos)}</span>)}
               </button>
             </>
           )}
@@ -601,14 +614,14 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
       {/* reachability across every possible outcome */}
       <section className="sc-reach" dir="rtl">
         <div className="sc-reach-head">
-          <h3 className="sc-reach-title-main">מי עוד בפנים — על פני כל התרחישים</h3>
+          <h3 className="sc-reach-title-main">מי יכול לסיים בכל מקום (1–5)</h3>
           <p className="sc-reach-sub">{anyEntered
-            ? <>מחושב על כל שילוב אפשרי של המשחקים שנותרו, בהינתן התוצאות שהזנתם (כולל תוצאות מדויקות ונעל הזהב). 🔒 = מובטח, לא משנה איך שאר המשחקים ייגמרו.</>
-            : <>מחושב על כל שילוב אפשרי של תוצאות בארבעת המשחקים (כולל תוצאות מדויקות ונעל הזהב). הזינו תוצאות והרשימות יצטמצמו. 🔒 = מובטח, לא משנה איך זה ייגמר.</>}</p>
+            ? <>לכל מקום — מי עוד יכול לסיים בו בדיוק, על פני כל שילוב של המשחקים שנותרו בהינתן מה שהזנתם (כולל תוצאות מדויקות ונעל הזהב). מהמר שיכול לכמה מקומות מופיע בכולם. 🔒 = כבר סגור בדיוק שם.</>
+            : <>לכל מקום — מי עוד יכול לסיים בו בדיוק, על פני כל שילוב של תוצאות בארבעת המשחקים (כולל תוצאות מדויקות ונעל הזהב). מהמר שיכול לכמה מקומות מופיע בכולם. הזינו תוצאות והרשימות יצטמצמו.</>}</p>
         </div>
-        <ReachGroup tone="gold" limit={1} title="יכולים לסיים ראשון" hint="🔒 = המקום הראשון כבר מובטח להם." stats={contenders} />
-        <ReachGroup tone="green" limit={3} title="מועמדים לטופ 3" hint="🔒 = הפודיום כבר מובטח להם." stats={top3} />
-        <ReachGroup tone="amber" limit={5} title="מועמדים לטופ 5" hint="🔒 = טופ 5 כבר מובטח להם." stats={top5only} />
+        {byPosition.map((stats, i) => (
+          <ReachGroup key={i + 1} position={i + 1} stats={stats} />
+        ))}
       </section>
 
       <p className="lb-prob-note">
