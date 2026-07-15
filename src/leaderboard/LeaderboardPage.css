@@ -2973,7 +2973,13 @@
 .sc-odds-row:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .sc-odds-row--me { box-shadow: inset 0 0 0 1.5px var(--navy); }
 .sc-odds-gap { height: 1px; margin: 3px 10px; border-top: 1px dashed rgba(200, 184, 122, 0.7); }
-.sc-odds-name { font-size: 13px; font-weight: 700; color: var(--navy); display: inline-flex; align-items: center; gap: 6px; }
+.sc-odds-name { font-size: 13px; font-weight: 700; color: var(--navy); display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+/* Keep the flexible name column from growing with its content (the "אני" badge) — otherwise
+   each row is its own grid and the badge widens that row's name track, shifting its % cells
+   out of line with the header and the other rows. The name text truncates; badges never shrink. */
+.sc-odds-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sc-odds-name .lb-me-badge, .sc-odds-rank { flex: none; }
+.sc-odds-name .lb-me-badge { margin-inline-start: 0; padding: 1px 5px 0; font-size: 8.5px; letter-spacing: 0.08em; }
 .sc-odds-rank {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 4px;
@@ -3153,10 +3159,13 @@
   .sc-podium-name { font-size: 11.5px; }
   .sc-podium-pts { font-size: 16px; }
   .sc-podium-medal { font-size: 19px; }
-  /* keep the odds row readable: narrower % columns, smaller gap */
-  .sc-odds-head, .sc-odds-row { grid-template-columns: 1fr repeat(5, 34px); gap: 3px; }
-  .sc-odds-row { padding: 6px 7px; }
-  .sc-odds-name { font-size: 11.5px; }
+  /* keep the odds row readable: narrower % columns + tighter gap free up the name track
+     so the "אני" badge fits without ever pushing the % columns out of alignment */
+  .sc-odds-head, .sc-odds-row { grid-template-columns: 1fr repeat(5, 31px); gap: 2px; }
+  .sc-odds-head { padding: 0 6px 4px; }
+  .sc-odds-row { padding: 6px 6px; }
+  .sc-odds-name { font-size: 11.5px; gap: 4px; }
+  .sc-odds-rank { min-width: 15px; height: 15px; padding: 0 3px; font-size: 9.5px; }
   .sc-odds-p { font-size: 11px; }
   .sc-odds-col-h { font-size: 11px; }
   /* detail cells stack key over value so flags + names never collide */

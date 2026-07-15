@@ -424,7 +424,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
               onClick={() => applyScenario(o.label)}
               title="טען תרחיש טוב עבורו"
             >
-              <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(o.label)}</span>{firstName(o.label)}{o.label === me && <span className="lb-me-badge">אני</span>}</span>
+              <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(o.label)}</span><span className="sc-odds-nm">{firstName(o.label)}</span>{o.label === me && <span className="lb-me-badge">אני</span>}</span>
               {POSITIONS.map(pos => <span key={pos} className="sc-odds-p">{oddsCell(o.label, o.pos[pos - 1], pos)}</span>)}
             </button>
           ))}
@@ -437,7 +437,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
                 onClick={() => applyScenario(meOdds.label)}
                 title="טען תרחיש טוב עבורו"
               >
-                <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(meOdds.label)}</span>{firstName(meOdds.label)}<span className="lb-me-badge">אני</span></span>
+                <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(meOdds.label)}</span><span className="sc-odds-nm">{firstName(meOdds.label)}</span><span className="lb-me-badge">אני</span></span>
                 {POSITIONS.map(pos => <span key={pos} className="sc-odds-p">{oddsCell(meOdds.label, meOdds.pos[pos - 1], pos)}</span>)}
               </button>
             </>
