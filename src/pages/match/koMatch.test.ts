@@ -29,11 +29,12 @@ describe('findInStages', () => {
   })
 })
 
-// Every knockout match feeds a "who predicted each team this far" Venn. The stage
-// it checks is the one the two teams must have reached to meet in this match:
-// a R32 winner reaches the R16, a R16 winner the QF, and so on. The two odd
-// matches — third place and the final — ask about the round both teams already
-// reached (semis / final).
+// Every knockout match feeds a "who predicted each team this far" Venn — except
+// the third-place match. The stage it checks is the one the two teams must have
+// reached to meet in this match: a R32 winner reaches the R16, a R16 winner the
+// QF, and so on; the final asks about who was predicted as a finalist. Nobody
+// advances into the third-place match (its teams are the semi losers), so it
+// gets no Venn — the page lists outright third-place picks instead.
 describe('vennStage', () => {
   test('R32 matches ask who predicted each team into the round of 16', () => {
     expect(vennStage(73)).toEqual({ stage: 'r16', label: 'שמינית גמר' })
@@ -55,8 +56,8 @@ describe('vennStage', () => {
     expect(vennStage(102)).toEqual({ stage: 'final', label: 'גמר' })
   })
 
-  test('the third-place match asks who reached the semi-finals', () => {
-    expect(vennStage(103)).toEqual({ stage: 'sf', label: 'חצי גמר' })
+  test('the third-place match feeds no venn', () => {
+    expect(vennStage(103)).toBeNull()
   })
 
   test('the final asks who predicted each team as a finalist', () => {

@@ -9,6 +9,7 @@ import { GROUP_HEBREW, GROUP_MATCHES, TEAMS } from '../../shared/groups'
 import { adjacentMatches, LAST_GROUP_MATCH } from './matchUtils'
 import {
   FIRST_KO_MATCH_NUM,
+  THIRD_PLACE_MATCH_NUM,
   findKnockoutMatch,
   findInStages,
   roundLabel,
@@ -26,6 +27,7 @@ import MatchLeaderboardTable from './MatchLeaderboardTable'
 import { buildKnockoutMatchLeaderboardRows } from '../../leaderboard/knockoutMatchLeaderboardRows'
 import KnockoutSurvivorsList from './KnockoutSurvivorsList'
 import KnockoutVenn from './KnockoutVenn'
+import ThirdPlacePicks from './ThirdPlacePicks'
 import BestResultCard from '../../formView/groupStage/BestResultCard'
 import MatchRecommendation from './MatchRecommendation'
 import PodiumOnAdvance from './PodiumOnAdvance'
@@ -382,6 +384,19 @@ function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore,
                 homeLabel={home.he}
                 awayLabel={away.he}
               />}
+
+          {/* Nobody advances INTO the third-place match — its teams are the semi
+              losers — so instead of a "who advanced them" Venn it shows each
+              bettor's outright pick for who finishes third. */}
+          {users.length > 0 && matchNum === THIRD_PLACE_MATCH_NUM && (
+            <>
+              <header className="section-heading" dir="rtl">
+                <span className="section-heading__eyebrow">מקום שלישי</span>
+                <h2 className="section-heading__title">מי ניחש מי תסיים שלישית</h2>
+              </header>
+              <ThirdPlacePicks home={match.home} away={match.away} users={users} />
+            </>
+          )}
 
           {users.length > 0 && venn && (
             <>
