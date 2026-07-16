@@ -1,11 +1,13 @@
 import type { User } from '../../users/index'
 import { TEAMS } from '../../shared/groups'
 
-// The third-place page's replacement for the qualifier Venn: nobody *advances*
-// into this match, so the interesting split is each bettor's outright pick for
-// who finishes third — one list per team actually playing. A bettor who picked
-// a team that didn't make it here (or picked nobody) is simply absent.
-type Props = { home: string; away: string; users: User[] }
+// The last two matches' replacement for the qualifier Venn: on the third-place
+// match nobody *advances* in (its teams are the semi losers), and on the final
+// the interesting split is who called the champion — so both pages show each
+// bettor's outright pick instead, one list per team actually playing. `pickOf`
+// selects which pick (third-place winner / champion). A bettor whose pick isn't
+// one of the two teams here is simply absent.
+type Props = { home: string; away: string; users: User[]; pickOf: (u: User) => string | undefined }
 
 const teamHe = (name: string) => TEAMS[name]?.he ?? name
 
@@ -29,22 +31,22 @@ function PickList({
       </span>
       <ul className="venn__list-names">
         {users.map(u => (
-          <li key={u.label} data-testid="third-pick-name" className="venn__list-name">{u.label}</li>
+          <li key={u.label} data-testid="outright-pick-name" className="venn__list-name">{u.label}</li>
         ))}
       </ul>
     </div>
   )
 }
 
-export default function ThirdPlacePicks({ home, away, users }: Props) {
-  const pickedHome = users.filter(u => u.predictedThirdPlaceWinner === home)
-  const pickedAway = users.filter(u => u.predictedThirdPlaceWinner === away)
+export default function OutrightPicks({ home, away, users, pickOf }: Props) {
+  const pickedHome = users.filter(u => pickOf(u) === home)
+  const pickedAway = users.filter(u => pickOf(u) === away)
 
   return (
     <div className="venn" dir="rtl">
       <div className="venn__lists">
-        <PickList testid="third-picks-home" modifier="a" team={home} users={pickedHome} />
-        <PickList testid="third-picks-away" modifier="b" team={away} users={pickedAway} />
+        <PickList testid="outright-picks-home" modifier="a" team={home} users={pickedHome} />
+        <PickList testid="outright-picks-away" modifier="b" team={away} users={pickedAway} />
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import { adjacentMatches, LAST_GROUP_MATCH } from './matchUtils'
 import {
   FIRST_KO_MATCH_NUM,
   THIRD_PLACE_MATCH_NUM,
+  FINAL_MATCH_NUM,
   findKnockoutMatch,
   findInStages,
   roundLabel,
@@ -27,7 +28,7 @@ import MatchLeaderboardTable from './MatchLeaderboardTable'
 import { buildKnockoutMatchLeaderboardRows } from '../../leaderboard/knockoutMatchLeaderboardRows'
 import KnockoutSurvivorsList from './KnockoutSurvivorsList'
 import KnockoutVenn from './KnockoutVenn'
-import ThirdPlacePicks from './ThirdPlacePicks'
+import OutrightPicks from './OutrightPicks'
 import BestResultCard from '../../formView/groupStage/BestResultCard'
 import MatchRecommendation from './MatchRecommendation'
 import PodiumOnAdvance from './PodiumOnAdvance'
@@ -385,16 +386,27 @@ function KnockoutBody({ matchNum, users, now, results, me, homeScore, awayScore,
                 awayLabel={away.he}
               />}
 
-          {/* Nobody advances INTO the third-place match — its teams are the semi
-              losers — so instead of a "who advanced them" Venn it shows each
-              bettor's outright pick for who finishes third. */}
+          {/* The last two matches replace the "who advanced them" Venn with
+              outright picks: nobody advances INTO the third-place match (its
+              teams are the semi losers), and on the final the split that
+              matters is who called the champion. */}
           {users.length > 0 && matchNum === THIRD_PLACE_MATCH_NUM && (
             <>
               <header className="section-heading" dir="rtl">
                 <span className="section-heading__eyebrow">מקום שלישי</span>
                 <h2 className="section-heading__title">מי ניחש מי תסיים שלישית</h2>
               </header>
-              <ThirdPlacePicks home={match.home} away={match.away} users={users} />
+              <OutrightPicks home={match.home} away={match.away} users={users} pickOf={u => u.predictedThirdPlaceWinner} />
+            </>
+          )}
+
+          {users.length > 0 && matchNum === FINAL_MATCH_NUM && (
+            <>
+              <header className="section-heading" dir="rtl">
+                <span className="section-heading__eyebrow">אלופת העולם</span>
+                <h2 className="section-heading__title">מי ניחש מי תהיה האלופה</h2>
+              </header>
+              <OutrightPicks home={match.home} away={match.away} users={users} pickOf={u => u.predictedChampion} />
             </>
           )}
 

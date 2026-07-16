@@ -70,23 +70,23 @@ export function roundLabel(matchNum: number): string {
 
 // Which knockout stage the Venn diagram checks for a given match: the round the
 // two teams had to reach to meet here. A R32 winner reaches the R16, a R16 winner
-// the QF, and so on; the final asks about who was predicted as a finalist. Nobody
-// *advances* into the third-place match — its teams are the semi losers — so it
-// feeds no Venn; the page shows outright third-place picks instead (ThirdPlacePicks).
+// the QF, and so on. The table ends at the semis on purpose — the last two
+// matches feed no Venn (the page shows outright picks instead, OutrightPicks):
+// nobody *advances* into the third-place match (its teams are the semi losers),
+// and on the final the split that matters is who called the champion.
 export type VennStage = 'r16' | 'qf' | 'sf' | 'final'
 
 export const THIRD_PLACE_MATCH_NUM = 103
+export const FINAL_MATCH_NUM = 104
 
 const VENN_STAGES: { upTo: number; stage: VennStage; label: string }[] = [
   { upTo: 88,  stage: 'r16',   label: 'שמינית גמר' },
   { upTo: 96,  stage: 'qf',    label: 'רבע גמר' },
   { upTo: 100, stage: 'sf',    label: 'חצי גמר' },
   { upTo: 102, stage: 'final', label: 'גמר' },
-  { upTo: 104, stage: 'final', label: 'גמר' },
 ]
 
 export function vennStage(matchNum: number): { stage: VennStage; label: string } | null {
-  if (matchNum === THIRD_PLACE_MATCH_NUM) return null
   const match = VENN_STAGES.find(v => matchNum <= v.upTo)
   return match ? { stage: match.stage, label: match.label } : null
 }
