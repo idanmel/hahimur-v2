@@ -24,6 +24,23 @@ export function allKO(stages: KnockoutStages): KnockoutMatch[] {
   return [...stages.r32, ...stages.r16, ...stages.qf, ...stages.sf, ...stages.thirdPlace, ...stages.final]
 }
 
+// Advancing team of a knockout match, by goals then the penalty winner
+// (drawWinner). Null when the score isn't filled in (or a draw's winner isn't) —
+// so truthiness doubles as "this fixture is decided"; `m.resolved` can't say that,
+// it only means both team slots are known. Shared by the predicted-matchup compare
+// (a bettor's own pick) and the real-result elimination sweeps — same rule,
+// different sources.
+export function koAdvancer(m: KnockoutMatch): string | null {
+  if (!m.scores) return null
+  const { home, away, drawWinner } = m.scores
+  if (home == null || away == null) return null
+  if (home > away) return m.home
+  if (away > home) return m.away
+  if (drawWinner === 'home') return m.home
+  if (drawWinner === 'away') return m.away
+  return null
+}
+
 // Whether a predicted fixture is the pairing {teamA, teamB}, in either orientation.
 // Empty slots (an unfilled bracket placeholder) never match.
 export function isPairing(m: KnockoutMatch, teamA: string, teamB: string): boolean {

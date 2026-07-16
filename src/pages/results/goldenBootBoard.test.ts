@@ -66,7 +66,7 @@ describe('buildGoldenBootBoard', () => {
     expect(players).toEqual(['אמבפה'])
   })
 
-  it('excludes an unpicked eliminated player who trails the lead', () => {
+  it('excludes an unpicked done-scoring player who trails the lead', () => {
     const { players } = buildGoldenBootBoard({
       pickedPlayers: ['אמבפה'],
       pickedGoals: { אמבפה: 6 },
@@ -74,13 +74,13 @@ describe('buildGoldenBootBoard', () => {
       pickedEspnNames,
       nameMap,
       teamByPlayer: { הולאנד: 'Norway' },
-      eliminatedTeams: new Set(['Norway']),
+      doneScoringTeams: new Set(['Norway']),
     })
-    // Haaland (4, Norway out) trails the lead (6): frozen, can't win -> hidden
+    // Haaland (4, Norway done playing) trails the lead (6): frozen, can't win -> hidden
     expect(players).toEqual(['אמבפה'])
   })
 
-  it('keeps an unpicked eliminated player who is (co-)leading', () => {
+  it('keeps an unpicked done-scoring player who is (co-)leading', () => {
     const { players, realGoals } = buildGoldenBootBoard({
       pickedPlayers: ['אמבפה'],
       pickedGoals: { אמבפה: 4 },
@@ -88,7 +88,7 @@ describe('buildGoldenBootBoard', () => {
       pickedEspnNames,
       nameMap,
       teamByPlayer: { הולאנד: 'Norway' },
-      eliminatedTeams: new Set(['Norway']),
+      doneScoringTeams: new Set(['Norway']),
     })
     // Norway is out but Haaland leads — he can still win the Golden Boot,
     // which is exactly what decides whether any picker gets the bonus.

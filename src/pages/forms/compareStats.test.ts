@@ -7,6 +7,7 @@ import {
   buildBreakdownRows,
   buildGroupStandingsDiff,
   eliminatedTeams,
+  teamsWithNoMatchesLeft,
   buildKnockoutDiff,
   buildAdvancementAgreement,
 } from './compareStats'
@@ -220,6 +221,68 @@ describe('eliminatedTeams', () => {
     // Croatia finished third but only two teams are above it → still a best-third hopeful.
     expect(out.has('Croatia')).toBe(false)
     expect(out.has('Albania')).toBe(true)
+  })
+})
+
+describe('teamsWithNoMatchesLeft', () => {
+  // England and Portugal lose the semis and meet in the third-place match.
+  const afterSemis = (thirdPlace: KnockoutMatch[]): TournamentResults => ({
+    ...EMPTY_RESULTS,
+    knockoutStages: {
+      ...EMPTY_RESULTS.knockoutStages,
+      sf: [
+        ko(101, 'France', 'England', { home: 2, away: 0 }),
+        ko(102, 'Argentina', 'Portugal', { home: 2, away: 1 }),
+      ],
+      thirdPlace,
+    },
+  })
+
+  test('a semi-final loser is eliminated but still plays the third-place match', () => {
+    // Both semi losers are known, so the derived bracket marks the fixture
+    // resolved even though it has no score yet — exactly the real-data shape.
+    const results = afterSemis([{ ...ko(103, 'England', 'Portugal'), resolved: true }])
+    expect(eliminatedTeams(results).has('England')).toBe(true)
+    const done = teamsWithNoMatchesLeft(results)
+    expect(done.has('England')).toBe(false)
+    expect(done.has('Portugal')).toBe(false)
+  })
+
+  test('once the third-place match is resolved, both semi-final losers are done', () => {
+    const done = teamsWithNoMatchesLeft(afterSemis([ko(103, 'England', 'Portugal', { home: 1, away: 0 })]))
+    expect(done.has('England')).toBe(true)
+    expect(done.has('Portugal')).toBe(true)
+  })
+
+  test('a team locked into last place mid-group still has a group game to play', () => {
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: {
+        A: [
+          standing('Spain', 2, 6),
+          standing('Italy', 2, 6),
+          standing('Croatia', 2, 4),
+          standing('Albania', 2, 0),
+        ],
+      },
+    }
+    expect(eliminatedTeams(results).has('Albania')).toBe(true)
+    expect(teamsWithNoMatchesLeft(results).has('Albania')).toBe(false)
+  })
+
+  test('a fourth-placed team of a finished group is done', () => {
+    const results: TournamentResults = {
+      ...EMPTY_RESULTS,
+      groupTables: {
+        A: [
+          standing('Spain', 3, 9),
+          standing('Italy', 3, 6),
+          standing('Croatia', 3, 3),
+          standing('Albania', 3, 0),
+        ],
+      },
+    }
+    expect(teamsWithNoMatchesLeft(results).has('Albania')).toBe(true)
   })
 })
 

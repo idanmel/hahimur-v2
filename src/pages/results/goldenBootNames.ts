@@ -31,9 +31,11 @@ export const GOLDEN_BOOT_NAMES: Record<string, string> = {
 // national team, using our internal team names (shared/groups.ts). Covers picked
 // players plus the curated unpicked contenders in GOLDEN_BOOT_NAMES.
 //
-// Used to spot a player whose team is eliminated while they trail the lead — a
-// player whose team is out can't add goals, so if they're already behind they can
-// never (co-)win the Golden Boot. For a PICKED player that shows the "מחוץ למירוץ"
+// Used to spot a player whose team has no match left to play while they trail the
+// lead — a player whose team is done playing can't add goals, so if they're already
+// behind they can never (co-)win the Golden Boot. (Eliminated alone isn't enough:
+// a semi-final loser still plays the third-place match.) For a PICKED player that
+// shows the "מחוץ למירוץ"
 // badge; an UNPICKED one is dropped from the board entirely (nobody's points
 // depend on him). A player missing here (e.g. an uncurated Latin-fallback row) is
 // simply never marked out — we never report a false elimination.

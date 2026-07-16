@@ -9,9 +9,9 @@
 //  - Unpicked players enter ONLY at RACE_BOARD_MIN_GOALS goals or more, rendered
 //    from the ESPN accumulation. Unpicked names never touch playerGoals (that
 //    stays picked-only, upstream).
-//  - An unpicked player whose team is eliminated AND who trails the lead is
-//    dropped entirely: his tally is frozen below a total he can't reach, and no
-//    participant's points depend on him. An eliminated player AT the lead stays —
+//  - An unpicked player whose team has no match left to play AND who trails the
+//    lead is dropped entirely: his tally is frozen below a total he can't reach,
+//    and no participant's points depend on him. A done player AT the lead stays —
 //    he can still (co-)win, which is exactly what denies everyone the bonus.
 //  - Rows are returned sorted by goals desc; ties keep picked-before-unpicked
 //    order (JS sort is stable).
@@ -31,15 +31,17 @@ export function buildGoldenBootBoard(args: {
   pickedEspnNames: Set<string> // ESPN names that are picked (excluded from unpicked)
   nameMap: Record<string, string> // ESPN Latin -> Hebrew (curated); Latin fallback
   teamByPlayer?: Record<string, string> // display name -> national team (curated)
-  eliminatedTeams?: Set<string> // teams already out of the tournament
+  // Teams with no match left to play (NOT merely eliminated — a semi-final loser
+  // is out of the tournament yet still plays the third-place match and can score).
+  doneScoringTeams?: Set<string>
 }): RaceBoard {
   const { pickedPlayers, pickedGoals, espnTotals, pickedEspnNames, nameMap } = args
   const teamByPlayer = args.teamByPlayer ?? {}
-  const eliminatedTeams = args.eliminatedTeams ?? new Set<string>()
+  const doneScoringTeams = args.doneScoringTeams ?? new Set<string>()
 
   const unpicked = Object.entries(espnTotals).filter(([name]) => !pickedEspnNames.has(name))
 
-  // The lead across everyone (picked tally ∪ full ESPN totals) — an eliminated
+  // The lead across everyone (picked tally ∪ full ESPN totals) — a done-scoring
   // unpicked player is dropped only when he trails it.
   const lead = Math.max(
     0,
@@ -57,7 +59,7 @@ export function buildGoldenBootBoard(args: {
     if (goals < RACE_BOARD_MIN_GOALS) continue
     const he = nameMap[espnName] ?? espnName
     const team = teamByPlayer[he]
-    if (team != null && eliminatedTeams.has(team) && goals < lead) continue
+    if (team != null && doneScoringTeams.has(team) && goals < lead) continue
     if (he in realGoals) continue // already shown (picked, or an earlier alias)
     players.push(he)
     realGoals[he] = goals

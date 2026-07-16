@@ -10,7 +10,7 @@ import {
   type PointsBreakdown,
 } from '../../leaderboard/points'
 import { buildLeaderboardRows } from '../../leaderboard/leaderboardRows'
-import { isPairing, allKO } from '../../formView/knockout/koRounds'
+import { isPairing, allKO, koAdvancer } from '../../formView/knockout/koRounds'
 import { competitionRanks } from '../../leaderboard/rank'
 import type { User } from '../../users'
 
@@ -146,21 +146,6 @@ const KO_STAGES: [keyof TournamentResults['knockoutStages'], string][] = [
   ['thirdPlace', 'מקום שלישי'],
   ['final', 'גמר'],
 ]
-
-/** Advancing team of a knockout match, by goals then the penalty winner
- *  (drawWinner). Null when the score isn't filled in. Shared by the predicted-
- *  matchup compare (a bettor's own pick) and the real-result elimination sweep —
- *  same rule, different sources. */
-function koAdvancer(m: KnockoutMatch): string | null {
-  if (!m.scores) return null
-  const { home, away, drawWinner } = m.scores
-  if (home == null || away == null) return null
-  if (home > away) return m.home
-  if (away > home) return m.away
-  if (drawWinner === 'home') return m.home
-  if (drawWinner === 'away') return m.away
-  return null
-}
 
 function goalsFor(m: KnockoutMatch, team: string): number | null {
   if (!m.scores) return null
@@ -446,6 +431,29 @@ export function eliminatedTeams(results: TournamentResults): Set<string> {
     })
   }
   return out
+}
+
+/** Teams that can no longer ADD GOALS: eliminated from the tournament AND with no
+ *  fixture left to play. Differs from {@link eliminatedTeams} exactly where a team
+ *  is out of the title race but still has a match — a semi-final loser still plays
+ *  the third-place match, and a team mathematically locked out mid-group still has
+ *  group games left. Goal-race surfaces (the Golden Boot board) must use this, not
+ *  eliminatedTeams: a striker with any match remaining can still score. */
+export function teamsWithNoMatchesLeft(results: TournamentResults): Set<string> {
+  const done = eliminatedTeams(results)
+  for (const standings of Object.values(results.groupTables)) {
+    if (!isGroupComplete(standings)) for (const s of standings) done.delete(s.team)
+  }
+  // A team named in an undecided knockout fixture still plays it — the third-place
+  // match names both semi losers as soon as the semis end (see koAdvancer for why
+  // its truthiness, not m.resolved, means "decided"). Unfilled slots hold Hebrew
+  // descriptors, never a real team name, so deleting them is a no-op.
+  for (const m of allKO(results.knockoutStages)) {
+    if (koAdvancer(m)) continue
+    if (m.home) done.delete(m.home)
+    if (m.away) done.delete(m.away)
+  }
+  return done
 }
 
 /** Per-stage points side-by-side, so you can see where the gap comes from. */

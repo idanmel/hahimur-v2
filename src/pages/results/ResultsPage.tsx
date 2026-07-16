@@ -22,7 +22,7 @@ import { SCORER_ALIASES } from '../../shared/espnLive'
 import { mergeLiveResults } from '../../shared/liveResults'
 import { buildGoldenBootBoard } from './goldenBootBoard'
 import { GOLDEN_BOOT_NAMES, TEAM_BY_PLAYER } from './goldenBootNames'
-import { eliminatedTeams } from '../forms/compareStats'
+import { teamsWithNoMatchesLeft } from '../forms/compareStats'
 import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId, nextUnplayedKOMatchId } from '../../shared/matchesByDate'
@@ -34,10 +34,11 @@ import '../../pages/form/FormPage.css'
 import './ResultsPage.css'
 
 const LOCKED_MATCH_IDS = getLockedMatchIds(realTournamentResults)
-// Teams really out of the tournament (never a false positive — see eliminatedTeams).
-// Drives the Golden Boot "out of the race" mark; based on committed reality, not
-// the user's what-if edits.
-const ELIMINATED_TEAMS = eliminatedTeams(realTournamentResults)
+// Teams that can no longer add goals — eliminated AND with no match left to play
+// (a semi-final loser still has the third-place match, so their strikers stay in
+// the race; see teamsWithNoMatchesLeft). Drives the Golden Boot "out of the race"
+// mark; based on committed reality, not the user's what-if edits.
+const DONE_SCORING_TEAMS = teamsWithNoMatchesLeft(realTournamentResults)
 const INITIAL_PLAYED_COUNT = playedMatchesChrono(realTournamentResults).length
 // Frozen at load from the committed real scores — the by-date view scrolls here
 const NEXT_MATCH_ID = nextUnplayedMatchId(realTournamentResults)
@@ -146,17 +147,17 @@ export default function ResultsPage({ users }: { users: User[] }) {
       pickedEspnNames: PICKED_ESPN_NAMES,
       nameMap: GOLDEN_BOOT_NAMES,
       teamByPlayer: TEAM_BY_PLAYER,
-      eliminatedTeams: ELIMINATED_TEAMS,
+      doneScoringTeams: DONE_SCORING_TEAMS,
     }),
     [players, espnTotals],
   )
   const pickedPlayerSet = useMemo(() => new Set(players), [players])
-  // Race-board players whose national team is already eliminated. GoalScorerSection
+  // Race-board players whose national team has no match left to play. GoalScorerSection
   // combines this with the live lead to flag the ones that can no longer catch up.
   const eliminatedPlayers = useMemo(
     () => raceBoard.players.filter(p => {
       const team = TEAM_BY_PLAYER[p]
-      return team != null && ELIMINATED_TEAMS.has(team)
+      return team != null && DONE_SCORING_TEAMS.has(team)
     }),
     [raceBoard.players],
   )
