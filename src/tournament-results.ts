@@ -120,6 +120,7 @@ export const koScores: Record<string, MatchScores> = {
   100: { home: 1, away: 1, drawWinner: 'home' },
   101: { home: 0, away: 2 },
   102: { home: 1, away: 2 },
+  103: { home: 4, away: 6 },
 }
 
 export function derivePlayerGoals(perMatch: Record<string, Record<string, number>>): Record<string, number> {
