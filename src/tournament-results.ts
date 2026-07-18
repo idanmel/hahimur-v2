@@ -3,6 +3,7 @@ import type { TournamentResults, MatchScores, PredictionsState } from './shared/
 import { deriveGroupStatus } from './shared/groupStatus.ts'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './formView/thirdPlace/thirdPlace.ts'
 import { deriveKnockoutStages } from './formView/knockout/deriveKnockoutStages.ts'
+import { koAdvancer } from './formView/knockout/koRounds.ts'
 // Real goals by picked players: player → match ID → goals in that match.
 // Lives in real-goals.json so the cron (scripts/results-file.ts) can read and
 // write it as plain JSON. Keys must be canonical PICKED_SCORERS names
@@ -10,7 +11,7 @@ import { deriveKnockoutStages } from './formView/knockout/deriveKnockoutStages.t
 import realGoals from './real-goals.json' with { type: 'json' }
 
 // Fill in real scores here as matches are played, keyed by match ID
-const groupScores: Record<string, MatchScores> = {
+export const groupScores: Record<string, MatchScores> = {
   A1: { home: 2, away: 0 },
   A2: { home: 2, away: 1 },
   B1: { home: 1, away: 1 },
@@ -88,7 +89,7 @@ const groupScores: Record<string, MatchScores> = {
 // Knockout results: the regulation (90') score keyed by matchNum. drawWinner
 // names the advancer when regulation ended level (ET/penalties decide who went
 // through). Fill in as KO matches are played; knockoutStages is derived from this.
-const koScores: Record<string, MatchScores> = {
+export const koScores: Record<string, MatchScores> = {
   73: { home: 0, away: 1 },
   74: { home: 1, away: 1, drawWinner: 'away' },
   75: { home: 1, away: 1, drawWinner: 'away' },
@@ -128,28 +129,43 @@ export function derivePlayerGoals(perMatch: Record<string, Record<string, number
   )
 }
 
-// Derive the group tables and third-place qualification straight from the
-// entered scores, exactly as the results page does. The leaderboard awards
-// advancement/place points off these — leaving them empty would silently zero
-// those points everywhere `tournamentResults` is read (e.g. the home board).
-const groupPredictions: PredictionsState = { ...groupScores }
-const { allGroupData, allGroupsFilled } = deriveGroupStatus(groupPredictions)
-const groupTables = Object.fromEntries(allGroupData.map(d => [d.group, d.standings]))
-const thirdPlaceTeams = getThirdPlaceTeams(allGroupData)
-const thirdPlaceQualification = allGroupsFilled
-  ? qualifyBestThirdPlace(thirdPlaceTeams)
-  : { resolved: false as const, all: thirdPlaceTeams, tied: [] }
+// Derive everything the leaderboard reads straight from the entered scores,
+// exactly as the results page does: group tables and third-place qualification
+// (advancement/place points), and — once the last two matches are entered — the
+// third-place winner and champion. computeUserPoints awards the 20/25-pt title
+// bonuses off `thirdPlaceWinner`/`champion`, while the per-match views derive
+// the winner from the score itself; leaving anything underived would silently
+// zero those points everywhere `tournamentResults` is read (e.g. the home board).
+// Exported for tests; the app reads the baked `tournamentResults` below.
+export function buildTournamentResults(
+  group: Record<string, MatchScores>,
+  ko: Record<string, MatchScores>,
+  playerMatchGoals: Record<string, Record<string, number>>,
+): TournamentResults {
+  const groupPredictions: PredictionsState = { ...group }
+  const { allGroupData, allGroupsFilled } = deriveGroupStatus(groupPredictions)
+  const groupTables = Object.fromEntries(allGroupData.map(d => [d.group, d.standings]))
+  const thirdPlaceTeams = getThirdPlaceTeams(allGroupData)
+  const thirdPlaceQualification = allGroupsFilled
+    ? qualifyBestThirdPlace(thirdPlaceTeams)
+    : { resolved: false as const, all: thirdPlaceTeams, tied: [] }
+  const knockoutStages = deriveKnockoutStages(group, ko)
 
-export const tournamentResults: TournamentResults = {
-  groupMatches: Object.fromEntries(
-    Object.entries(GROUPS).map(([letter, group]) => [
-      letter,
-      group.matches.map(m => ({ ...m, scores: groupScores[m.id] ?? { home: null, away: null } })),
-    ])
-  ),
-  groupTables,
-  playerMatchGoals: realGoals,
-  playerGoals: derivePlayerGoals(realGoals),
-  thirdPlaceQualification,
-  knockoutStages: deriveKnockoutStages(groupScores, koScores),
+  return {
+    groupMatches: Object.fromEntries(
+      Object.entries(GROUPS).map(([letter, g]) => [
+        letter,
+        g.matches.map(m => ({ ...m, scores: group[m.id] ?? { home: null, away: null } })),
+      ])
+    ),
+    groupTables,
+    playerMatchGoals,
+    playerGoals: derivePlayerGoals(playerMatchGoals),
+    thirdPlaceQualification,
+    knockoutStages,
+    thirdPlaceWinner: koAdvancer(knockoutStages.thirdPlace[0]) ?? undefined,
+    champion: koAdvancer(knockoutStages.final[0]) ?? undefined,
+  }
 }
+
+export const tournamentResults: TournamentResults = buildTournamentResults(groupScores, koScores, realGoals)
