@@ -321,17 +321,19 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   }
 
   const contenders = reach.contenders
-  // One list per finishing position (1-5): everyone who can still land *exactly* there in some
-  // remaining-match combination. A bettor who can finish 2nd–4th shows up in all three cards —
-  // that spread is the point. Sorted by best-case rank, then base points.
+  // One list per finishing position (1-5): everyone who can still land *exactly* there across the
+  // remaining matches, under the boot you've pinned (reachSel) — so these cards stay consistent
+  // with the live table's locks, matching this section's own "given the golden boot you entered"
+  // promise. A bettor who can still land on several positions shows up in each. Sorted by
+  // best-case rank, then base points.
   const byPosition = useMemo(
     () =>
       [1, 2, 3, 4, 5].map(pos =>
-        [...reach.stats.values()]
+        [...reachSel.stats.values()]
           .filter(s => s.finishRanks.includes(pos))
           .sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts),
       ),
-    [reach],
+    [reachSel],
   )
 
   // Current standings position per bettor (from the live table) — shown beside the name in the
