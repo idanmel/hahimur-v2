@@ -265,11 +265,15 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   // Anyone (picked or not) sitting at the top projected total (co-)wins the boot in this scenario.
   const isBootWinner = (name: string) => projMax > 0 && (name === bootWinner ? bootGoals : boot.goals[name] ?? 0) === projMax
   const rows = useMemo(() => projectProvisional(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner), [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey])
-  // Reachability & locks sweep every boot outcome too — a position is only truly "in reach"
-  // (or clinched) once the ±10 boot swing is accounted for, not just the match results.
-  // Conditioned on whatever's entered, so the cards narrow (and lock) alongside the live table
-  // instead of always showing the from-scratch picture — which is what made them disagree.
+  // Two reachability views, differing only in how they treat the still-undecided golden boot:
+  //  • `reach` sweeps EVERY possible boot winner — powers the "who can finish where" cards,
+  //    which must still reveal that e.g. Kane taking the boot could drop you.
+  //  • `reachSel` pins the boot to the winner you've selected in the scenario (default = current
+  //    leader), exactly like an entered match result. So the live-table / odds locks reflect the
+  //    full what-if you built: pin a non-Kane boot and a #2 only Kane could break reads as locked
+  //    (100%🔒) instead of being capped at 99% for a boot swing you've already ruled out.
   const reach = useMemo(() => computeReachability(users, base, info, bootCands, scenario, entered), [users, base, info, bootCands, scKey])
+  const reachSel = useMemo(() => computeReachability(users, base, info, [bootWinner], scenario, entered), [users, base, info, bootWinner, scKey])
 
   // Everything a bettor picked that still matters at the end — surfaced on click.
   const detailsOf = useMemo(
@@ -284,11 +288,12 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
     [users],
   )
   // A row's shown position is final only if it can't move — clinched AND already at that rank.
-  // reach is conditioned on the entered results, so min===max means "locked given what's in".
-  // Once everything is entered every position is trivially "locked", so we don't badge those.
+  // reachSel is conditioned on the entered results *and the pinned boot*, so min===max means
+  // "locked given what's in, under the boot you projected". Once everything is entered every
+  // position is trivially "locked", so we don't badge those.
   const lockedAt = (label: string, rank: number) => {
     if (allEntered) return false
-    const s = reach.stats.get(label)
+    const s = reachSel.stats.get(label)
     return !!s && s.minRank === s.maxRank && s.minRank === rank
   }
 
@@ -354,11 +359,12 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
       : null
   const pct = (p: number) => (p >= 0.995 ? '100%' : p >= 0.005 ? `${Math.round(p * 100)}%` : p > 0 ? '<1%' : '—')
   // A single cell = the sampled probability of finishing EXACTLY at `position`. When the
-  // deterministic sweep pins the bettor to exactly that rank (min === max === position) it's a
-  // certainty → 100% + 🔒. Probabilities that round to 100% without a lock are capped at 99%
-  // so the odds never claim a guarantee the sweep didn't confirm; unreachable ranks show "—".
+  // deterministic sweep (under the pinned boot) fixes the bettor to exactly that rank
+  // (min === max === position) it's a certainty → 100% + 🔒. Probabilities that round to 100%
+  // without such a lock are capped at 99% so the odds never claim a guarantee the sweep didn't
+  // confirm; unreachable ranks show "—".
   const oddsCell = (label: string, p: number, position: number): ReactNode => {
-    const s = reach.stats.get(label)
+    const s = reachSel.stats.get(label)
     if (s && s.minRank === s.maxRank && s.minRank === position) {
       return <>100%<span className="sc-odds-lock" aria-label="נעול"> 🔒</span></>
     }
