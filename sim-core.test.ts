@@ -632,6 +632,16 @@ describe('buildRows win-probability ordering', () => {
     const worse = { ...base, label: 'א', expRank: 12 } as unknown as Parameters<typeof compareRows>[0]
     expect(compareRows(better, worse)).toBeLessThan(0) // lower expRank ranks ahead despite the name order
   })
+
+  test('compareRows ranks the better expected place ahead even when top-3/top-5 are lower', () => {
+    // The אייל vs איתן endgame case: אייל is nearly certain of 4th (0% top-3, ~100% top-5),
+    // איתן only a coin-flip for 5th but with a sliver of top-3. Expected place must win, so the
+    // row order matches the "מקום צפוי" column instead of inverting it.
+    const win0 = { winPct: 0, avgPts: 10 }
+    const closer = { ...win0, label: 'אייל', expRank: 4, top3Pct: 0, top5Pct: 99.9 } as unknown as Parameters<typeof compareRows>[0]
+    const further = { ...win0, label: 'איתן', expRank: 5, top3Pct: 1.3, top5Pct: 50.5 } as unknown as Parameters<typeof compareRows>[0]
+    expect(compareRows(closer, further)).toBeLessThan(0)
+  })
 })
 
 describe('mergeSimAgg', () => {

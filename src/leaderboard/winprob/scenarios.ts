@@ -387,6 +387,39 @@ function sampleKnockout(home: string, away: string, rng: () => number): MatchSco
 export interface Chances {
   p1: number // P(finish first) — kept for the headline / sort key
   pos: number[] // P(finish EXACTLY at rank 1..5); index 0 = 1st … index 4 = 5th
+  // The rival who most often takes this bettor's usual (most-likely) spot in the sims where
+  // they slip out of it — i.e. "the one with the X% to overtake you". null when they're pinned
+  // to a single rank (no drop) or nobody clearly threatens.
+  threat: { label: string; pct: number } | null
+}
+
+// A scorer still able to move the golden boot: his team, per-match goal rate and current
+// (banked / live) goals. Fed to simulateChances so the boot winner is SAMPLED from the real
+// race (incl. unpicked leaders like Messi) instead of pinned — the default "מה אם" read.
+export interface BootCandidate {
+  name: string
+  team: string
+  rate: number
+  goals: number
+}
+
+// One sampled golden-boot outcome from the live race: each candidate's future goals ~
+// Poisson(rate × his team's remaining games this sim), added to his current tally; whoever
+// ends on top (co-)wins. Returns the winners and every candidate's sampled extra goals (the
+// +3-per-goal still pays a backer even when his man doesn't take the title).
+function sampleBoot(cands: BootCandidate[], gamesByTeam: Map<string, number>, rng: () => number): { winners: Set<string>; extra: Map<string, number> } {
+  let max = -1
+  const winners = new Set<string>()
+  const extra = new Map<string, number>()
+  for (const c of cands) {
+    const rem = gamesByTeam.get(c.team) ?? 0
+    const add = rem > 0 ? samplePoisson(c.rate * rem, rng) : 0
+    extra.set(c.name, add)
+    const tot = c.goals + add
+    if (tot > max) { max = tot; winners.clear(); winners.add(c.name) }
+    else if (tot === max) winners.add(c.name)
+  }
+  return { winners: max > 0 ? winners : new Set<string>(), extra }
 }
 
 export function simulateChances(
@@ -398,6 +431,9 @@ export function simulateChances(
   bootWinner: string | string[] | null = null,
   bootExtraGoals = 0,
   bootGoalScorer: string | null = null,
+  // When provided, the boot winner is SAMPLED from the live race each iteration (default view);
+  // when null, it's pinned to `bootWinner` (the user actively chose a winner in the selector).
+  bootModel: BootCandidate[] | null = null,
   n = 2000,
   seed = 0x9e3779b9,
 ): Map<string, Chances> {
@@ -408,6 +444,9 @@ export function simulateChances(
   const cmp = byPts(base)
   // Per-exact-rank tally: posCount[label][k] = times the bettor finished at rank k+1 (1-5).
   const posCount = new Map<string, number[]>(users.map(u => [u.label, [0, 0, 0, 0, 0]]))
+  // The finishing order (labels, top-6) of every iteration — kept so we can, after the run,
+  // read off who sat in each bettor's usual spot on the sims they slipped from it.
+  const order: string[][] = []
 
   for (let i = 0; i < iters; i++) {
     const s1 = entered.sf[0] ? sc.sf[0] : sampleKnockout(a.teams[0], a.teams[1], rng)
@@ -419,18 +458,59 @@ export function simulateChances(
     const sf = entered.final ? sc.final : sampleKnockout(w1, w2, rng)
     const st = entered.third ? sc.third : sampleKnockout(l1, l2, rng)
     const r = resolveScenario(info, { sf: [s1, s2], final: sf, third: st })
+
+    // The golden boot: sampled from the real race, or pinned to the selected winner.
+    let bootPts: (u: User) => number
+    if (bootModel) {
+      const gbt = new Map<string, number>()
+      const bump = (t: string) => gbt.set(t, (gbt.get(t) ?? 0) + 1)
+      if (!entered.sf[0]) { bump(a.teams[0]); bump(a.teams[1]) }
+      if (!entered.sf[1]) { bump(b.teams[0]); bump(b.teams[1]) }
+      if (!entered.third) { bump(l1); bump(l2) }
+      if (!entered.final) { bump(w1); bump(w2) }
+      const { winners, extra } = sampleBoot(bootModel, gbt, rng)
+      bootPts = u => (winners.has(u.topGoalscorer) ? GOLDEN_BOOT_BONUS : 0) + POINTS_PER_GOAL * (extra.get(u.topGoalscorer) ?? 0)
+    } else {
+      bootPts = u => bootBonus(u, bootWinner) + bootGoalPoints(u, bootGoalScorer, bootExtraGoals)
+    }
+
     const totals = users
-      .map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) + bootBonus(u, bootWinner) + bootGoalPoints(u, bootGoalScorer, bootExtraGoals) }))
+      .map(u => ({ label: u.label, pts: (base.get(u.label) ?? 0) + remainingDelta(u, r, info) + bootPts(u) }))
       .sort(cmp)
     for (let k = 0; k < 5 && k < totals.length; k++) {
       posCount.get(totals[k].label)![k] += 1
     }
+    order.push(totals.slice(0, 6).map(t => t.label))
+  }
+
+  // Each bettor's most-likely finishing rank (the spot the odds table shows them in).
+  const modeRank = new Map<string, number>()
+  for (const u of users) {
+    const c = posCount.get(u.label)!
+    let best = 0
+    for (let k = 1; k < 5; k++) if (c[k] > c[best]) best = k
+    modeRank.set(u.label, c[best] > 0 ? best + 1 : 0)
   }
 
   return new Map(
     users.map(u => {
       const c = posCount.get(u.label)!
-      return [u.label, { p1: c[0] / iters, pos: c.map(x => x / iters) }]
+      const r = modeRank.get(u.label)!
+      // The overtaker: among the sims where this bettor is NOT in their usual spot, whoever most
+      // often occupies it. Only meaningful when they actually slip sometimes (not fully pinned).
+      let threat: { label: string; pct: number } | null = null
+      if (r >= 1 && r <= 5 && c[r - 1] < iters) {
+        const tally = new Map<string, number>()
+        for (const ord of order) {
+          const occ = ord[r - 1]
+          if (occ && occ !== u.label) tally.set(occ, (tally.get(occ) ?? 0) + 1)
+        }
+        let bestLabel = ''
+        let bestCnt = 0
+        for (const [label, cnt] of tally) if (cnt > bestCnt) { bestCnt = cnt; bestLabel = label }
+        if (bestLabel) threat = { label: bestLabel, pct: bestCnt / iters }
+      }
+      return [u.label, { p1: c[0] / iters, pos: c.map(x => x / iters), threat }]
     }),
   )
 }

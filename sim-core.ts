@@ -115,17 +115,16 @@ export function simulateTournament(
 
   const koMatches = [...koStages.r32, ...koStages.r16, ...koStages.qf, ...koStages.sf, ...koStages.thirdPlace, ...koStages.final]
   const teamGames = (team: string) => 3 + koMatches.filter(m => m.home === team || m.away === team).length
-  // For *tracked* scorers (the ones bettors picked, whose real goals we record)
-  // banked goals carry over and only the team's remaining games are randomized —
-  // so a scorer who's already scored (or leading) keeps that edge in both the
-  // golden-boot race and the 3-pts-per-goal. Untracked competitors (unpicked
-  // stars) keep the full-tournament estimate, since we don't have their real
-  // tallies and mustn't deflate the field they compete against.
+  // A scorer with a KNOWN real tally — every picked scorer, plus any unpicked leader whose
+  // live goals were supplied (e.g. Messi from the ESPN race) — carries those banked goals over
+  // and only randomizes his team's remaining games, so a scorer already sitting on 6 goals with
+  // the final left can't be modelled "from zero". Scorers we have no tally for keep the full-
+  // tournament estimate, so we don't deflate the field the picks compete against for the boot.
   const playerGoals: Record<string, number> = {}
   let bootMax = -1, bootWinners: string[] = []
   for (const sc of SCORERS) {
     let goals: number
-    if (TRACKED_SCORERS.has(sc.name)) {
+    if (TRACKED_SCORERS.has(sc.name) || realGoals[sc.name] !== undefined) {
       const banked = realGoals[sc.name] ?? 0
       const remaining = Math.max(0, teamGames(sc.team) - (realGames.get(sc.team) ?? 0))
       goals = banked + poisson(sc.ratePerMatch * remaining)
@@ -1643,18 +1642,18 @@ export function buildRows(real: SimAgg, n: number, played: PredictionsState, pla
   }).sort(compareRows)
 }
 
-// Rank the win-probability board by the odds that matter, in order, so ties on the
-// headline number don't fall back to an arbitrary (input) order: first the chance to
-// finish *first*, then top-3, then top-5, then the expected finishing place (lower is
-// better), then average points, and finally the name so the order is fully stable. This
-// keeps, say, a field of bettors all on ~0% to win sorted by who's actually closer to the
-// podium rather than jumbled.
+// Rank the win-probability board so the order matches the *expected final standing*: first
+// the chance to finish *first* (the headline), then the expected finishing place (lower is
+// better) — this is what makes the order agree with the "מקום צפוי" column, so a bettor who's
+// nearly certain of 4th sits above one who's a coin-flip for 5th (top-3/top-5 alone used to
+// invert that). Top-3, then top-5, then average points break any remaining ties, and finally
+// the name so the order is fully stable.
 export function compareRows(a: Row, b: Row): number {
   return (
     b.winPct - a.winPct ||
+    a.expRank - b.expRank ||
     b.top3Pct - a.top3Pct ||
     b.top5Pct - a.top5Pct ||
-    a.expRank - b.expRank ||
     b.avgPts - a.avgPts ||
     a.label.localeCompare(b.label, 'he')
   )

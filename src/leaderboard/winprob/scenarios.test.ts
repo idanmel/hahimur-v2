@@ -185,6 +185,30 @@ describe('golden boot', () => {
     for (const label of a) expect(withBoot.stats.get(label)!.canWin).toBe(true)
     expect(withBoot.contenders.length).toBeGreaterThanOrEqual(noBoot.contenders.length)
   })
+
+  // Regression: the "מה אם" locks pin the boot to the SELECTED winner, but must always keep the
+  // `null` outcome — an *unpicked* leader (e.g. Messi) taking the boot, so the leader's backers
+  // LOSE their +10. Pinning `[leader]` alone can falsely lock a bettor who's only safe while the
+  // leader keeps the boot; adding `null` may only ever WIDEN a range, never tighten it. If this
+  // ever narrows, the live table / odds / reachability cards would show a lock that isn't real.
+  it('keeping the "unpicked wins → nobody" outcome never tightens any range', () => {
+    const leader = bi.leader
+    const pinned = computeReachability(USERS, base, info, [leader])
+    const withOutsider = computeReachability(USERS, base, info, [leader, null])
+    for (const u of USERS) {
+      const p = pinned.stats.get(u.label)!
+      const w = withOutsider.stats.get(u.label)!
+      expect(w.minRank, u.label).toBeLessThanOrEqual(p.minRank)
+      expect(w.maxRank, u.label).toBeGreaterThanOrEqual(p.maxRank)
+    }
+    // and it genuinely bites while the boot is live: at least one bettor the leader-only pin
+    // called locked is no longer pinned once the outsider swing is admitted.
+    if (info.finalOpen && bi.sweep.includes(null)) {
+      const pinnedLocks = USERS.filter(u => { const s = pinned.stats.get(u.label)!; return s.minRank === s.maxRank })
+      const stillLocked = pinnedLocks.filter(u => { const s = withOutsider.stats.get(u.label)!; return s.minRank === s.maxRank })
+      expect(stillLocked.length).toBeLessThan(pinnedLocks.length)
+    }
+  })
 })
 
 describe('computeReachability (with scorelines)', () => {

@@ -2980,6 +2980,19 @@
 .sc-odds-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sc-odds-name .lb-me-badge, .sc-odds-rank { flex: none; }
 .sc-odds-name .lb-me-badge { margin-inline-start: 0; padding: 1px 5px 0; font-size: 8.5px; letter-spacing: 0.08em; }
+/* "who can still overtake you" line — a full-width note under the row's % cells */
+.sc-odds-threat {
+  grid-column: 1 / -1;
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px; font-weight: 700;
+  color: #b45309; text-align: right;
+  margin-top: 3px; opacity: 0.9;
+}
+.sc-boot-open {
+  border: none; background: none; padding: 0;
+  font: inherit; font-weight: 800; color: var(--navy);
+  text-decoration: underline; cursor: pointer;
+}
 .sc-odds-rank {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 4px;

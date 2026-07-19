@@ -326,7 +326,7 @@ function MyHeadline({ name, row, advancement, stageReach, totalPlayers, crossing
 // pre-tournament priors, with everything simulated from team strength alone.
 const PRE_TOURNAMENT = '__pre__'
 
-export default function WinProbabilityView({ results, me, users = [] }: { results: TournamentResults; me?: string; users?: User[] }) {
+export default function WinProbabilityView({ results, me, users = [], bootRace = {} }: { results: TournamentResults; me?: string; users?: User[]; bootRace?: Record<string, number> }) {
   const chrono = useMemo(() => playedChrono(results), [results])
   const [openLabel, setOpenLabel] = useState<string | null>(null)
   // selected "point in time": a played match id, the PRE_TOURNAMENT sentinel, or
@@ -344,7 +344,11 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
   const trimmed = useMemo(() => resultsUpTo(results, played), [results, played])
   const eliminations = useMemo(() => realEliminations(trimmed), [trimmed])
   // Real golden-boot goals accrued up to the viewed point, so the projection and
-  // current rank reward a picked scorer who's already scoring.
+  // current rank reward a picked scorer who's already scoring. When following the LATEST
+  // point we also fold in the live totals of unpicked leaders (e.g. Messi) so the boot race
+  // — and thus every bettor's odds of keeping a boot-driven +10 — reflects the real field
+  // instead of modelling those stars from zero. We only do it at the latest point because we
+  // have no per-match history for unpicked scorers to scrub back through.
   const playerGoals = useMemo(() => {
     const cur: Record<string, number> = {}
     for (const [player, byMatch] of Object.entries(results.playerMatchGoals ?? {})) {
@@ -355,8 +359,14 @@ export default function WinProbabilityView({ results, me, users = [] }: { result
       }
       if (curSum > 0) cur[player] = curSum
     }
+    if (isLatest) {
+      const picked = new Set(users.map(u => u.topGoalscorer).filter(Boolean))
+      for (const [name, goals] of Object.entries(bootRace)) {
+        if (goals > 0 && !picked.has(name) && cur[name] === undefined) cur[name] = goals
+      }
+    }
     return cur
-  }, [results, played])
+  }, [results, played, isLatest, users, bootRace])
 
   const { status, rows, reachByTeam, groupFirstByTeam, stageReachByTeam, crossingProbByMatch } = useWinProbabilities(played, playerGoals)
   // "מה אם" for the viewer only, and only while following the latest match — the

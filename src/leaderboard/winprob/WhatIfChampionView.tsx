@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { MatchScores, Score, TournamentResults } from '../../shared/types'
 import type { User } from '../../users'
 import { USERS } from '../../users'
+import { SCORERS } from '../../../golden-boot'
 import {
   getRemaining,
   computeBaseTotals,
@@ -19,6 +20,7 @@ import {
   type ReachStat,
   type EnteredFlags,
   type BootInfo,
+  type BootCandidate,
 } from './scenarios'
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -196,13 +198,18 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   const [showFull, setShowFull] = useState(false)
   // Projected golden-boot winner (default = current leader). null = an unpicked player wins → nobody gets +10.
   const [bootWinner, setBootWinner] = useState<string | null>(boot.leader)
+  // Whether the user has actively CHOSEN a boot winner. false (default) = the boot is still open,
+  // so the odds sample the live race (incl. unpicked leaders like Messi) and the locks span every
+  // possible winner. true = the user pinned a winner, so we hold the boot to exactly that outcome.
+  const [bootPinned, setBootPinned] = useState(false)
   // Projected FINAL goal tally for the boot winner. Goals beyond his current count pay his
   // backers +3 each (POINTS_PER_GOAL), so choosing a lower-tally player only helps once you
   // give him enough goals to actually overtake the leader.
   const [bootGoals, setBootGoals] = useState<number>(boot.leader ? boot.goals[boot.leader] ?? 0 : 0)
-  const pickBoot = (name: string | null) => {
+  const pickBoot = (name: string | null, pin = true) => {
     setBootWinner(name)
     setBootGoals(name ? boot.goals[name] ?? 0 : 0)
+    setBootPinned(pin)
   }
 
   const [openBoot, setOpenBoot] = useState<string | null>(null)
@@ -265,15 +272,22 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   // Anyone (picked or not) sitting at the top projected total (co-)wins the boot in this scenario.
   const isBootWinner = (name: string) => projMax > 0 && (name === bootWinner ? bootGoals : boot.goals[name] ?? 0) === projMax
   const rows = useMemo(() => projectProvisional(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner), [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey])
-  // Two reachability views, differing only in how they treat the still-undecided golden boot:
-  //  • `reach` sweeps EVERY possible boot winner — powers the "who can finish where" cards,
-  //    which must still reveal that e.g. Kane taking the boot could drop you.
-  //  • `reachSel` pins the boot to the winner you've selected in the scenario (default = current
-  //    leader), exactly like an entered match result. So the live-table / odds locks reflect the
-  //    full what-if you built: pin a non-Kane boot and a #2 only Kane could break reads as locked
-  //    (100%🔒) instead of being capped at 99% for a boot swing you've already ruled out.
+  // Reachability, and which flavour drives the locks depends on whether you've pinned the boot:
+  //  • `reach` sweeps EVERY possible boot winner (each picked contender + an unpicked leader → nobody).
+  //    It's the honest, boot-open picture — used for the locks while the boot is still OPEN (default),
+  //    so a spot that only holds while Mbappé keeps the boot correctly reads as NOT locked.
+  //  • `reachSel` pins the boot to exactly the winner you chose — used once you actively pick one,
+  //    so "assuming this scorer wins" a spot only that assumption secures reads as locked (100%🔒).
   const reach = useMemo(() => computeReachability(users, base, info, bootCands, scenario, entered), [users, base, info, bootCands, scKey])
   const reachSel = useMemo(() => computeReachability(users, base, info, [bootWinner], scenario, entered), [users, base, info, bootWinner, scKey])
+  const lockReach = bootPinned ? reachSel : reach
+  // The live golden-boot race for the odds sim: every model scorer (picked + unpicked leaders like
+  // Messi) with his rate and current/live goals, so the boot winner is sampled from the real race
+  // rather than assumed — unless you've pinned a winner.
+  const bootModel = useMemo<BootCandidate[]>(
+    () => SCORERS.map(s => ({ name: s.name, team: s.team, rate: s.ratePerMatch, goals: boot.goals[s.name] ?? 0 })),
+    [boot],
+  )
 
   // Everything a bettor picked that still matters at the end — surfaced on click.
   const detailsOf = useMemo(
@@ -293,7 +307,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   // position is trivially "locked", so we don't badge those.
   const lockedAt = (label: string, rank: number) => {
     if (allEntered) return false
-    const s = reachSel.stats.get(label)
+    const s = lockReach.stats.get(label)
     return !!s && s.minRank === s.maxRank && s.minRank === rank
   }
 
@@ -317,7 +331,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
     setSfScores([dflt(sf1.scores), dflt(sf2.scores)])
     setFinalScore(dflt(info.finalScores))
     setThirdScore(dflt(info.thirdScores))
-    pickBoot(boot.leader)
+    pickBoot(boot.leader, false) // back to the open, race-sampled boot
   }
 
   const contenders = reach.contenders
@@ -329,19 +343,24 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
   const byPosition = useMemo(
     () =>
       [1, 2, 3, 4, 5].map(pos =>
-        [...reachSel.stats.values()]
+        [...lockReach.stats.values()]
           .filter(s => s.finishRanks.includes(pos))
           .sort((a, b) => a.minRank - b.minRank || b.basePts - a.basePts),
       ),
-    [reachSel],
+    [lockReach],
   )
 
   // Current standings position per bettor (from the live table) — shown beside the name in the
   // odds list, which is sorted by win chance, so it's clear who's climbing/falling.
   const rankOf = new Map(rows.map(r => [r.label, r.rank]))
-  // Live model-based odds for #1 / top-3, conditioned on whatever results are entered.
-  const chances = useMemo(() => simulateChances(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner), [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey])
-  const EMPTY_CH = { p1: 0, pos: [0, 0, 0, 0, 0] }
+  // Live model-based odds, conditioned on whatever results are entered. While the boot is open
+  // (not pinned) the winner is sampled from the live race so the numbers reflect the real chance an
+  // unpicked leader (Messi) grabs it; once you pin a winner we hold the boot to that choice.
+  const chances = useMemo(
+    () => simulateChances(users, base, info, scenario, entered, bootBonusWinners, bootExtraGoals, bootWinner, bootPinned ? null : bootModel),
+    [users, base, info, scKey, bootWinner, bootExtraGoals, bootBonusKey, bootPinned, bootModel],
+  )
+  const EMPTY_CH = { p1: 0, pos: [0, 0, 0, 0, 0], threat: null }
   const oddsRanked = useMemo(
     () =>
       users
@@ -353,26 +372,41 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
         }),
     [chances, users],
   )
-  const oddsList = oddsRanked.slice(0, 5)
-  // keep the picked player visible even when they've dropped out of the top 5
+  // Show EVERY bettor who can still finish in the top 5 (same set as the reachability cards
+  // below), not a hard top-5 cut — otherwise two players tied for the last spot (e.g. איתן and
+  // אורן, both ~50% for 5th) would have one silently dropped.
+  const oddsList = oddsRanked.filter(o => (lockReach.stats.get(o.label)?.minRank ?? 99) <= 5)
+  // keep the picked player visible even when they can't reach the top 5 at all
   const meOdds =
     me && !oddsList.some(o => o.label === me)
       ? oddsRanked.find(o => o.label === me) ?? { label: me, ...(chances.get(me) ?? EMPTY_CH) }
       : null
-  const pct = (p: number) => (p >= 0.995 ? '100%' : p >= 0.005 ? `${Math.round(p * 100)}%` : p > 0 ? '<1%' : '—')
-  // A single cell = the sampled probability of finishing EXACTLY at `position`. When the
-  // deterministic sweep (under the pinned boot) fixes the bettor to exactly that rank
-  // (min === max === position) it's a certainty → 100% + 🔒. Probabilities that round to 100%
-  // without such a lock are capped at 99% so the odds never claim a guarantee the sweep didn't
-  // confirm; unreachable ranks show "—".
+  // Cell text: one decimal in the high band so two near-certain spots (e.g. 99.4% vs 99.9%) read
+  // apart, and — without a deterministic lock — never a bare "100%" (capped at 99.9%).
+  const fmtCell = (p: number): string => {
+    if (p <= 0) return '—'
+    if (p >= 0.999) return '99.9%'
+    if (p >= 0.9) return `${(p * 100).toFixed(1)}%`
+    if (p >= 0.005) return `${Math.round(p * 100)}%`
+    return '<1%'
+  }
+  // A single cell = the sampled probability of finishing EXACTLY at `position`. When the sweep
+  // fixes the bettor to exactly that rank (min === max === position) it's a certainty → 100% + 🔒.
   const oddsCell = (label: string, p: number, position: number): ReactNode => {
-    const s = reachSel.stats.get(label)
+    const s = lockReach.stats.get(label)
     if (s && s.minRank === s.maxRank && s.minRank === position) {
       return <>100%<span className="sc-odds-lock" aria-label="נעול"> 🔒</span></>
     }
-    if (p <= 0) return '—'
-    return p >= 0.995 ? '99%' : pct(p)
+    return fmtCell(p)
   }
+  // The "who can still overtake you" line under a row: the rival most likely to take this bettor's
+  // usual spot in the sims they slip from it, with that chance. Nothing when they're pinned/locked.
+  const threatNote = (o: { threat: { label: string; pct: number } | null }): ReactNode =>
+    o.threat ? (
+      <span className="sc-odds-threat" title={`${o.threat.label} — ${fmtCell(o.threat.pct)} לעקוף`}>
+        ⚠ {firstName(o.threat.label)} — {fmtCell(o.threat.pct)} לעקוף
+      </span>
+    ) : null
   const POSITIONS = [1, 2, 3, 4, 5]
 
   const championDecided = !info.finalOpen || (entered.final && sfsKnown)
@@ -434,6 +468,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
             >
               <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(o.label)}</span><span className="sc-odds-nm">{firstName(o.label)}</span>{o.label === me && <span className="lb-me-badge">אני</span>}</span>
               {POSITIONS.map(pos => <span key={pos} className="sc-odds-p">{oddsCell(o.label, o.pos[pos - 1], pos)}</span>)}
+              {threatNote(o)}
             </button>
           ))}
           {meOdds && (
@@ -447,6 +482,7 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
               >
                 <span className="sc-odds-name"><span className="sc-odds-rank" title="מיקום נוכחי בטבלה">{rankOf.get(meOdds.label)}</span><span className="sc-odds-nm">{firstName(meOdds.label)}</span><span className="lb-me-badge">אני</span></span>
                 {POSITIONS.map(pos => <span key={pos} className="sc-odds-p">{oddsCell(meOdds.label, meOdds.pos[pos - 1], pos)}</span>)}
+                {threatNote(meOdds)}
               </button>
             </>
           )}
@@ -487,7 +523,11 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
         <div className="sc-boot-pick">
           <div className="sc-boot-pick-head">
             <span className="sc-boot-pick-title">⚽ נעל הזהב — מי יזכה?</span>
-            <span className="sc-boot-pick-sub">מי שהימר על הזוכה מקבל <b>+10</b> ועוד <b>+3</b> לכל גול שלו. תיקו בראש = <b>כולם זוכים</b>. אם מוביל שלא נבחר זוכה — אף אחד לא מקבל.</span>
+            <span className="sc-boot-pick-sub">
+              {bootPinned
+                ? <>קיבעתם זוכה — האחוזים והמנעולים מניחים שהוא לוקח. <button type="button" className="sc-boot-open" onClick={() => pickBoot(boot.leader, false)}>↺ פתח מחדש (לפי המרוץ)</button></>
+                : <>ברירת מחדל — <b>המרוץ החי</b> קובע: האחוזים מגלמים את הסיכוי שכל מוביל (כולל מסי) יחטוף. בחרו זוכה כדי לקבע תרחיש.</>}
+            </span>
           </div>
           <div className="sc-boot-opts">
             {boot.options.map(o => (
@@ -510,9 +550,9 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
             <div className="sc-boot-goals">
               <span className="sc-boot-goals-label">כמה גולים יסיים <b>{bootWinner}</b>?</span>
               <div className="sc-boot-goals-ctl">
-                <button type="button" className="sc-boot-goals-btn" onClick={() => setBootGoals(g => Math.min(bootCurGoals + 9, g + 1))} aria-label="עוד גול">+</button>
+                <button type="button" className="sc-boot-goals-btn" onClick={() => { setBootPinned(true); setBootGoals(g => Math.min(bootCurGoals + 9, g + 1)) }} aria-label="עוד גול">+</button>
                 <span className="sc-boot-goals-val">{bootGoals}</span>
-                <button type="button" className="sc-boot-goals-btn" onClick={() => setBootGoals(g => Math.max(bootCurGoals, g - 1))} disabled={bootGoals <= bootCurGoals} aria-label="פחות גולים">−</button>
+                <button type="button" className="sc-boot-goals-btn" onClick={() => { setBootPinned(true); setBootGoals(g => Math.max(bootCurGoals, g - 1)) }} disabled={bootGoals <= bootCurGoals} aria-label="פחות גולים">−</button>
               </div>
               <span className={`sc-boot-goals-hint${bootIsKing ? '' : ' sc-boot-goals-hint--warn'}`}>
                 {!bootIsKing

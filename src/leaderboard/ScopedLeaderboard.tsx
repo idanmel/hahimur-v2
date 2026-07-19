@@ -26,7 +26,7 @@ export default function ScopedLeaderboard({ users, results, realResults, scope, 
   bootRace?: Record<string, number>
   teamByPlayer?: Record<string, string>
 }) {
-  if (scope === 'prob') return <WinProbabilityView results={realResults} me={me} users={users} />
+  if (scope === 'prob') return <WinProbabilityView results={realResults} me={me} users={users} bootRace={bootRace} />
   if (scope === 'whatif') return <WhatIfChampionView results={realResults} me={me} users={users} bootRace={bootRace} teamByPlayer={teamByPlayer} />
   if (scope === 'records') return <RecordsView users={users} results={realResults} me={me} />
   if (scope === 'timelapse') return <TimelapseView users={users} results={results} me={me} />
