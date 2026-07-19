@@ -148,6 +148,21 @@ describe('golden boot', () => {
     expect(withRace.sweep).not.toContain('ליאו מסי')
   })
 
+  it('drops the "unpicked wins → nobody" outcome once the picked leader is uncatchable (race known)', () => {
+    // Race board supplied, but the only unpicked name sits far behind the (picked) leader — so no
+    // unpicked scorer can still (co-)win. "Nobody gets +10" is then impossible and must NOT be a
+    // sweep outcome, or boot-dependent positions would never lock despite ~100% odds.
+    const lead = Math.max(0, ...Object.values(tournamentResults.playerGoals ?? {}))
+    const decided = bootInfo(USERS, tournamentResults, info, {
+      race: { 'ליאו מסי': lead - 5 }, // well out of reach
+      teamByPlayer: { 'ליאו מסי': 'Argentina' },
+    })
+    expect(decided.options.some(o => !o.picked)).toBe(false)
+    expect(decided.sweep).not.toContain(null)
+    // …whereas with no race board at all we stay conservative and keep the null outcome
+    expect(bootInfo(USERS, tournamentResults, info).sweep).toContain(null)
+  })
+
   it('awards +10 to the winner’s backers only', () => {
     const kaneBacker = USERS.find(u => u.topGoalscorer === 'הארי קיין')!
     expect(bootBonus(kaneBacker, 'הארי קיין')).toBe(10)

@@ -34,10 +34,6 @@ function poisson(lambda: number): number {
   return k - 1
 }
 
-// Scorers actually picked by bettors — the only ones whose real goals we track,
-// so only these get the banked-goals treatment in the golden-boot model.
-const TRACKED_SCORERS = new Set(USERS.map(u => u.topGoalscorer).filter(Boolean))
-
 // The goal-rate model (λ = BASE·att·def + host edge) lives in src/shared/lambdas
 // so the per-match card odds and this engine can't drift apart.
 function sampleScore(home: string, away: string): MatchScores {
@@ -115,22 +111,19 @@ export function simulateTournament(
 
   const koMatches = [...koStages.r32, ...koStages.r16, ...koStages.qf, ...koStages.sf, ...koStages.thirdPlace, ...koStages.final]
   const teamGames = (team: string) => 3 + koMatches.filter(m => m.home === team || m.away === team).length
-  // A scorer with a KNOWN real tally — every picked scorer, plus any unpicked leader whose
-  // live goals were supplied (e.g. Messi from the ESPN race) — carries those banked goals over
-  // and only randomizes his team's remaining games, so a scorer already sitting on 6 goals with
-  // the final left can't be modelled "from zero". Scorers we have no tally for keep the full-
-  // tournament estimate, so we don't deflate the field the picks compete against for the boot.
+  // Every scorer is modelled the same way the "מה אם" boot race is: his banked goals (the real
+  // tally when we have one — every picked scorer, plus any unpicked leader supplied from the ESPN
+  // race like Messi — otherwise 0) plus only his team's REMAINING games at Poisson(rate). Using
+  // remaining, not the whole tournament, is what stops an untracked scorer from being credited a
+  // full tournament's worth in the endgame variance and thus "passing" a frozen leader far too
+  // often. At kickoff realGames=0 so this equals the full-tournament estimate; the gap only opens
+  // as games are played — exactly when the stale estimate would otherwise over-credit the field.
   const playerGoals: Record<string, number> = {}
   let bootMax = -1, bootWinners: string[] = []
   for (const sc of SCORERS) {
-    let goals: number
-    if (TRACKED_SCORERS.has(sc.name) || realGoals[sc.name] !== undefined) {
-      const banked = realGoals[sc.name] ?? 0
-      const remaining = Math.max(0, teamGames(sc.team) - (realGames.get(sc.team) ?? 0))
-      goals = banked + poisson(sc.ratePerMatch * remaining)
-    } else {
-      goals = poisson(sc.ratePerMatch * teamGames(sc.team))
-    }
+    const banked = realGoals[sc.name] ?? 0
+    const remaining = Math.max(0, teamGames(sc.team) - (realGames.get(sc.team) ?? 0))
+    const goals = banked + poisson(sc.ratePerMatch * remaining)
     playerGoals[sc.name] = goals
     if (goals > bootMax) { bootMax = goals; bootWinners = [sc.name] }
     else if (goals === bootMax) bootWinners.push(sc.name)

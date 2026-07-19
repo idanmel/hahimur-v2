@@ -179,7 +179,15 @@ export function bootInfo(
     .filter(o => o.goals >= lead || (o.alive && o.goals >= lead - BOOT_GAP))
     .sort((a, b) => b.goals - a.goals || (a.picked === b.picked ? 0 : a.picked ? -1 : 1) || a.name.localeCompare(b.name, 'he'))
 
-  const sweep: (string | null)[] = [...relevant.filter(o => o.picked).map(o => o.name), null]
+  // The sweep is every PICKED contender, plus `null` — "an UNPICKED player wins → nobody gets
+  // +10" — but only when that's actually still possible. With a live race board we can tell: keep
+  // null only if some unpicked scorer is still a relevant contender. Once the leader is a picked
+  // player nobody can catch (e.g. Mbappé frozen on 10 with the final left), null is infeasible and
+  // dropping it lets positions that hinge on that +10 lock correctly instead of reading 99.9%.
+  // Without a race board we don't know the unpicked field, so we stay conservative and keep null.
+  const raceKnown = opts?.race !== undefined
+  const includeNull = raceKnown ? relevant.some(o => !o.picked) : true
+  const sweep: (string | null)[] = [...relevant.filter(o => o.picked).map(o => o.name), ...(includeNull ? [null] : [])]
   return { options: relevant, sweep, leader: relevant[0]?.name ?? null, goals: goalsOf }
 }
 
