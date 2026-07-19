@@ -381,14 +381,16 @@ function Explorer({ users, info, base, baseRank, boot, me }: {
     me && !oddsList.some(o => o.label === me)
       ? oddsRanked.find(o => o.label === me) ?? { label: me, ...(chances.get(me) ?? EMPTY_CH) }
       : null
-  // Cell text: one decimal in the high band so two near-certain spots (e.g. 99.4% vs 99.9%) read
-  // apart, and — without a deterministic lock — never a bare "100%" (capped at 99.9%).
+  // Cell text: one decimal in BOTH tails so a near-certain spot and its tiny complement read
+  // consistently (99.3% ↔ 0.7%, not "99.3%" ↔ "1%"); the mid band stays integer. Without a
+  // deterministic lock we never print a bare "100%" (capped at 99.9%).
   const fmtCell = (p: number): string => {
     if (p <= 0) return '—'
     if (p >= 0.999) return '99.9%'
-    if (p >= 0.9) return `${(p * 100).toFixed(1)}%`
-    if (p >= 0.005) return `${Math.round(p * 100)}%`
-    return '<1%'
+    if (p >= 0.9) return `${(p * 100).toFixed(1)}%` // high tail
+    if (p >= 0.1) return `${Math.round(p * 100)}%` // mid band
+    if (p * 100 >= 0.05) return `${(p * 100).toFixed(1)}%` // low tail (e.g. 0.7%)
+    return '<0.1%'
   }
   // A single cell = the sampled probability of finishing EXACTLY at `position`. When the sweep
   // fixes the bettor to exactly that rank (min === max === position) it's a certainty → 100% + 🔒.
