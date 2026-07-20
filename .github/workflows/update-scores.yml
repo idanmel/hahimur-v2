@@ -1,8 +1,6 @@
 name: Update match scores
 
 on:
-  schedule:
-    - cron: '*/5 * * 6,7 *' # every 5 minutes during June–July (tournament window)
   workflow_dispatch:
     inputs:
       fake_finished:
