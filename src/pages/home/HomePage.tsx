@@ -1,6 +1,6 @@
 import PageLayout from '../../shared/PageLayout'
-import Countdown from '../../shared/Countdown'
 import { useCurrentUser } from '../../shared/useCurrentUser'
+import ChampionHero from './ChampionHero'
 import TournamentWrapCard from './TournamentWrapCard'
 import LeaderboardGlance from './LeaderboardGlance'
 import RivalryEntry from './RivalryEntry'
@@ -8,8 +8,6 @@ import { USERS } from '../../users/index'
 import { tournamentResults } from '../../tournament-results'
 import { useLiveResults } from '../../shared/useLiveResults'
 import { OLEH_POINTS, PLACE_POINT, ROUND_POINTS, POINTS_PER_GOAL, GOLDEN_BOOT_BONUS } from '../../leaderboard/points'
-
-const FIRST_MATCH = new Date('2026-06-11T19:00:00Z')
 
 export default function HomePage() {
   const { currentUser } = useCurrentUser()
@@ -19,12 +17,14 @@ export default function HomePage() {
 
   return (
     <PageLayout title="ההימור 2026">
-      <Countdown targetDate={FIRST_MATCH} label="לשריקת הפתיחה" />
+      {/* Karni's win is the story of the page — it opens full-bleed, in the
+          navy band the countdown occupied while the tournament was ahead. */}
+      <ChampionHero users={USERS} results={tournamentResults} />
       <LeaderboardGlance users={USERS} results={liveResults} currentUser={currentUser} />
       <RivalryEntry users={USERS} results={liveResults} />
       {/* The match feed's permanent replacement — the tournament is over, so the
           card that once rotated fixtures now closes the story instead. */}
-      <TournamentWrapCard users={USERS} results={tournamentResults} />
+      <TournamentWrapCard results={tournamentResults} />
 
       <main dir="rtl" style={{ maxWidth: '700px', margin: '0 auto', padding: '3rem 1.5rem', fontSize: '1.1rem', lineHeight: '1.9' }}>
         <p>ברוכים הבאים להימור המסורתי שלנו!</p>

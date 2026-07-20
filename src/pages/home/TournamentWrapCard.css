@@ -60,10 +60,6 @@
   color: var(--navy);
 }
 
-.wrap-card__line--pool strong {
-  color: var(--medal-gold);
-}
-
 .wrap-card__line-emoji {
   margin-left: 0.4rem;
 }

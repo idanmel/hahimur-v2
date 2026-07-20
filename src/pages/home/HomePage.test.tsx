@@ -6,6 +6,16 @@ afterEach(() => {
   localStorage.clear()
 })
 
+test('the champion hero opens the page, above everything else', () => {
+  render(<HomePage />)
+  const hero = screen.getByTestId('champion-hero')
+  expect(hero).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'יונתן קרני' })).toBeInTheDocument()
+  // The win is the centerpiece: nothing renders above the hero.
+  const topThree = screen.getByTestId('top-three')
+  expect(hero.compareDocumentPosition(topThree) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
 test('home page shows the tournament wrap card now that the tournament is over', () => {
   render(<HomePage />)
   expect(screen.getByTestId('tournament-wrap')).toBeInTheDocument()

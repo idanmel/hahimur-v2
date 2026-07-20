@@ -1,0 +1,193 @@
+/* ── Champion Hero ──────────────────────────────────────────────
+   The navy victory band that opens the home page. Same poster
+   language as the old countdown: navy field, gold hardware, Bebas
+   eyebrows — but turned all the way up for the celebration. */
+
+.champion-hero {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(115% 130% at 50% 118%, #14396e 0%, var(--navy) 55%, #071831 100%);
+  border-bottom: 2px solid rgba(212, 160, 22, 0.45);
+  padding: 2.6rem 1.25rem 2.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Vintage sunburst radiating from behind the trophy. */
+.champion-hero__rays {
+  position: absolute;
+  inset: -55% -25%;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 62%,
+    rgba(212, 160, 22, 0.11) 0deg 7deg,
+    transparent 7deg 22deg
+  );
+  animation: hero-rays-turn 90s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes hero-rays-turn {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Confetti ── */
+
+.champion-hero__confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.champion-hero__piece {
+  position: absolute;
+  top: -12px;
+  width: 7px;
+  height: 11px;
+  border-radius: 1px;
+  opacity: 0;
+  animation: hero-confetti-fall 7s linear infinite;
+}
+
+@keyframes hero-confetti-fall {
+  0%   { transform: translateY(-5%) rotate(0deg) rotateY(0deg); opacity: 0; }
+  6%   { opacity: 0.85; }
+  85%  { opacity: 0.85; }
+  100% { transform: translateY(2600%) rotate(200deg) rotateY(720deg); opacity: 0; }
+}
+
+.champion-hero__piece--0  { left: 4%;  background: var(--gold);  animation-delay: 0s; }
+.champion-hero__piece--1  { left: 12%; background: var(--red);   animation-delay: 2.6s; }
+.champion-hero__piece--2  { left: 19%; background: var(--cream); animation-delay: 1.1s; }
+.champion-hero__piece--3  { left: 27%; background: var(--gold);  animation-delay: 4.4s; }
+.champion-hero__piece--4  { left: 34%; background: var(--pink);  animation-delay: 0.7s; }
+.champion-hero__piece--5  { left: 41%; background: var(--cream); animation-delay: 3.4s; }
+.champion-hero__piece--6  { left: 49%; background: var(--gold);  animation-delay: 5.6s; }
+.champion-hero__piece--7  { left: 56%; background: var(--red);   animation-delay: 1.9s; }
+.champion-hero__piece--8  { left: 63%; background: var(--cream); animation-delay: 4.9s; }
+.champion-hero__piece--9  { left: 71%; background: var(--gold);  animation-delay: 0.3s; }
+.champion-hero__piece--10 { left: 78%; background: var(--pink);  animation-delay: 3s; }
+.champion-hero__piece--11 { left: 85%; background: var(--cream); animation-delay: 5.2s; }
+.champion-hero__piece--12 { left: 91%; background: var(--gold);  animation-delay: 2.2s; }
+.champion-hero__piece--13 { left: 96%; background: var(--red);   animation-delay: 6.1s; }
+
+/* ── Content, staggered in ── */
+
+@keyframes hero-rise {
+  0%   { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.champion-hero__eyebrow,
+.champion-hero__trophy,
+.champion-hero__name,
+.champion-hero__points,
+.champion-hero__margin,
+.champion-hero__link {
+  position: relative;
+  animation: hero-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.champion-hero__eyebrow {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.42em;
+  color: rgba(212, 160, 22, 0.75);
+  margin: 0 0 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation-delay: 0.05s;
+}
+
+.champion-hero__eyebrow::before,
+.champion-hero__eyebrow::after {
+  content: '';
+  display: block;
+  width: 1.75rem;
+  height: 1px;
+  background: rgba(212, 160, 22, 0.35);
+}
+
+.champion-hero__trophy {
+  font-size: 3.4rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 6px 22px rgba(212, 160, 22, 0.45));
+  animation-delay: 0.15s;
+}
+
+.champion-hero__name {
+  font-family: 'Heebo', sans-serif;
+  font-weight: 900;
+  font-size: clamp(2.5rem, 9vw, 4.2rem);
+  line-height: 1.1;
+  color: var(--cream);
+  margin: 0 0 0.8rem;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 0 38px rgba(212, 160, 22, 0.35);
+  animation-delay: 0.25s;
+}
+
+.champion-hero__points {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  background: linear-gradient(180deg, #E4B62E 0%, var(--gold) 60%, #B3860F 100%);
+  color: var(--navy);
+  border-radius: 4px;
+  padding: 0.32em 0.9em 0.36em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  animation-delay: 0.38s;
+}
+
+.champion-hero__points-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.9rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.champion-hero__points-unit {
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.champion-hero__margin {
+  font-size: 0.85rem;
+  color: rgba(239, 228, 184, 0.62);
+  margin: 0.9rem 0 0;
+  letter-spacing: 0.03em;
+  animation-delay: 0.5s;
+}
+
+.champion-hero__link {
+  margin-top: 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-decoration: none;
+  animation-delay: 0.6s;
+}
+
+.champion-hero__link:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .champion-hero__rays,
+  .champion-hero__piece,
+  .champion-hero__eyebrow,
+  .champion-hero__trophy,
+  .champion-hero__name,
+  .champion-hero__points,
+  .champion-hero__margin,
+  .champion-hero__link {
+    animation: none;
+  }
+  .champion-hero__piece { display: none; }
+}
