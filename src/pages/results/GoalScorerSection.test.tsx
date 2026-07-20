@@ -8,6 +8,7 @@ function setup(
   realGoals: Record<string, number> = {},
   defaultWinner: string[] = [],
   eliminatedPlayers: string[] = [],
+  locked = false,
 ) {
   const onChange = vi.fn()
   render(
@@ -16,6 +17,7 @@ function setup(
       realGoals={realGoals}
       defaultWinner={defaultWinner}
       eliminatedPlayers={eliminatedPlayers}
+      locked={locked}
       onChange={onChange}
     />
   )
@@ -148,5 +150,33 @@ describe('GoalScorerSection', () => {
   test('nobody is marked out before any goals are scored', () => {
     setup(['Messi', 'Kane'], {}, [], ['Kane'])
     expect(screen.queryByText('מחוץ למירוץ')).not.toBeInTheDocument()
+  })
+
+  describe('locked (race decided)', () => {
+    test('renders no editable controls', () => {
+      setup(['Messi', 'Kane'], { Messi: 10, Kane: 8 }, ['Messi'], [], true)
+      expect(screen.queryAllByRole('spinbutton')).toHaveLength(0)
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+    })
+
+    test('shows the final goal totals as static text', () => {
+      setup(['Messi', 'Kane'], { Messi: 10, Kane: 8 }, ['Messi'], [], true)
+      expect(screen.getByTestId('goals-Messi')).toHaveTextContent('10')
+      expect(screen.getByTestId('goals-Kane')).toHaveTextContent('8')
+    })
+
+    test('marks the winner row, and only it', () => {
+      setup(['Messi', 'Kane'], { Messi: 10, Kane: 8 }, ['Messi'], [], true)
+      const medal = screen.getByTestId('winner-medal')
+      expect(medal.closest('.pg-scorer-row')).toHaveClass('pg-scorer-row--winner')
+      expect(medal.closest('.pg-scorer-row')).toHaveTextContent('Messi')
+      // The race is over — nobody is "leading" anymore.
+      expect(screen.queryByText('מוביל')).not.toBeInTheDocument()
+    })
+
+    test('does not badge trailing players "מחוץ למירוץ" — the race is over for everyone', () => {
+      setup(['Messi', 'Kane'], { Messi: 10, Kane: 8 }, ['Messi'], ['Kane'], true)
+      expect(screen.queryByText('מחוץ למירוץ')).not.toBeInTheDocument()
+    })
   })
 })

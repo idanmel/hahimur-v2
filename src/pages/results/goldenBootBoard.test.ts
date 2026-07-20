@@ -96,6 +96,23 @@ describe('buildGoldenBootBoard', () => {
     expect(realGoals['הולאנד']).toBe(5)
   })
 
+  it('keeps a trailing done-scoring player when the race is decided (final standings)', () => {
+    const { players, realGoals } = buildGoldenBootBoard({
+      pickedPlayers: ['אמבפה'],
+      pickedGoals: { אמבפה: 10 },
+      espnTotals: { 'Kylian Mbappé': 10, 'Lionel Messi': 8 },
+      pickedEspnNames,
+      nameMap,
+      teamByPlayer: { מסי: 'Argentina' },
+      doneScoringTeams: new Set(['Argentina']),
+      raceDecided: true,
+    })
+    // The tournament is over — the board is the final standings, and the
+    // runner-up belongs on it even though he can no longer win.
+    expect(players).toEqual(['אמבפה', 'מסי'])
+    expect(realGoals['מסי']).toBe(8)
+  })
+
   it('falls back to the Latin name for an uncurated leader', () => {
     const { players, realGoals } = buildGoldenBootBoard({
       pickedPlayers: ['אמבפה'],

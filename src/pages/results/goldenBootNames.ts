@@ -16,6 +16,8 @@ import { TEAM_BY_PICKED } from '../../shared/scorers'
 export const GOLDEN_BOOT_NAMES: Record<string, string> = {
   'Lionel Messi': 'ליאו מסי',
   'Erling Haaland': 'ארלינג הולאנד',
+  'Jude Bellingham': 'ג׳וד בלינגהאם',
+  'Julián Quiñones': 'חוליאן קיניונס',
   'Julián Álvarez': 'חוליאן אלברס',
   'Cristiano Ronaldo': 'כריסטיאנו רונאלדו',
   'Ousmane Dembélé': 'עוסמאן דמבלה',
@@ -46,6 +48,8 @@ export const TEAM_BY_PLAYER: Record<string, string> = {
   // curated unpicked contenders
   'ליאו מסי': 'Argentina',
   'ארלינג הולאנד': 'Norway',
+  'ג׳וד בלינגהאם': 'England',
+  'חוליאן קיניונס': 'Mexico',
   'חוליאן אלברס': 'Argentina',
   'כריסטיאנו רונאלדו': 'Portugal',
   'עוסמאן דמבלה': 'France',

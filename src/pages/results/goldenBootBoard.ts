@@ -34,8 +34,11 @@ export function buildGoldenBootBoard(args: {
   // Teams with no match left to play (NOT merely eliminated — a semi-final loser
   // is out of the tournament yet still plays the third-place match and can score).
   doneScoringTeams?: Set<string>
+  // The real winner is baked into tournament-results: the board is now the FINAL
+  // standings, so nobody is "infeasible" — every contender above the bar stays.
+  raceDecided?: boolean
 }): RaceBoard {
-  const { pickedPlayers, pickedGoals, espnTotals, pickedEspnNames, nameMap } = args
+  const { pickedPlayers, pickedGoals, espnTotals, pickedEspnNames, nameMap, raceDecided } = args
   const teamByPlayer = args.teamByPlayer ?? {}
   const doneScoringTeams = args.doneScoringTeams ?? new Set<string>()
 
@@ -59,7 +62,7 @@ export function buildGoldenBootBoard(args: {
     if (goals < RACE_BOARD_MIN_GOALS) continue
     const he = nameMap[espnName] ?? espnName
     const team = teamByPlayer[he]
-    if (team != null && doneScoringTeams.has(team) && goals < lead) continue
+    if (!raceDecided && team != null && doneScoringTeams.has(team) && goals < lead) continue
     if (he in realGoals) continue // already shown (picked, or an earlier alias)
     players.push(he)
     realGoals[he] = goals

@@ -67,6 +67,13 @@ picked or not — no football-data, no token, no cron, no repo snapshot.
   on him. An eliminated unpicked player **at** the lead stays — he can still (co-)win, which is
   what denies everyone the bonus. Picked players are never dropped; they get the "מחוץ למירוץ"
   badge instead.
+- **Race decided → the board is the final standings** (added 2026-07-20, the Messi case): once the
+  real `goldenBootWinner` is baked into tournament-results, the drop rule above is disabled
+  (`raceDecided` in goldenBootBoard.ts) — with every team done playing it would erase every
+  *curated* unpicked contender below the lead (the real runner-up Messi at 8) while uncurated
+  Latin-fallback rows (no team mapping) survived. The final board keeps everyone above the 4-goal
+  bar, renders read-only (`locked` on GoalScorerSection: static totals, a winner medal instead of
+  the checkbox), and drops the "מוביל"/"מחוץ למירוץ" badges — the race is over for everyone.
 - **Visual leader only.** The "מוביל" highlight is derived from max goals for *display*; it does
   **not** auto-award the +10. `goldenBootWinner` stays undefined by default (no premature bonus mid-
   tournament, matching today). The **checkbox remains the manual what-if** that awards the bonus.

@@ -34,6 +34,9 @@ import '../../pages/form/FormPage.css'
 import './ResultsPage.css'
 
 const LOCKED_MATCH_IDS = getLockedMatchIds(realTournamentResults)
+// The Golden Boot race is decided once the real winner is baked into the
+// results — from then on the race board is display-only, like a played match.
+const BOOT_RACE_LOCKED = realTournamentResults.goldenBootWinner != null
 // Teams that can no longer add goals — eliminated AND with no match left to play
 // (a semi-final loser still has the third-place match, so their strikers stay in
 // the race; see teamsWithNoMatchesLeft). Drives the Golden Boot "out of the race"
@@ -148,6 +151,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
       nameMap: GOLDEN_BOOT_NAMES,
       teamByPlayer: TEAM_BY_PLAYER,
       doneScoringTeams: DONE_SCORING_TEAMS,
+      raceDecided: BOOT_RACE_LOCKED,
     }),
     [players, espnTotals],
   )
@@ -474,6 +478,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
               defaultWinner={goalScorerState.goldenBootWinner}
               pickersByPlayer={pickersByPlayer(users)}
               eliminatedPlayers={eliminatedPlayers}
+              locked={BOOT_RACE_LOCKED}
               onChange={(goals, winners) => setGoalScorerState({
                 // Keep playerGoals picked-only: unpicked race-board rows must
                 // never leak into points / the win-prob sim / Records, which all

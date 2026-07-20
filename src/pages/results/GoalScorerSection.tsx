@@ -12,6 +12,9 @@ interface Props {
   // the live lead below, a trailing one is flagged "out of the race" — they can't
   // add goals, so they can never (co-)win the Golden Boot.
   eliminatedPlayers?: string[]
+  // The race is decided (the real winner is baked into tournament-results).
+  // Renders static totals and a winner medal instead of editable controls.
+  locked?: boolean
   onChange: (goals: Record<string, number>, winners: string[]) => void
 }
 
@@ -42,7 +45,7 @@ function PlayerGoalInput({ player, min, value, onCommit }: {
   )
 }
 
-export default function GoalScorerSection({ players, realGoals, defaultWinner, pickersByPlayer, eliminatedPlayers, onChange }: Props) {
+export default function GoalScorerSection({ players, realGoals, defaultWinner, pickersByPlayer, eliminatedPlayers, locked = false, onChange }: Props) {
   const [playerGoals, setPlayerGoals] = useState<Record<string, number>>(realGoals)
   const [goldenBootWinners, setGoldenBootWinners] = useState<string[]>(defaultWinner)
 
@@ -109,7 +112,9 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
           const isWinner = goldenBootWinners.includes(player)
           // Out of the race: team already eliminated AND already behind the lead,
           // so their goal count is frozen below a total they can never reach.
-          const isOut = eliminated.has(player) && maxGoals > 0 && (playerGoals[player] ?? 0) < maxGoals
+          // (Suppressed once the race is decided — "out of the race" is noise
+          // when the race is over for everyone.)
+          const isOut = !locked && eliminated.has(player) && maxGoals > 0 && (playerGoals[player] ?? 0) < maxGoals
           const iso = TEAMS[TEAM_BY_PLAYER[player] ?? '']?.iso
           const barPct = maxGoals > 0 ? ((playerGoals[player] ?? 0) / maxGoals) * 100 : 0
           return (
@@ -126,7 +131,7 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
             <div className="pg-scorer-player">
               <span className="pg-scorer-name">
                 {player}
-                {isLeader ? <span className="pg-scorer-leader-badge"><span className="pg-scorer-leader-star" aria-hidden="true">★</span>מוביל</span> : null}
+                {isLeader && !locked ? <span className="pg-scorer-leader-badge"><span className="pg-scorer-leader-star" aria-hidden="true">★</span>מוביל</span> : null}
                 {isOut ? <span className="pg-scorer-out-badge">מחוץ למירוץ</span> : null}
               </span>
               {pickersByPlayer?.[player]?.length ? (
@@ -137,21 +142,34 @@ export default function GoalScorerSection({ players, realGoals, defaultWinner, p
                 </div>
               ) : null}
             </div>
-            <PlayerGoalInput
-              key={playerGoals[player] ?? 0}
-              player={player}
-              min={realGoals[player] ?? 0}
-              value={playerGoals[player] ?? 0}
-              onCommit={val => commitGoals(player, val)}
-            />
-            <input
-              type="checkbox"
-              aria-label={player}
-              className="pg-scorer-checkbox"
-              checked={isWinner}
-              disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
-              onChange={toggleWinners}
-            />
+            {locked ? (
+              <span className="pg-scorer-goals-static" data-testid={`goals-${player}`}>{playerGoals[player] ?? 0}</span>
+            ) : (
+              <PlayerGoalInput
+                key={playerGoals[player] ?? 0}
+                player={player}
+                min={realGoals[player] ?? 0}
+                value={playerGoals[player] ?? 0}
+                onCommit={val => commitGoals(player, val)}
+              />
+            )}
+            {locked ? (
+              <span
+                className={`pg-scorer-medal${isWinner ? ' pg-scorer-medal--won' : ''}`}
+                data-testid={isWinner ? 'winner-medal' : undefined}
+                aria-label={isWinner ? `${player} — זוכה בנעל הזהב` : undefined}
+                aria-hidden={isWinner ? undefined : true}
+              >★</span>
+            ) : (
+              <input
+                type="checkbox"
+                aria-label={player}
+                className="pg-scorer-checkbox"
+                checked={isWinner}
+                disabled={maxGoals === 0 || (playerGoals[player] ?? 0) < maxGoals}
+                onChange={toggleWinners}
+              />
+            )}
           </div>
           )
         })}
