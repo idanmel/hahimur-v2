@@ -17,8 +17,6 @@ export default function ChampionHero({ users, results }: Props) {
 
   const ranks = competitionRanks(rows, row => row.total)
   const winners = rows.filter((_, i) => ranks[i] === 1)
-  const runnerUp = rows.find((_, i) => ranks[i] !== 1)
-  const margin = runnerUp ? winners[0].total - runnerUp.total : 0
 
   return (
     <section className="champion-hero" dir="rtl" data-testid="champion-hero">
@@ -36,9 +34,6 @@ export default function ChampionHero({ users, results }: Props) {
         <span className="champion-hero__points-value" dir="ltr">{winners[0].total}</span>
         <span className="champion-hero__points-unit">נקודות</span>
       </div>
-      {margin > 0 && (
-        <p className="champion-hero__margin">{margin} נקודות מעל המקום השני</p>
-      )}
       <a className="champion-hero__link" href="/results">לטבלה המלאה ›</a>
     </section>
   )

@@ -83,7 +83,6 @@
 .champion-hero__trophy,
 .champion-hero__name,
 .champion-hero__points,
-.champion-hero__margin,
 .champion-hero__link {
   position: relative;
   animation: hero-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -157,14 +156,6 @@
   font-weight: 700;
 }
 
-.champion-hero__margin {
-  font-size: 0.85rem;
-  color: rgba(239, 228, 184, 0.62);
-  margin: 0.9rem 0 0;
-  letter-spacing: 0.03em;
-  animation-delay: 0.5s;
-}
-
 .champion-hero__link {
   margin-top: 1.1rem;
   font-size: 0.85rem;
@@ -185,7 +176,6 @@
   .champion-hero__trophy,
   .champion-hero__name,
   .champion-hero__points,
-  .champion-hero__margin,
   .champion-hero__link {
     animation: none;
   }

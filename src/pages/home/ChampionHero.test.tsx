@@ -14,13 +14,6 @@ test('the hero crowns the pool champion by name and total', () => {
   expect(screen.getByText(/זוכה ההימור/)).toBeInTheDocument()
 })
 
-test('the hero shows the winning margin over the runner-up', () => {
-  render(<ChampionHero users={USERS} results={tournamentResults} />)
-
-  // 612 − 521 = a 91-point landslide
-  expect(screen.getByText(/91 נקודות מעל המקום השני/)).toBeInTheDocument()
-})
-
 test('the hero links to the full results page', () => {
   render(<ChampionHero users={USERS} results={tournamentResults} />)
 
