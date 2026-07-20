@@ -1,31 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { vi, afterEach } from 'vitest'
+import { afterEach } from 'vitest'
 import HomePage from './HomePage'
 
-// Pin the home feed to a fixed upcoming fixture so these wiring tests don't hinge
-// on how far the real tournament has progressed (once every group match has a score,
-// the live data has no "upcoming" match left to show). B1 is one עידן predicted, so
-// the your-prediction assertions still exercise a real user's pick.
-vi.mock('./nextMatch', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./nextMatch')>()
-  return {
-    ...actual,
-    SCORED_MATCHES: [
-      { id: 'B1', homeTeam: 'Canada', awayTeam: 'Bosnia and Herzegovina', matchDate: '20 ביוני', kickoffIST: '22:00' },
-    ],
-  }
-})
-
 afterEach(() => {
-  vi.useRealTimers()
   localStorage.clear()
 })
 
-test('home page shows the upcoming match cards during the group stage', () => {
-  vi.useFakeTimers()
-  vi.setSystemTime(new Date('2026-06-12T00:00:00Z'))
+test('home page shows the tournament wrap card now that the tournament is over', () => {
   render(<HomePage />)
-  expect(screen.getAllByTestId('next-match').length).toBeGreaterThanOrEqual(1)
+  expect(screen.getByTestId('tournament-wrap')).toBeInTheDocument()
+  expect(screen.getByText('אלופת העולם 2026')).toBeInTheDocument()
 })
 
 test('home page shows the top three card', () => {
@@ -41,19 +25,7 @@ test('home page shows the global name picker with no one selected by default', (
   expect(screen.getByRole('combobox')).toHaveValue('')
 })
 
-test('picking a name shows that user\'s own prediction on an upcoming match', () => {
-  vi.useFakeTimers()
-  vi.setSystemTime(new Date('2026-06-12T00:00:00Z')) // group stage
-  render(<HomePage />)
-  expect(screen.queryByTestId('your-prediction')).not.toBeInTheDocument()
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'עידן מלמד' } })
-  fireEvent.click(screen.getByRole('tab', { name: 'המשחקים הבאים' })) // upcoming fixtures
-  expect(screen.getAllByTestId('your-prediction').length).toBeGreaterThanOrEqual(1)
-})
-
 test('remembers the picked name across reloads', () => {
-  vi.useFakeTimers()
-  vi.setSystemTime(new Date('2026-06-12T00:00:00Z')) // group stage
   const first = render(<HomePage />)
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'עידן מלמד' } })
   first.unmount()
@@ -61,8 +33,6 @@ test('remembers the picked name across reloads', () => {
   render(<HomePage />) // a fresh mount stands in for a page reload
   // Identified now, so the picker has collapsed to the greeting — the name persists there.
   expect(screen.getByRole('button', { name: /עידן מלמד/ })).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('tab', { name: 'המשחקים הבאים' })) // upcoming fixtures
-  expect(screen.getAllByTestId('your-prediction').length).toBeGreaterThanOrEqual(1)
 })
 
 test('home page shows title', () => {

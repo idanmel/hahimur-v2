@@ -1,0 +1,82 @@
+.wrap-card {
+  max-width: 480px;
+  margin: 2rem auto 0;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.wrap-card__label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.45em;
+  color: var(--gold);
+  margin-bottom: 1rem;
+  line-height: 1;
+}
+
+.wrap-card__champion {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.wrap-card__trophy {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.35rem;
+}
+
+.wrap-card__flag {
+  font-size: 1.6rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.wrap-card__champion-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--navy);
+  margin-top: 0.4rem;
+  line-height: 1.2;
+}
+
+.wrap-card__champion-sub {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+
+.wrap-card__line {
+  font-size: 0.95rem;
+  color: var(--ink);
+  margin: 0.4rem 0;
+}
+
+.wrap-card__line strong {
+  color: var(--navy);
+}
+
+.wrap-card__line--pool strong {
+  color: var(--medal-gold);
+}
+
+.wrap-card__line-emoji {
+  margin-left: 0.4rem;
+}
+
+.wrap-card__link {
+  display: inline-block;
+  margin-top: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--navy);
+  text-decoration: none;
+}
+
+.wrap-card__link:hover {
+  text-decoration: underline;
+}
