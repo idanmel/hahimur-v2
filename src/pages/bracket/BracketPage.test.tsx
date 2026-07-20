@@ -20,8 +20,10 @@ afterEach(() => {
 
 test('renders every knockout round heading', () => {
   render(<BracketPage users={USERS_SORTED} />)
+  // Query by heading role: the points table below the board also has a "גמר"
+  // column header, so a bare text query matches more than the round title.
   for (const heading of ['שלב ה-32', 'שמינית גמר', 'רבע גמר', 'חצי גמר', 'מקום שלישי', 'גמר']) {
-    expect(screen.getByText(heading)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
   }
 })
 

@@ -4,6 +4,7 @@ import { deriveGroupStatus } from './shared/groupStatus.ts'
 import { getThirdPlaceTeams, qualifyBestThirdPlace } from './formView/thirdPlace/thirdPlace.ts'
 import { deriveKnockoutStages } from './formView/knockout/deriveKnockoutStages.ts'
 import { koAdvancer } from './formView/knockout/koRounds.ts'
+import type { PickedScorer } from './shared/scorers.ts'
 // Real goals by picked players: player → match ID → goals in that match.
 // Lives in real-goals.json so the cron (scripts/results-file.ts) can read and
 // write it as plain JSON. Keys must be canonical PICKED_SCORERS names
@@ -170,4 +171,14 @@ export function buildTournamentResults(
   }
 }
 
-export const tournamentResults: TournamentResults = buildTournamentResults(groupScores, koScores, realGoals)
+// The Golden Boot can't be derived from the entered scores: playerGoals is
+// picked-only, so a real unpicked leader (the Messi case) would be invisible to
+// any max-goals derivation. Entered by hand once the race is decided, keyed by
+// the canonical PICKED_SCORERS name — the type rejects a misspelling that would
+// silently pay nobody the bonus.
+const goldenBootWinner: PickedScorer = 'קיליאן אמבפה'
+
+export const tournamentResults: TournamentResults = {
+  ...buildTournamentResults(groupScores, koScores, realGoals),
+  goldenBootWinner,
+}

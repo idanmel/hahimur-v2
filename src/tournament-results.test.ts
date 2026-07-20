@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import { buildTournamentResults, derivePlayerGoals, groupScores, koScores, tournamentResults } from './tournament-results'
 import { USERS } from './users/index'
 import { buildLeaderboardRows } from './leaderboard/leaderboardRows'
-import { computeUserPoints, koAdvancementFor } from './leaderboard/points'
+import { computeUserPoints, koAdvancementFor, GOLDEN_BOOT_BONUS } from './leaderboard/points'
 import { koAdvancer } from './formView/knockout/koRounds'
 
 test('derivePlayerGoals sums each player\'s goals across matches', () => {
@@ -58,6 +58,18 @@ test('title winners derive from the last two KO scores the moment they are enter
 test('baked results agree with the score-derived winners', () => {
   expect(tournamentResults.thirdPlaceWinner).toBe(koAdvancer(tournamentResults.knockoutStages.thirdPlace[0]) ?? undefined)
   expect(tournamentResults.champion).toBe(koAdvancer(tournamentResults.knockoutStages.final[0]) ?? undefined)
+})
+
+// The final has been played and the race is over: Mbappé finished top scorer with
+// 10, clear of Messi's 8 (checked against the same shootout-filtered ESPN
+// accumulation the race board renders from). computeGoldenBootBreakdown pays the
+// +10 bonus only off results.goldenBootWinner — the engine deliberately leaves it
+// unset while the race is live, so once it's decided the baked results must carry
+// the winner or every Mbappé backer is silently denied the bonus forever.
+test('golden boot race is locked: Mbappé is the winner and his backers get the bonus', () => {
+  expect(tournamentResults.goldenBootWinner).toBe('קיליאן אמבפה')
+  const backer = USERS.find(u => u.topGoalscorer === 'קיליאן אמבפה')!
+  expect(computeUserPoints(backer, tournamentResults).goldenBoot.winnerBonus).toBe(GOLDEN_BOOT_BONUS)
 })
 
 test('main leaderboard total awards the same title bonuses as the per-match views', () => {
