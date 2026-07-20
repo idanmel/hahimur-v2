@@ -27,7 +27,7 @@ import { GROUPS, ALL_GROUP_LETTERS, TEAMS } from '../../shared/groups'
 import type { PredictionsState, MatchScores, TournamentResults } from '../../shared/types'
 import { GROUP_MATCHES_BY_DATE, nextUnplayedMatchId, nextUnplayedKOMatchId } from '../../shared/matchesByDate'
 import { tournamentResults as realTournamentResults } from '../../tournament-results'
-import { getLockedMatchIds, allTzelifotResults } from './resultsUtils'
+import { getLockedMatchIds } from './resultsUtils'
 import { possibleParticipation } from './possibleParticipation'
 import '../../leaderboard/LeaderboardPage.css'
 import '../../pages/form/FormPage.css'
@@ -123,7 +123,7 @@ export default function ResultsPage({ users }: { users: User[] }) {
       ? realTournamentResults.goldenBootWinner
       : realTournamentResults.goldenBootWinner ? [realTournamentResults.goldenBootWinner] : [],
   }))
-  const [goalScorerResetKey, setGoalScorerResetKey] = useState(0)
+  const [goalScorerResetKey] = useState(0)
 
   // Live overlay: while a match is in progress, its real score/goals flow into
   // the leaderboard automatically. Matches the user has edited or simulated are
@@ -196,36 +196,6 @@ export default function ResultsPage({ users }: { users: User[] }) {
       return changed ? next : prev
     })
   }, [liveOverlay])
-
-  // "הכל צליפות": paint every unplayed match with your own prediction, so your
-  // whole bet comes true and you score צליפה on every undecided match. (Not a
-  // true "best case" — locked results can reseed a group and reshuffle the
-  // derived bracket; see allTzelifotResults for the caveat.)
-  const showAllTzelifot = () => {
-    reportUsage('all-tzelifot', me)
-    if (!myUser) return
-    setEditedResults(prev => {
-      const next = allTzelifotResults(prev, myUser.predictions, LOCKED_MATCH_IDS)
-      // A painted score is the user's choice — keep the live feed from overwriting it.
-      for (const id of Object.keys(next)) {
-        if (!LOCKED_MATCH_IDS.has(id)) userEditedIds.current.add(id)
-      }
-      return next
-    })
-  }
-
-  const reset = () => {
-    // Back to the real results — let the live feed drive untouched matches again.
-    userEditedIds.current.clear()
-    setEditedResults(getInitialState())
-    setGoalScorerState({
-      playerGoals: realTournamentResults.playerGoals ?? {},
-      goldenBootWinner: Array.isArray(realTournamentResults.goldenBootWinner)
-        ? realTournamentResults.goldenBootWinner
-        : realTournamentResults.goldenBootWinner ? [realTournamentResults.goldenBootWinner] : [],
-    })
-    setGoalScorerResetKey(k => k + 1)
-  }
 
   const { thirdPlaceQual, allGroupsFilled, allGroupData, groupsWithTies, round32Matches, knockout, finalWinner } = useTournament(editedResults)
 
@@ -325,24 +295,6 @@ export default function ResultsPage({ users }: { users: User[] }) {
           />
           <ScopedLeaderboard users={users} results={tournamentResults} realResults={realTournamentResults} scope={lbScope} rangeFrom={rangeFrom} rangeTo={rangeTo} me={me} bootRace={raceBoard.realGoals} teamByPlayer={TEAM_BY_PLAYER} />
         </section>
-
-        {/* Simulation callout */}
-        <aside className="pg-sim-note">
-          <span className="pg-sim-note-label">סימולטור תוצאות</span>
-          <p className="pg-sim-note-body">
-            ערכו תוצאות ידנית בכל שלב — הניקוד מתעדכן בזמן אמת.
-            לחצו <strong>הכל צליפות</strong> כדי למלא את כל המשחקים בניחושים שלכם — צליפה בכל משחק,
-            או <strong>איפוס</strong> לחזרה לתוצאות האמיתיות.
-          </p>
-        </aside>
-
-        {/* Simulation actions — always visible, affect all stages */}
-        <div className="pg-sim-actions">
-          {myUser && (
-            <button type="button" className="pg-all-tzelifot-btn" onClick={showAllTzelifot}>הכל צליפות</button>
-          )}
-          <button type="button" className="pg-reset-btn" onClick={reset}>איפוס</button>
-        </div>
 
         {/* All stages — collapsible accordion */}
         <div className="pg-ko-stages">
