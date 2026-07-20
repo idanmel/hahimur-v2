@@ -1,4 +1,4 @@
-import { computeUserPoints, computeGroupBreakdown, computeGroupTeamDetail, isGroupComplete, singleMatchOutcome, singleMatchPoints, koAdvancementFor, POINTS_PER_GOAL, OLEH_POINTS, PLACE_POINT } from './points'
+import { computeUserPoints, computeGroupBreakdown, computeGroupTeamDetail, computeGoldenBootBreakdown, isGroupComplete, singleMatchOutcome, singleMatchPoints, koAdvancementFor, POINTS_PER_GOAL, OLEH_POINTS, PLACE_POINT } from './points'
 import type { GroupTeamHit } from './points'
 import { ALL_GROUP_LETTERS, TEAMS } from '../shared/groups'
 import type { GroupLetter } from '../shared/groups'
@@ -239,6 +239,11 @@ export function rowsForPlayedMatches(users: User[], results: TournamentResults, 
   const groupMatches = played.flatMap(p => p.kind === 'group' ? [p.match] : [])
   const koMatches = played.flatMap(p => p.kind === 'ko' ? [p.match] : [])
   const scoped = completionScopedResults(results, new Set(groupMatches.map(m => m.id)))
+  // The golden boot is decided the moment the final ends, so its 10-point winner
+  // bonus is owned by the final's slice — like the champion bonus, only ranges
+  // containing the final see it.
+  const finalNums = new Set((results.knockoutStages?.final ?? []).map(m => m.matchNum))
+  const sliceHasFinal = koMatches.some(m => finalNums.has(m.matchNum))
   return users.map(user => {
     const predictionById: Record<string, MatchScores> = {}
     for (const m of Object.values(user.groupMatches).flat()) {
@@ -263,7 +268,8 @@ export function rowsForPlayedMatches(users: User[], results: TournamentResults, 
     const goalsByMatch = results.playerMatchGoals?.[user.topGoalscorer]
     const groupGoals = groupMatches.reduce((sum, m) => sum + (goalsByMatch?.[m.id] ?? 0), 0)
     const koGoals = koMatches.reduce((sum, m) => sum + (goalsByMatch?.[String(m.matchNum)] ?? 0), 0)
-    const goalsPoints = (groupGoals + koGoals) * POINTS_PER_GOAL
+    const bootBonus = sliceHasFinal ? computeGoldenBootBreakdown(user, results).winnerBonus : 0
+    const goalsPoints = (groupGoals + koGoals) * POINTS_PER_GOAL + bootBonus
     // computeUserPoints drives the full-tournament total shown alongside the slice;
     // only compute it when that column is actually displayed.
     const breakdown = withTournamentTotal ? computeUserPoints(user, results) : null

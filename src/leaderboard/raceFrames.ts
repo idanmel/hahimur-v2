@@ -1,4 +1,3 @@
-import { computeGoldenBootBreakdown } from './points'
 import { playedMatchesChrono, playedMatchId, playedMatchScores, playedMatchHome, playedMatchAway, playedMatchDate, rowsForPlayedMatches } from './leaderboardRows'
 import { TEAMS } from '../shared/groups'
 import type { TournamentResults } from '../shared/types'
@@ -31,17 +30,13 @@ export interface RaceFrame {
 //
 // The cumulative total at the final frame equals the live leaderboard for every
 // bettor: rowsForPlayedMatches over the whole timeline already reproduces it,
-// and the golden-boot winner bonus — settled only when the tournament ends — is
-// folded onto the last frame, exactly where the leaderboard awards it.
+// including the golden-boot winner bonus, which the slice scorer credits to the
+// final's frame — exactly where the leaderboard awards it.
 export function buildRaceFrames(users: User[], results: TournamentResults): RaceFrame[] {
   const chrono = playedMatchesChrono(results)
   return chrono.map((match, i) => {
-    const last = i === chrono.length - 1
-    const winnerBonus = new Map(
-      users.map(u => [u.label, last ? computeGoldenBootBreakdown(u, results).winnerBonus : 0]),
-    )
     const bars = rowsForPlayedMatches(users, results, chrono.slice(0, i + 1), false)
-      .map(r => ({ label: r.label, total: r.total + (winnerBonus.get(r.label) ?? 0) }))
+      .map(r => ({ label: r.label, total: r.total }))
       .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label))
     const homeCode = playedMatchHome(match)
     const awayCode = playedMatchAway(match)

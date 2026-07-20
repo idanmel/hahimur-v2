@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import type { GroupMatch, Standing, ThirdPlaceStanding, TournamentResults } from '../shared/types'
 import { buildGroupScopeRows, buildGroupSummaryRows, countR32Participation, buildRangeRows, rangePlaceMovement, rankTrajectories, GROUP_SORTERS } from './leaderboardRows'
 import type { KnockoutMatch } from '../shared/types'
-import { OLEH_POINTS, PLACE_POINT, POINTS_PER_GOAL } from './points'
+import { GOLDEN_BOOT_BONUS, OLEH_POINTS, PLACE_POINT, POINTS_PER_GOAL } from './points'
 import type { GroupScopeRow } from './leaderboardRows'
 import { EMPTY_RESULTS, makeUser } from './testFixtures'
 
@@ -279,6 +279,30 @@ test('an earlier R32 match keeps its result after a later R32 match is entered',
   ])
   expect(buildRangeRows([dana], both, 1, 1)[0].advancementPoints).toBe(OLEH_POINTS.r32) // #73 → Canada
   expect(buildRangeRows([dana], both, 2, 2)[0].advancementPoints).toBe(OLEH_POINTS.r32) // #74 → Germany
+})
+
+test('buildRangeRows credits the golden boot winner bonus to the final\'s slice', () => {
+  const results: TournamentResults = {
+    ...EMPTY_RESULTS,
+    knockoutStages: {
+      ...EMPTY_RESULTS.knockoutStages,
+      sf: [koResult(101, 'Brazil', 'Italy', '14 ביולי', '22:00', { home: 1, away: 0 })],
+      final: [koResult(104, 'Brazil', 'France', '19 ביולי', '22:00', { home: 2, away: 0 })],
+    },
+    goldenBootWinner: 'Neymar',
+  }
+  const dana = makeUser({ label: 'Dana', topGoalscorer: 'Neymar' })
+  const yossi = makeUser({ label: 'Yossi', topGoalscorer: 'Mbappe' })
+
+  // Range over the semi only: no boot bonus yet
+  const semiOnly = buildRangeRows([dana, yossi], results, 1, 1)
+  expect(semiOnly.map(r => r.goalsPoints)).toEqual([0, 0])
+
+  // Range containing the final: Dana banks the 10-point boot bonus, Yossi doesn't
+  const atFinal = buildRangeRows([dana, yossi], results, 2, 2)
+  expect(atFinal.find(r => r.label === 'Dana')!.goalsPoints).toBe(GOLDEN_BOOT_BONUS)
+  expect(atFinal.find(r => r.label === 'Dana')!.total).toBe(GOLDEN_BOOT_BONUS)
+  expect(atFinal.find(r => r.label === 'Yossi')!.goalsPoints).toBe(0)
 })
 
 test('buildRangeRows counts a picked scorer goals in a knockout match', () => {
